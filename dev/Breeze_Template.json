@@ -1,0 +1,183 @@
+{
+  "TranslationProperties": {
+    "Name": "server.items.${FULL_NAME}.name"
+  },
+  "ItemLevel": 15,
+  "MaxStack": 100,
+  "Icon": "Icons/ItemsGenerated/FallbackIcon.png",
+  "Categories": [
+    "Blocks.Rocks",
+    "Blocks.Structural"
+  ],
+  "FuelQuality": 3.0,
+  "PlayerAnimationsId": "Block",
+  
+  
+  "Interactions": {
+    "Secondary": {
+      "Interactions": [
+        {
+          "Parent": "Half_Block",
+          "Matchers": [
+            {
+              "Block": {
+                "Id": "Wood_Softwood_Planks_Half",
+                "State": "default"
+              },
+              "Face": "Up",
+              "StaticFace": false
+            }
+          ]
+        },
+        {
+          "Parent": "Half_Block",
+          "Matchers": [
+            {
+              "Block": {
+                "Id": "Rock_Basalt_Cobble_Half",
+                "State": "default"
+              },
+              "Face": "Up",
+              "StaticFace": false
+            }
+          ]
+        }
+      ],
+      "Cooldown": {
+        "Id": "BlockInteraction",
+        "Cooldown": 0.3,
+        "ClickBypass": false
+      },
+      "Settings": {
+        "Creative": {
+          "AllowSkipChainOnClick": true
+        }
+      }
+    }
+  },
+  
+  
+  
+  "Set": "Wood_Goldenwood_Planks",
+  "Recipe": {
+    "Input": [
+      {
+        "ResourceTypeId": "Wood_Goldenwood",
+        "Quantity": 1
+      }
+    ],
+    "BenchRequirement": [
+      {
+        "Id": "Builders",
+        "Type": "StructuralCrafting",
+        "Categories": [
+          "HalfSlab"
+        ]
+      }
+    ],
+    "OutputQuantity": 4,
+    "TimeSeconds": 0.1
+  },
+  "BlockType": {
+    "Material": "Solid",
+    "DrawType": "Model",
+    "CustomModel": "Blocks/Breeze/${MODEL_NAME}.blockymodel",
+    "Opacity": "Semitransparent",
+    "HitboxType": "Block_Quarter",
+    "CustomModelTexture": [
+      {
+        "Texture": "BlockTextures/Wood_Goldenwood_Planks_Half.png",
+        "Weight": 1
+      }
+    ],
+    "Group": "Wood",
+    "Flags": {},
+    "Gathering": {
+      "Breaking": {
+        "GatherType": "Woods"
+      }
+    },
+    "VariantRotation": "DoublePipe",
+    "BlockParticleSetId": "Wood",
+    "Supporting": {
+      "Down": [
+        {}
+      ]
+    },
+    "ParticleColor": "#65482d",
+    "BlockSoundSetId": "Wood",
+    "State": {
+      "Definitions": {
+        "Block": {
+          "Material": "Solid",
+          "DrawType": "Model",
+          "CustomModel": "Blocks/Stone/Stalactite_Sharp.blockymodel",
+          "HitboxType": "Block_Half",
+          "Textures": [
+            {
+              "All": "BlockTextures/Chalk.png",
+              "Weight": 1
+            }
+          ],
+          "Supporting": {
+            "BlockSides": [
+              {}
+            ]
+          }
+        },
+        "Block2": {
+          "Material": "Solid",
+          "DrawType": "Model",
+          "CustomModel": "Blocks/Stone/Stalactite_Sharp.blockymodel",
+          "HitboxType": "Block_Half",
+          "Textures": [
+            {
+              "All": "BlockTextures/Chalk.png",
+              "Weight": 1
+            }
+          ],
+          "Supporting": {
+            "BlockSides": [
+              {}
+            ]
+          }
+        }
+      }
+    }
+  },
+  "ResourceTypes": [
+    {
+      "Id": "Wood_Planks"
+    },
+    {
+      "Id": "Fuel"
+    },
+    {
+      "Id": "Charcoal"
+    },
+    {
+      "Id": "Wood_All"
+    }
+  ],
+  "Tags": {
+    "Type": [
+      "Wood"
+    ],
+    "SubType": [
+      "Planks"
+    ]
+  },
+  "ItemSoundSetId": "ISS_Blocks_Wood",
+  "IconProperties": {
+    "Scale": 0.58823,
+    "Rotation": [
+      22.5,
+      45,
+      22.5
+    ],
+    "Translation": [
+      0,
+      -13.5
+    ]
+  }
+}

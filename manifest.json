@@ -1,0 +1,21 @@
+{
+  "Group": "RedHadron",
+  "Name": "BreezeBlocks",
+  "Version": "0.0.1",
+  "Description": "Breeze blocks to build with!",
+  "Authors": [
+    {
+      "Name": "Red Hadron",
+      "Email": "",
+      "Url": "github.com/redhadron"
+    }
+  ],
+  "Website": "github.com/redhadron",
+  "ServerVersion": "2026.02.19-1a311a592",
+  "Dependencies": {},
+  "OptionalDependencies": {},
+  "LoadBefore": {},
+  "DisabledByDefault": false,
+  "IncludesAssetPack": false,
+  "SubPlugins": []
+}

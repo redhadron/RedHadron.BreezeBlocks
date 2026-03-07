@@ -1,0 +1,31 @@
+
+Breeze_G4x4_T8th_D4th_S3 (all faces)(uncustom texture), Breeze_G4x4_T8th_D4th_S3 (wip)(all faces)(uncustom texture), Breeze_G4x4_T16th_D4th_S3 (all faces)(uncustom texture) all have slight UV errors around the center hole of each cluster of 5 holes.
+BW stands for basketweave
+potential tags:
+  UD = upside-down
+  I = inverted
+  NP = non-prismatic
+  Fl = frameless
+  FlFl = frameless frameless
+  BW
+Tags are not needed if every variant of every idea has a unique name.
+
+
+Breeze 2x2 [ornate] <slab|<center|side>-aligned>
+
+Breeze G<1x1|2x2|1x2|2x1|2x4|4x2|4x4> T<8|16>th <Da<025|050|075|100>|Db<1000|1100|1110|1111|0100|0110|0111|0010|0011|0001>|Dcq> AabcAabcAabcAabc
+// Da = Depth amount, Db = depth binary, Dcq = Depth centered quarterblock.
+Longest possible name: Wood Tropicalwood Breeze G1x1 T16th Db1000 AabcAabcAabcAabc
+
+==============================================================================
+
+Roadmap:
+upgrade renamer.py to optionally edit the content of asset definition files (or any other files in a second directory) too.
+upgrade generate.py to support all woods.
+publish mod.
+Make system for changing the depth of breeze blocks.
+upgrade generate.py to support stone and terracotta.
+finish creating all models in designs canvas.
+create ornate versions of some models.
+make a thumbnail generation system.
+diagonal breeze blocks??
