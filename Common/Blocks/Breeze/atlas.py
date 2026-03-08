@@ -27,6 +27,7 @@ class TRANSPORT_DIRECTION(enum.Enum):
   EXPORT = enum.auto()
 def PARSE_TRANSPORT_DIRECTION(string):
   return {"in": TRANSPORT_DIRECTION.IMPORT, "out": TRANSPORT_DIRECTION.EXPORT}[string]
+# EXIT_CODES = {"SUCCESS":0, "ASSERTION_FAILURE":1}
 
 config_data = {
   "coordinates_to_names": bidict(),
@@ -35,14 +36,15 @@ config_data = {
 }
 
 def get_atlas_image_size():
-  return (tile_size[0]*atlas_size[0], tile_size[1]*atlas_size[1])
+  return (config_data["tile_size"][0]*config_data["atlas_size"][0], 
+    config_data["tile_size"][1]*config_data["atlas_size"][1])
   
 def get_intersection_coordinate(intersection_address):
-  return (tile_size[0]*intersection_address[0], tile_size[1]*intersection_address[1])
+  return (config_data["tile_size"][0]*intersection_address[0], config_data["tile_size"][1]*intersection_address[1])
   
 def get_a_free_address():
-  for y in range(atlas_size[1]):
-    for x in range(atlas_size[0]):
+  for y in range(config_data["atlas_size"][1]):
+    for x in range(config_data["atlas_size"][0]):
       if (x,y) not in config_data["coordinates_to_names"]:
         return (x,y)
   assert False, "out of room"
@@ -58,7 +60,7 @@ def load_config():
   configText = config_file_to_string()
   configData = json.loads(configText)
   assert len(config_data["coordinates_to_names"]) == 0, "config data should not be loaded twice!"
-  for keyString, value in config_data["coordinates_to_names"].items():
+  for keyString, value in configData["coordinates_to_names"].items():
     key = ast.literal_eval(keyString)
     assert isinstance(key, tuple) and len(key) == 2 and all(isinstance(item, int) for item in key)
     assert key not in config_data["coordinates_to_names"]
@@ -101,6 +103,16 @@ def delete_atlas_config():
   if not os.path.exists(ATLAS_CONFIG_PATH):
     raise FileNotFoundError()
   os.remove(ATLAS_CONFIG_PATH)
+  
+def assert_config_is_saved_correctly():
+  if config_data_has_changed():
+    print("config data changed unexpectedly.")
+    print("config data:")
+    print(config_data_to_string())
+    print("config file:")
+    print(config_file_to_string())
+    print("the program will exit.")
+    assert False
     
 
 
@@ -126,7 +138,7 @@ def do_tile_transport(direction, discover=False):
           tileImg.save(tileImgPath)
     else:
       assert direction is TRANSPORT_DIRECTION.IMPORT
-      for tileName in (dirEntry.name for dirEntry in os.scandir(TILE_FOLDER) if dirEntry.name.endswith(".png") and dirEntry.name != ATLAS_IMAGE_NAME):
+      for tileName in (item for item in os.listdir(TILE_FOLDER) if item.endswith(".png") and item != ATLAS_IMAGE_NAME):
         if tileName not in config_data["coordinates_to_names"].inverse:
           if discover:
             config_data["coordinates_to_names"].inverse[tileName] = get_a_free_address()
@@ -166,7 +178,6 @@ detect_rename_cmd_parser = subparser_manager.add_parser("detect-rename")
 
 
 args = parser.parse_args()
-print(args)
 if args.subcommand == "atlas-image":
   if args.subaction == "create":
     create_atlas_image()
@@ -186,11 +197,12 @@ elif args.subcommand == "transport":
   direction = PARSE_TRANSPORT_DIRECTION(args.direction)
   assert args.discover is True or args.discover is False
   load_config()
+  assert_config_is_saved_correctly()
   do_tile_transport(direction, discover=args.discover)
   if direction is TRANSPORT_DIRECTION.IMPORT and args.discover:
     save_config()
   else:
-    assert not config_data_has_changed()
+    assert_config_is_saved_correctly()
   
 else:
   assert args.subcommand == "detect-rename", args.subcommand
