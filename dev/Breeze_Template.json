@@ -4,7 +4,7 @@
   },
   "ItemLevel": 15,
   "MaxStack": 100,
-  "Icon": "Blocks/Breeze/${NAME_WITHOUT_DEPTH}.png",
+  "Icon": "${ICON_PATH_IN_MOD}",
   "Categories": [
     "Blocks.Rocks",
     "Blocks.Structural"

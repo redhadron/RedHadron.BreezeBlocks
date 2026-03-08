@@ -1,12 +1,14 @@
 import os
+import shutil
 
-sep = os.sep
+SEP = os.sep
 
-modelFolderPath = sep.join([os.getcwd(), "..", "Common", "Blocks", "Breeze"])
+modPath = SEP.join([os.getcwd(), ".."])
+modelFolderPath = SEP.join([modPath, "Common", "Blocks", "Breeze"])
 # print(modelFolderPath)
-outputFolderPath = sep.join([os.getcwd(), "..", "Server", "Item", "Items"])
+outputFolderPath = SEP.join([modPath, "Server", "Item", "Items"])
 # print(outputFolderPath)
-TEMPLATE_FILE_PATH = os.getcwd() + sep + "Breeze_Template.json"
+TEMPLATE_FILE_PATH = os.getcwd() + SEP + "Breeze_Template.json"
 # print(f"{TEMPLATE_FILE_PATH=}")
 # _ = input("press enter...")
 
@@ -36,8 +38,16 @@ for dirEntry in os.scandir(modelFolderPath):
     continue
   shapeName = remove_suffix(dirEntry.name, ".blockymodel")
   shapeNameWithoutDepth = remove_suffix(shapeName, "_Db1000") # if this fails, it's because the code is incomplete and it should only be using the Db1000 model as a cue to create a thumbnail image because other depths of model should be using the same thumbnail as that one OR they shouldn't have thumbnails at all because they should never exist in the inventory, depending on design choices I make in the future.
+  iconFileName = shapeNameWithoutDepth + ".png"
+  
+  iconPathInMod = "Icons/ItemsGenerated/" + iconFileName
+  shutil.copy(
+    modelFolderPath + SEP + iconFileName,
+    SEP.join([modPath, "Common", "Icons", "ItemsGenerated", iconFileName])
+  )
+  
   fullName = material + "_" + shapeName
-  outputFilePath = outputFolderPath + sep + fullName + ".json"
+  outputFilePath = outputFolderPath + SEP + fullName + ".json"
   if os.path.exists(outputFilePath):
     print(f"replacing {outputFilePath=}")
     os.remove(outputFilePath)
@@ -47,7 +57,7 @@ for dirEntry in os.scandir(modelFolderPath):
     print(f"opened output file.")
 
     for currentLine in templateFileLines:
-      outputLine = currentLine.replace("${FULL_NAME}", fullName).replace("${MODEL_NAME}", shapeName).replace("${NAME_WITHOUT_DEPTH}", shapeNameWithoutDepth)
+      outputLine = currentLine.replace("${FULL_NAME}", fullName).replace("${MODEL_NAME}", shapeName).replace("${ICON_PATH_IN_MOD}", iconPathInMod)
       assert "${" not in outputLine
       outputFile.write(outputLine)
   print("closed output file.")
