@@ -4,7 +4,7 @@
   },
   "ItemLevel": 15,
   "MaxStack": 100,
-  "Icon": "Icons/ItemsGenerated/FallbackIcon.png",
+  "Icon": "Blocks/Breeze/Breeze_G2x2T8thDice.png",
   "Categories": [
     "Blocks.Rocks",
     "Blocks.Structural"

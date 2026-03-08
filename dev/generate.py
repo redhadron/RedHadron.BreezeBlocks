@@ -34,9 +34,9 @@ if len(templateFileLines) == 0:
 for dirEntry in os.scandir(modelFolderPath):
   if not dirEntry.name.endswith(".blockymodel"):
     continue
-  modelName = remove_suffix(dirEntry.name, ".blockymodel")
-  
-  fullName = material + "_" + modelName
+  shapeName = remove_suffix(dirEntry.name, ".blockymodel")
+  shapeNameWithoutDepth = remove_suffix(shapeName, "_Db1000") # if this fails, it's because the code is incomplete and it should only be using the Db1000 model as a cue to create a thumbnail image because other depths of model should be using the same thumbnail as that one OR they shouldn't have thumbnails at all because they should never exist in the inventory, depending on design choices I make in the future.
+  fullName = material + "_" + shapeName
   outputFilePath = outputFolderPath + sep + fullName + ".json"
   if os.path.exists(outputFilePath):
     print(f"replacing {outputFilePath=}")
@@ -47,7 +47,7 @@ for dirEntry in os.scandir(modelFolderPath):
     print(f"opened output file.")
 
     for currentLine in templateFileLines:
-      outputLine = currentLine.replace("${FULL_NAME}", fullName).replace("${MODEL_NAME}", modelName)
+      outputLine = currentLine.replace("${FULL_NAME}", fullName).replace("${MODEL_NAME}", shapeName).replace("${NAME_WITHOUT_DEPTH}", shapeNameWithoutDepth)
       assert "${" not in outputLine
       outputFile.write(outputLine)
   print("closed output file.")
