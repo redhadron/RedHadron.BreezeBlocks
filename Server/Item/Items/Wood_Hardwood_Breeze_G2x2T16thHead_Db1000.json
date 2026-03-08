@@ -1,6 +1,6 @@
 {
   "TranslationProperties": {
-    "Name": "server.items.Wood_Goldenwood_Breeze_G2x2T16thHead_Db1000.name"
+    "Name": "server.items.Wood_Hardwood_Breeze_G2x2T16thHead_Db1000.name"
   },
   "ItemLevel": 15,
   "MaxStack": 100,
@@ -15,11 +15,11 @@
   
   
   
-  "Set": "Wood_Goldenwood_Planks",
+  "Set": "Wood_Hardwood_Planks",
   "Recipe": {
     "Input": [
       {
-        "ResourceTypeId": "Wood_Goldenwood",
+        "ResourceTypeId": "Wood_Hardwood",
         "Quantity": 1
       }
     ],
@@ -43,7 +43,7 @@
     "HitboxType": "Block_Quarter",
     "CustomModelTexture": [
       {
-        "Texture": "BlockTextures/Wood_Goldenwood_Planks.png",
+        "Texture": "BlockTextures/Wood_Hardwood_Planks.png",
         "Weight": 1
       }
     ],

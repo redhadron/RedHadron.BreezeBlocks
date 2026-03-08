@@ -1,10 +1,10 @@
 {
   "TranslationProperties": {
-    "Name": "server.items.Wood_Goldenwood_Breeze_G2x2T16thHead_Db1000.name"
+    "Name": "server.items.Wood_Drywood_Breeze_G2x2T8thHead_Db1000.name"
   },
   "ItemLevel": 15,
   "MaxStack": 100,
-  "Icon": "Icons/ItemsGenerated/Breeze_G2x2T16thHead.png",
+  "Icon": "Icons/ItemsGenerated/Breeze_G2x2T8thHead.png",
   "Categories": [
     "Blocks.Rocks",
     "Blocks.Structural"
@@ -15,11 +15,11 @@
   
   
   
-  "Set": "Wood_Goldenwood_Planks",
+  "Set": "Wood_Drywood_Planks",
   "Recipe": {
     "Input": [
       {
-        "ResourceTypeId": "Wood_Goldenwood",
+        "ResourceTypeId": "Wood_Drywood",
         "Quantity": 1
       }
     ],
@@ -38,12 +38,12 @@
   "BlockType": {
     "Material": "Solid",
     "DrawType": "Model",
-    "CustomModel": "Blocks/Breeze/Breeze_G2x2T16thHead_Db1000.blockymodel",
+    "CustomModel": "Blocks/Breeze/Breeze_G2x2T8thHead_Db1000.blockymodel",
     "Opacity": "Semitransparent",
     "HitboxType": "Block_Quarter",
     "CustomModelTexture": [
       {
-        "Texture": "BlockTextures/Wood_Goldenwood_Planks.png",
+        "Texture": "BlockTextures/Wood_Drywood_Planks.png",
         "Weight": 1
       }
     ],

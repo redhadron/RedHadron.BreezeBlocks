@@ -17,6 +17,13 @@ Breeze G<1x1|2x2|1x2|2x1|2x4|4x2|4x4> T<8|16>th <Da<025|050|075|100>|Db<1000|110
 // Da = Depth amount, Db = depth binary, Dcq = Depth centered quarterblock.
 Longest possible name: Wood Tropicalwood Breeze G1x1 T16th Db1000 AabcAabcAabcAabc
 
+----------------------------------------------------------------------------
+
+set Wood_Goldenwood_Planks
+resourceTypeId Wood_Goldenwood
+texture path in mod BlockTextures/Wood_Goldenwood_Planks.png
+
+
 ==============================================================================
 
 Roadmap:
