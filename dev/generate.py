@@ -1,25 +1,30 @@
 import os
-import shutil
+# import shutil
+from PIL import Image, ImageChops
 
 SEP = os.sep
-# DECOMPRESSED_HYTALE_ASSETS_PATH = 
-PLANK_TYPES = list("Darkwood Deadwood Drywood Goldenwood Greenwood Hardwood Lightwood Redwood Softwood Tropicalwood".split(" "))
+HYTALE_ASSETS_PATH = "E:\Hytale Assets 20260221" # path to a folder in which you have put the contents of Assets.zip after extracting them.
+HYTALE_BLOCKTEXTURES_PATH = HYTALE_ASSETS_PATH + SEP + "Common" + SEP + "BlockTextures"
+PLANK_TYPES = list("Blackwood Darkwood Deadwood Drywood Goldenwood Greenwood Hardwood Lightwood Redwood Softwood Tropicalwood".split(" "))
 
 modPath = SEP.join([os.getcwd(), ".."])
 modelFolderPath = SEP.join([modPath, "Common", "Blocks", "Breeze"])
-# print(modelFolderPath)
+assert os.path.exists(modelFolderPath)
 outputFolderPath = SEP.join([modPath, "Server", "Item", "Items"])
-# print(outputFolderPath)
+assert os.path.exists(outputFolderPath)
+iconFolderPath = SEP.join([modPath, "Common", "Icons", "ItemsGenerated"])
+assert os.path.exists(iconFolderPath)
 TEMPLATE_FILE_PATH = os.getcwd() + SEP + "Breeze_Template.json"
-# print(f"{TEMPLATE_FILE_PATH=}")
-# _ = input("press enter...")
-
+assert os.path.exists(TEMPLATE_FILE_PATH)
 
 
 
 def remove_suffix(a, b):
   assert a.endswith(b)
   return a[:-len(b)]
+  
+def patch_texture_name(input_string):
+  return input_string.replace("Wood_Softwood_Planks.png", "Wood_Softwood_Planks_Top.png").replace("Wood_Greenwood_Planks.png", "Wood_Green.png")
   
   
 
@@ -38,40 +43,51 @@ modelFileNamesList = list(dirEntry.name for dirEntry in os.scandir(modelFolderPa
   
   
 for modelFileName in modelFileNamesList:
-  shapeName = remove_suffix(dirEntry.name, ".blockymodel")
+  shapeName = remove_suffix(modelFileName, ".blockymodel")
   shapeNameWithoutDepth = remove_suffix(shapeName, "_Db1000")
-  iconFileName = shapeNameWithoutDepth + ".png"
-  
-  shutil.copy(
-    modelFolderPath + SEP + iconFileName,
-    SEP.join([modPath, "Common", "Icons", "ItemsGenerated", iconFileName])
-  )
+  iconMaskFileName = shapeNameWithoutDepth + ".png"
   
   materialType = "Wood"
   for material in PLANK_TYPES:
     assert materialType=="Wood", "form cannot be planks unless type is wood"
     materialForm = "Planks"
+      
+    textureFileName = patch_texture_name(f"{materialType}_{material}_{materialForm}.png")
     
     assetInfo = {
       "full_name": materialType + "_" + material + "_" + shapeName,
-      "output_file_path": outputFolderPath + SEP + fullName + ".json"
     }
+    assetInfo["output_file_path"] = outputFolderPath + SEP + assetInfo["full_name"] + ".json"
+    assetInfo["icon_file_name"] = assetInfo["full_name"] + ".png"
+    assetInfo["icon_file_path"] = iconFolderPath + SEP + assetInfo["icon_file_name"]
+    
     assetContents = {
-      "ICON_PATH_IN_MOD": "Icons/ItemsGenerated/" + iconFileName,
+      "ICON_PATH_IN_MOD": "Icons/ItemsGenerated/" + assetInfo["icon_file_name"],
       "BLOCK_SET": f"{materialType}_{material}_{materialForm}",
-      "TEXTURE_PATH_IN_MOD": f"BlockTextures/{materialType}_{material}_{materialForm}.png".replace("Wood_Softwood_Planks.png", "Wood_Softwood_Planks_Top.png").replace("Wood_Greenwood_Planks.png", "Wood_Green.png"),
+      "TEXTURE_PATH_IN_MOD": f"BlockTextures/{textureFileName}",
       "RESOURCE_TYPE_ID": f"{materialType}_{material}",
     }
     
+    with Image.open(modelFolderPath + SEP + iconMaskFileName) as thumbnailMaskImage:
+      print(thumbnailMaskImage.getbbox())
+      with Image.open(HYTALE_BLOCKTEXTURES_PATH + SEP + textureFileName) as thumbnailTextureImage:
+        print(thumbnailTextureImage.getbbox())
+        thumbnailResultImage = ImageChops.multiply(thumbnailMaskImage.convert("RGB"), thumbnailTextureImage.convert("RGB"))
+        thumbnailResultImage.save(assetInfo["icon_file_path"])
+    
+    
+    
+    outputFilePath = assetInfo["output_file_path"]
     if os.path.exists(outputFilePath):
-      print(f"replacing {outputFilePath=}")
+      print(f"replacing {outputFilePath}")
       os.remove(outputFilePath)
     else:
-      print(f"creating {outputFilePath=}")
+      print(f"creating {outputFilePath}")
+      
     with open(outputFilePath, "w") as outputFile:
 
       for currentLine in templateFileLines:
-        outputLine = currentLine.replace("${FULL_NAME}", fullName
+        outputLine = currentLine.replace("${FULL_NAME}", assetInfo["full_name"]
           ).replace("${MODEL_NAME}", shapeName
           ).replace("${ICON_PATH_IN_MOD}", assetContents["ICON_PATH_IN_MOD"]
           ).replace("${SET}", assetContents["BLOCK_SET"]
