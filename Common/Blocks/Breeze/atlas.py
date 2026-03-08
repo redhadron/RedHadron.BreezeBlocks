@@ -1,9 +1,12 @@
 
 from bidict import bidict
 from PIL import Image
+
 import enum
 import argparse
 import os
+import json
+import ast
 
 
 """
@@ -41,7 +44,38 @@ def get_a_free_address():
     for x in range(atlas_size[0]):
       if (x,y) not in coordinates_to_names:
         return (x,y)
-  assert False, "out of room"        
+  assert False, "out of room"
+
+
+
+
+def config_file_to_string():
+  with open(ATLAS_CONFIG_PATH, "r") as configFile:
+    return configFile.read()
+
+def load_config():
+  configText = config_file_to_string()
+  configData = json.loads(configText)
+  assert len(coordinates_to_names) == 0, "config data should not be loaded twice!"
+  for keyString, value in configData["coordinates_to_names"].items():
+    key = ast.literal_eval(keyString)
+    assert isinstance(key, tuple) and len(key) == 2 and all(isinstance(item, int) for item in key)
+    assert key not in coordinates_to_names
+    # value duplicates are allowed, though.
+    coordinates_to_names[key] = value
+
+def config_data_to_string():
+  configData = {"coordinates_to_names":{str(key): value for key, value in coordinates_to_names.items()}}
+  return json.dumps(configData, sort_keys=ATLAS_CONFIG_SORT_KEYS, indent=ATLAS_CONFIG_INDENT)
+
+def save_config():
+  textToWrite = config_data_to_string()
+  with open(ATLAS_CONFIG_PATH, "w") as configFile:
+    configFile.write(textToWrite)
+  
+def config_data_has_changed():
+  return config_data_to_string() != config_file_to_string()
+
 
 
 def create_atlas_image():
@@ -55,6 +89,18 @@ def delete_atlas_image():
   if not os.path.exists(ATLAS_IMAGE_PATH):
     raise FileNotFoundError()
   os.remove(ATLAS_IMAGE_PATH)
+  
+def create_atlas_config():
+  if os.path.exists(ATLAS_CONFIG_PATH):
+    raise FileExistsError()
+  save_config()
+  
+def delete_atlas_config():
+  assert ATLAS_CONFIG_PATH.endswith(".json"), "invalid atlas config path"
+  if not os.path.exists(ATLAS_CONFIG_PATH):
+    raise FileNotFoundError()
+  os.remove(ATLAS_CONFIG_PATH)
+    
 
 
 def do_tile_transport(direction, discover=False):
@@ -67,11 +113,16 @@ def do_tile_transport(direction, discover=False):
         raise NotImplementedError("discover is not available while exporting yet.")
       for y in range(atlas_size[1]):
         for x in range(atlas_size[0]):
-          if (x,y) not in coordinates_to_paths:
+          if (x,y) not in coordinates_to_names:
             continue
           locationInAtlasImage = (*get_intersection_coordinate((x,y)), *get_intersection_coordinate((x+1,y+1)))
           tileImg = atlasImg.crop(locationInAtlasImage)
-          timeImg.save(coordinates_to_names[(x,y)])
+          tileImgPath = TILE_FOLDER + SEP + coordinates_to_names[(x,y)]
+          if os.path.exists(tileImgPath):
+            with Image.open(tileImgPath) as oldTileImg:
+              if oldTileImg.getbbox() != tileImg.getbbox():
+                raise FileExistsError("the tile will not be overwritten because it is of a different size.")
+          tileImg.save(tileImgPath)
     else:
       assert direction is TRANSPORT_DIRECTION.IMPORT
       for tileName in (dirEntry.name for dirEntry in os.scandir(TILE_FOLDER) if dirEntry.name.endswith(".png") and dirEntry.name != ATLAS_IMAGE_NAME):
@@ -85,23 +136,9 @@ def do_tile_transport(direction, discover=False):
     atlasImg.save(ATLAS_IMAGE_PATH)
 
 
-def load_config():
-  with open(ATLAS_CONFIG_PATH, "r") as configFile:
-    configText = configFile.read()
-  configData = json.loads(configText)
-  assert len(coordinates_to_names) == 0, "config data should not be loaded twice!"
-  for key, value in configData["coordinates_to_names"].items():
-    assert key not in coordinates_to_names
-    # value duplicates are allowed, though.
-    coordinates_to_names[key] = value
 
 
-def save_config():
-  configData = {"coordinates_to_names":{key: value for key, value in coordinates_to_names.items()}}
-  textToWrite = json.dumps(configData, sort_keys=ATLAS_CONFIG_SORT_KEYS, indent=ATLAS_CONFIG_INDENT)
-  with open(ATLAS_CONFIG_PATH, "w") as configFile:
-    configFile.write(textToWrite)
-  
+
 
 """
 texture atlas editor commands:
@@ -122,6 +159,7 @@ atlas_config_cmd_parser.add_argument("subaction")
 
 transport_cmd_parser = subparser_manager.add_parser("transport")
 transport_cmd_parser.add_argument("direction")
+transport_cmd_parser.add_argument("--discover", action="store_true")
 
 detect_rename_cmd_parser = subparser_manager.add_parser("detect-rename")
 
@@ -135,9 +173,21 @@ if args.subcommand == "atlas-image":
     assert args.subaction == "delete", ars.subaction
     delete_atlas_image()
 elif args.subcommand == "atlas-config":
-  raise NotImplementedError()
+  if args.subaction == "create":
+    create_atlas_config()
+  else:
+    assert args.subaction == "delete", ars.subaction
+    delete_atlas_config()
 elif args.subcommand == "transport":
-  do_tile_transport(PARSE_TRANSPORT_DIRECTION(args.direction))
+  direction = PARSE_TRANSPORT_DIRECTION(args.direction)
+  assert args.discover is True or args.discover is False
+  load_config()
+  do_tile_transport(direction, discover=args.discover)
+  if direction is TRANSPORT_DIRECTION.IMPORT and args.discover:
+    save_config()
+  else:
+    assert not config_data_has_changed()
+  
 else:
   assert args.subcommand == "detect-rename", args.subcommand
   raise NotImplementedError()
