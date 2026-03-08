@@ -28,10 +28,11 @@ class TRANSPORT_DIRECTION(enum.Enum):
 def PARSE_TRANSPORT_DIRECTION(string):
   return {"in": TRANSPORT_DIRECTION.IMPORT, "out": TRANSPORT_DIRECTION.EXPORT}[string]
 
-coordinates_to_names = bidict()
-tile_size = (32, 32)
-atlas_size = (4, 16)
-
+config_data = {
+  "coordinates_to_names": bidict(),
+  "tile_size": (32, 32),
+  "atlas_size": (4, 16),
+}
 
 def get_atlas_image_size():
   return (tile_size[0]*atlas_size[0], tile_size[1]*atlas_size[1])
@@ -42,7 +43,7 @@ def get_intersection_coordinate(intersection_address):
 def get_a_free_address():
   for y in range(atlas_size[1]):
     for x in range(atlas_size[0]):
-      if (x,y) not in coordinates_to_names:
+      if (x,y) not in config_data["coordinates_to_names"]:
         return (x,y)
   assert False, "out of room"
 
@@ -56,16 +57,16 @@ def config_file_to_string():
 def load_config():
   configText = config_file_to_string()
   configData = json.loads(configText)
-  assert len(coordinates_to_names) == 0, "config data should not be loaded twice!"
-  for keyString, value in configData["coordinates_to_names"].items():
+  assert len(config_data["coordinates_to_names"]) == 0, "config data should not be loaded twice!"
+  for keyString, value in config_data["coordinates_to_names"].items():
     key = ast.literal_eval(keyString)
     assert isinstance(key, tuple) and len(key) == 2 and all(isinstance(item, int) for item in key)
-    assert key not in coordinates_to_names
+    assert key not in config_data["coordinates_to_names"]
     # value duplicates are allowed, though.
-    coordinates_to_names[key] = value
+    config_data["coordinates_to_names"][key] = value
 
 def config_data_to_string():
-  configData = {"coordinates_to_names":{str(key): value for key, value in coordinates_to_names.items()}}
+  configData = {"coordinates_to_names":{str(key): value for key, value in config_data["coordinates_to_names"].items()}}
   return json.dumps(configData, sort_keys=ATLAS_CONFIG_SORT_KEYS, indent=ATLAS_CONFIG_INDENT)
 
 def save_config():
@@ -113,11 +114,11 @@ def do_tile_transport(direction, discover=False):
         raise NotImplementedError("discover is not available while exporting yet.")
       for y in range(atlas_size[1]):
         for x in range(atlas_size[0]):
-          if (x,y) not in coordinates_to_names:
+          if (x,y) not in config_data["coordinates_to_names"]:
             continue
           locationInAtlasImage = (*get_intersection_coordinate((x,y)), *get_intersection_coordinate((x+1,y+1)))
           tileImg = atlasImg.crop(locationInAtlasImage)
-          tileImgPath = TILE_FOLDER + SEP + coordinates_to_names[(x,y)]
+          tileImgPath = TILE_FOLDER + SEP + config_data["coordinates_to_names"][(x,y)]
           if os.path.exists(tileImgPath):
             with Image.open(tileImgPath) as oldTileImg:
               if oldTileImg.getbbox() != tileImg.getbbox():
@@ -126,12 +127,12 @@ def do_tile_transport(direction, discover=False):
     else:
       assert direction is TRANSPORT_DIRECTION.IMPORT
       for tileName in (dirEntry.name for dirEntry in os.scandir(TILE_FOLDER) if dirEntry.name.endswith(".png") and dirEntry.name != ATLAS_IMAGE_NAME):
-        if tileName not in coordinates_to_names.inverse:
+        if tileName not in config_data["coordinates_to_names"].inverse:
           if discover:
-            coordinates_to_names.inverse[tileName] = get_a_free_address()
-        if tileName in coordinates_to_names.inverse:
+            config_data["coordinates_to_names"].inverse[tileName] = get_a_free_address()
+        if tileName in config_data["coordinates_to_names"].inverse:
           with Image.open(TILE_FOLDER + SEP + tileName) as tileImg:
-            atlasImg.paste(tileImg, get_intersection_coordinate(coordinates_to_names.inverse[tileName]))
+            atlasImg.paste(tileImg, get_intersection_coordinate(config_data["coordinates_to_names"].inverse[tileName]))
             
     atlasImg.save(ATLAS_IMAGE_PATH)
 
@@ -169,9 +170,12 @@ print(args)
 if args.subcommand == "atlas-image":
   if args.subaction == "create":
     create_atlas_image()
-  else:
-    assert args.subaction == "delete", ars.subaction
+  elif args.subaction == "delete":
     delete_atlas_image()
+  else:
+    assert args.subaction == "view", ars.subaction
+    assert os.path.exists(ATLAS_IMAGE_PATH) and ATLAS_IMAGE_PATH.endswith(".png")
+    os.startfile(ATLAS_IMAGE_PATH)
 elif args.subcommand == "atlas-config":
   if args.subaction == "create":
     create_atlas_config()
