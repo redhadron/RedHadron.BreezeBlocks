@@ -34,14 +34,12 @@ if len(templateFileLines) == 0:
   raise ValueError("empty template file?? failed.")
   
   
+modelFileNamesList = list(dirEntry.name for dirEntry in os.scandir(modelFolderPath) if dirEntry.name.endswith(".blockymodel"))
   
   
-  
-for dirEntry in os.scandir(modelFolderPath):
-  if not dirEntry.name.endswith(".blockymodel"):
-    continue
+for modelFileName in modelFileNamesList:
   shapeName = remove_suffix(dirEntry.name, ".blockymodel")
-  shapeNameWithoutDepth = remove_suffix(shapeName, "_Db1000") # if this fails, it's because the code is incomplete and it should only be using the Db1000 model as a cue to create a thumbnail image because other depths of model should be using the same thumbnail as that one OR they shouldn't have thumbnails at all because they should never exist in the inventory, depending on design choices I make in the future.
+  shapeNameWithoutDepth = remove_suffix(shapeName, "_Db1000")
   iconFileName = shapeNameWithoutDepth + ".png"
   
   shutil.copy(
@@ -54,9 +52,10 @@ for dirEntry in os.scandir(modelFolderPath):
     assert materialType=="Wood", "form cannot be planks unless type is wood"
     materialForm = "Planks"
     
-    fullName = materialType + "_" + material + "_" + shapeName
-    outputFilePath = outputFolderPath + SEP + fullName + ".json"
-    
+    assetInfo = {
+      "full_name": materialType + "_" + material + "_" + shapeName,
+      "output_file_path": outputFolderPath + SEP + fullName + ".json"
+    }
     assetContents = {
       "ICON_PATH_IN_MOD": "Icons/ItemsGenerated/" + iconFileName,
       "BLOCK_SET": f"{materialType}_{material}_{materialForm}",
@@ -70,7 +69,6 @@ for dirEntry in os.scandir(modelFolderPath):
     else:
       print(f"creating {outputFilePath=}")
     with open(outputFilePath, "w") as outputFile:
-      print(f"opened output file.")
 
       for currentLine in templateFileLines:
         outputLine = currentLine.replace("${FULL_NAME}", fullName
@@ -81,5 +79,4 @@ for dirEntry in os.scandir(modelFolderPath):
           ).replace("${TEXTURE_PATH_IN_MOD}", assetContents["TEXTURE_PATH_IN_MOD"])
         assert "${" not in outputLine
         outputFile.write(outputLine)
-    print("closed output file.")
     

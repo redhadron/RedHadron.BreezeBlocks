@@ -27,12 +27,18 @@ texture path in mod BlockTextures/Wood_Goldenwood_Planks.png
 ==============================================================================
 
 Roadmap:
-upgrade renamer.py to optionally edit the content of asset definition files (or any other files in a second directory) too.
-upgrade generate.py to support all woods.
-publish mod.
-Make system for changing the depth of breeze blocks.
-upgrade generate.py to support stone and terracotta.
-finish creating all models in designs canvas.
-create ornate versions of some models.
 make a thumbnail generation system.
+upgrade generate.py to support stone and terracotta.
+Make system for changing the depth of breeze blocks.
+finish creating all models from designs canvas.
+create ornate versions of some models.
+finalize asset names.
+publish mod.
 diagonal breeze blocks??
+corner breeze blocks
+
+cancelled:
+upgrade renamer.py to optionally edit the content of asset definition files (or any other files in a second directory) too.
+
+done:
+upgrade generate.py to support all woods.
