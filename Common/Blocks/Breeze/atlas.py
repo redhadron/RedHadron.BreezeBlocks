@@ -29,6 +29,31 @@ def PARSE_TRANSPORT_DIRECTION(string):
   return {"in": TRANSPORT_DIRECTION.IMPORT, "out": TRANSPORT_DIRECTION.EXPORT}[string]
 # EXIT_CODES = {"SUCCESS":0, "ASSERTION_FAILURE":1}
 
+def validate_int_pair_tuple(int_tuple):
+  assert isinstance(int_tuple, tuple) and len(int_tuple) == 2 and all(isinstance(item, int) for item in int_tuple)
+
+def tuple_to_pretty_coordinate(input_tuple):
+  validate_int_pair_tuple(input_tuple)
+  return f"row {input_tuple[1]} col {input_tuple[0]}"
+assert tuple_to_pretty_coordinate((5, 678)) == "row 678 col 5"
+  
+def remove_prefix(string, prefix):
+  assert len(prefix) <= len(string)
+  assert len(prefix) > 0
+  assert string.startswith(prefix)
+  return string[len(prefix):]
+  
+def bisect_at_infix(string, infix):
+  assert string.count(infix) == 1
+  a, b = string.split(infix)
+  return (a, b)
+
+def pretty_coordinate_to_tuple(input_string):
+  y, x = (int(item) for item in bisect_at_infix(remove_prefix(input_string, "row "), " col "))
+  return (x, y)
+assert pretty_coordinate_to_tuple("row 12 col 34") == (34, 12)
+  
+
 config_data = {
   "coordinates_to_names": bidict(),
   "tile_size": (32, 32),
@@ -62,7 +87,7 @@ def load_config():
   assert len(config_data["coordinates_to_names"]) == 0, "config data should not be loaded twice!"
   for keyString, value in configData["coordinates_to_names"].items():
     key = ast.literal_eval(keyString)
-    assert isinstance(key, tuple) and len(key) == 2 and all(isinstance(item, int) for item in key)
+    validate_int_pair_tuple(key)
     assert key not in config_data["coordinates_to_names"]
     # value duplicates are allowed, though.
     config_data["coordinates_to_names"][key] = value
@@ -124,8 +149,8 @@ def do_tile_transport(direction, discover=False):
     if direction is TRANSPORT_DIRECTION.EXPORT:
       if discover:
         raise NotImplementedError("discover is not available while exporting yet.")
-      for y in range(atlas_size[1]):
-        for x in range(atlas_size[0]):
+      for y in range(config_data["atlas_size"][1]):
+        for x in range(config_data["atlas_size"][0]):
           if (x,y) not in config_data["coordinates_to_names"]:
             continue
           locationInAtlasImage = (*get_intersection_coordinate((x,y)), *get_intersection_coordinate((x+1,y+1)))
@@ -144,6 +169,7 @@ def do_tile_transport(direction, discover=False):
             config_data["coordinates_to_names"].inverse[tileName] = get_a_free_address()
         if tileName in config_data["coordinates_to_names"].inverse:
           with Image.open(TILE_FOLDER + SEP + tileName) as tileImg:
+            # TODO check whether coordinate is valid
             atlasImg.paste(tileImg, get_intersection_coordinate(config_data["coordinates_to_names"].inverse[tileName]))
             
     atlasImg.save(ATLAS_IMAGE_PATH)
