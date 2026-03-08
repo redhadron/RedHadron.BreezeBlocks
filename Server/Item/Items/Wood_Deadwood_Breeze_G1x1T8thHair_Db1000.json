@@ -55,34 +55,21 @@
       }
     },
     "VariantRotation": "DoublePipe",
-    "BlockParticleSetId": "Wood",
+    "BlockParticleSetId": "Stone",
     "Supporting": {
       "Down": [
         {}
       ]
     },
     "ParticleColor": "#65482d",
-    "BlockSoundSetId": "Wood",
+    "BlockSoundSetId": "Stone",
     "State": {
       "Definitions": {
         
       }
     }
   },
-  "ResourceTypes": [
-    {
-      "Id": "Wood_Planks"
-    },
-    {
-      "Id": "Fuel"
-    },
-    {
-      "Id": "Charcoal"
-    },
-    {
-      "Id": "Wood_All"
-    }
-  ],
+  
   "Tags": {
     "Type": [
       "Wood"
