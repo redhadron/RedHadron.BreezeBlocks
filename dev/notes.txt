@@ -19,9 +19,9 @@ Longest possible name: Wood Tropicalwood Breeze G1x1 T16th Db1000 AabcAabcAabcAa
 
 ----------------------------------------------------------------------------
 
-set Wood_Goldenwood_Planks
-resourceTypeId Wood_Goldenwood
-texture path in mod BlockTextures/Wood_Goldenwood_Planks.png
+darkwood planks full: set darkwood planks, requires darkwood trunk
+darkwood planks half: set darkwood planks, requires darkwood
+resource types may be defined at the bottom of an asset json.
 
 
 ==============================================================================
