@@ -61,7 +61,7 @@ def do_tile_transport(direction, discover=False):
   if not os.path.exists(ATLAS_IMAGE_PATH):
     create_atlas_image()
     
-  with open(ATLAS_IMAGE_PATH) as atlasImg:
+  with Image.open(ATLAS_IMAGE_PATH) as atlasImg:
     if direction is TRANSPORT_DIRECTION.EXPORT:
       if discover:
         raise NotImplementedError("discover is not available while exporting yet.")
@@ -75,28 +75,29 @@ def do_tile_transport(direction, discover=False):
     else:
       assert direction is TRANSPORT_DIRECTION.IMPORT
       for tileName in (dirEntry.name for dirEntry in os.scandir(TILE_FOLDER) if dirEntry.name.endswith(".png") and dirEntry.name != ATLAS_IMAGE_NAME):
-        if tileName not in coordinates_to_names.invert:
+        if tileName not in coordinates_to_names.inverse:
           if discover:
-            coordinates_to_names.invert[tileName] = get_a_free_address()
-        if tileName in coordinates_to_names.invert:
+            coordinates_to_names.inverse[tileName] = get_a_free_address()
+        if tileName in coordinates_to_names.inverse:
           with Image.open(TILE_FOLDER + SEP + tileName) as tileImg:
-            atlasImg.paste(tileImg, get_intersection_coordinate(coordinates_to_names.invert[tileName]))
-  atlasImg.save(ATLAS_IMAGE_PATH)
+            atlasImg.paste(tileImg, get_intersection_coordinate(coordinates_to_names.inverse[tileName]))
+            
+    atlasImg.save(ATLAS_IMAGE_PATH)
 
 
 def load_config():
   with open(ATLAS_CONFIG_PATH, "r") as configFile:
     configText = configFile.read()
   configData = json.loads(configText)
-  assert len(coordinates_to_paths) == 0
-  for key, value in configData["coordinates_to_paths"].items():
-    assert key not in coordinates_to_paths
+  assert len(coordinates_to_names) == 0, "config data should not be loaded twice!"
+  for key, value in configData["coordinates_to_names"].items():
+    assert key not in coordinates_to_names
     # value duplicates are allowed, though.
-    coordinates_to_paths[key] = value
+    coordinates_to_names[key] = value
 
 
 def save_config():
-  configData = {"coordinates_to_paths":{key: value for key, value in coordinates_to_paths.items()}}
+  configData = {"coordinates_to_names":{key: value for key, value in coordinates_to_names.items()}}
   textToWrite = json.dumps(configData, sort_keys=ATLAS_CONFIG_SORT_KEYS, indent=ATLAS_CONFIG_INDENT)
   with open(ATLAS_CONFIG_PATH, "w") as configFile:
     configFile.write(textToWrite)
@@ -108,7 +109,7 @@ texture atlas editor commands:
   atlas-config <create|delete>
   transport in [--discover]
   transport out
-  detect-rename
+  detect-rename //only pays attention to files that can no longer be found
 """
 parser = argparse.ArgumentParser()
 subparser_manager = parser.add_subparsers(dest="subcommand")
