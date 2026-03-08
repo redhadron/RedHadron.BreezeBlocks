@@ -1,11 +1,22 @@
 import os
 # import shutil
+import itertools
 from PIL import Image, ImageChops
 
-SEP = os.sep
+
 HYTALE_ASSETS_PATH = "E:\Hytale Assets 20260221" # path to a folder in which you have put the contents of Assets.zip after extracting them.
+
+
+SEP = os.sep
+
 HYTALE_BLOCKTEXTURES_PATH = HYTALE_ASSETS_PATH + SEP + "Common" + SEP + "BlockTextures"
-PLANK_TYPES = list("Blackwood Darkwood Deadwood Drywood Goldenwood Greenwood Hardwood Lightwood Redwood Softwood Tropicalwood".split(" "))
+PLANK_MATERIALS = list("Blackwood Darkwood Deadwood Drywood Goldenwood Greenwood Hardwood Lightwood Redwood Softwood Tropicalwood".split(" "))
+SMOOTH_BRICK_MATERIALS = list("Aqua Basalt Calcite Gold Ledge Lime Quartzite Marble Shale Stone Volcanic".split(" "))
+NONSMOOTH_BRICK_MATERIALS = ["Runic_Blue", "Runic_Dark", "Runic_Teal"]
+SOIL_CLAY_COLORS = "Black Blue Cyan Green Grey Lime Orange Pink Purple Red White Yellow"
+# ocean is also like a color of soil clay (non-smooth naming), but I did not include it because it has no smooth counterpart.
+# there is also a regular clay: Soil_Clay.
+# there is also clay brick and ocean clay brick.
 
 modPath = SEP.join([os.getcwd(), ".."])
 modelFolderPath = SEP.join([modPath, "Common", "Blocks", "Breeze"])
@@ -48,7 +59,7 @@ for modelFileName in modelFileNamesList:
   iconMaskFileName = shapeNameWithoutDepth + ".png"
   
   materialType = "Wood"
-  for material in PLANK_TYPES:
+  for material in PLANK_MATERIALS:
     assert materialType=="Wood", "form cannot be planks unless type is wood"
     materialForm = "Planks"
       
