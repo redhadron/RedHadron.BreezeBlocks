@@ -12,6 +12,7 @@ import tkinter
 
 """
 todo:
+  eliminate default values for atlas size and tile size.
   2d range
   add check that tile name provided by user is not atlas_image.png.
   search "TODO" in this file
@@ -100,7 +101,12 @@ def load_config():
     config_data["coordinates_to_names"][key] = value
 
 def config_data_to_string():
-  configData = {"coordinates_to_names":{str(key): value for key, value in config_data["coordinates_to_names"].items()}}
+  configData = dict()
+  for cfgKey in config_data.keys():
+    if cfgKey == "coordinates_to_names":
+      configData[cfgKey] = {str(coord): name for coord, name in config_data["coordinates_to_names"].items()}
+    else:
+      configData[cfgKey] = config_data[cfgKey]
   return json.dumps(configData, sort_keys=ATLAS_CONFIG_SORT_KEYS, indent=ATLAS_CONFIG_INDENT)
 
 def save_config():
@@ -156,8 +162,10 @@ def prompt_user_for_tile_name(tile_image):
   previewSize = (config_data["tile_size"][0]*PREVIEW_SCALE, config_data["tile_size"][1]*PREVIEW_SCALE)
   canvas = tkinter.Canvas(window, width=previewSize[0], height=previewSize[1])
   canvas.pack()
-  tkinterImage = ImageTk.PhotoImage(tile_image)
-  tkinterImageSprite = canvas.create_image(previewSize[0], previewSize[1], image=tkinterImage)
+  tkinterImage = ImageTk.PhotoImage(image=tile_image, size=previewSize)
+  tkinterImageSprite = canvas.create_image(50, 50, image=tkinterImage)
+  canvas.addtag_all("thing")
+  canvas.scale("thing", 0, 0, 4, 4)
   class UserResponseContainer:
     def __init__(self):
       self.value = ""

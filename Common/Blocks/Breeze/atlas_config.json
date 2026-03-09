@@ -1,4 +1,8 @@
 {
+    "atlas_size": [
+        4,
+        16
+    ],
     "coordinates_to_names": {
         "(0, 0)": "Breeze_G1x1T8thHair.png",
         "(0, 1)": "Breeze_G2x2T8thHead.png",
@@ -9,5 +13,9 @@
         "(2, 1)": "Breeze_G2x2T8thSlowNeckSlowNeck.png",
         "(3, 0)": "Breeze_G2x2T8thDice.png",
         "(3, 1)": "Breeze_G4x4T16thVoid.png"
-    }
+    },
+    "tile_size": [
+        32,
+        32
+    ]
 }
