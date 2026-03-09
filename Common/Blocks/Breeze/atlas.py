@@ -33,7 +33,7 @@ class TRANSPORT_DIRECTION(enum.Enum):
   EXPORT = enum.auto()
 def PARSE_TRANSPORT_DIRECTION(string):
   return {"in": TRANSPORT_DIRECTION.IMPORT, "out": TRANSPORT_DIRECTION.EXPORT}[string]
-# EXIT_CODES = {"SUCCESS":0, "ASSERTION_FAILURE":1}
+EXIT_CODES = {"EXIT_BUTTON": 2}
 
 def validate_int_pair_tuple(int_tuple):
   assert isinstance(int_tuple, tuple) and len(int_tuple) == 2 and all(isinstance(item, int) for item in int_tuple)
@@ -42,6 +42,12 @@ def tuple_to_pretty_coordinate(input_tuple):
   validate_int_pair_tuple(input_tuple)
   return f"row {input_tuple[1]} col {input_tuple[0]}"
 assert tuple_to_pretty_coordinate((5, 678)) == "row 678 col 5"
+  
+def remove_suffix(string, suffix):
+  assert len(suffix) <= len(string)
+  assert len(suffix) > 0
+  assert string.endswith(suffix)
+  return string[:-len(suffix)]
   
 def remove_prefix(string, prefix):
   assert len(prefix) <= len(string)
@@ -153,46 +159,82 @@ def assert_config_is_saved_correctly():
     assert False
 
 
+
+class PromptResponseType:
+  def __init__(self):
+    pass
+class Submit(PromptResponseType):
+  def __init__(self, value):
+    self.value = value
+class Skip(PromptResponseType):
+  pass
+class Exit(PromptResponseType):
+  pass 
+  
 def prompt_user_for_tile_name(tile_image):
   window = tkinter.Tk()
-  topLabel = tkinter.Label(window, text="Give this tile a name in the terminal")
+  window.configure(bg="#cccccc")
+  topLabel = tkinter.Label(window, text="Give this tile a name")
   topLabel.pack()
-  entry = tkinter.Entry(window)
-  entry.pack()
+  
   previewSize = (config_data["tile_size"][0]*PREVIEW_SCALE, config_data["tile_size"][1]*PREVIEW_SCALE)
   canvas = tkinter.Canvas(window, width=previewSize[0], height=previewSize[1])
   canvas.pack()
   tkinterImage = ImageTk.PhotoImage(image=tile_image.resize(size=previewSize, resample=Image.Resampling.NEAREST), size=previewSize)
   tkinterImageSprite = canvas.create_image(previewSize[0]//2, previewSize[1]//2, image=tkinterImage)
-  class UserResponseContainer:
+  
+  entryStringVar = tkinter.StringVar()
+  entry = tkinter.Entry(window, textvariable=entryStringVar)
+  entry.focus_set()
+  entry.pack()
+  
+  class PromptResultHolder:
     def __init__(self):
-      self.value = ""
-  userResponseContainer = UserResponseContainer()
-  # TODO use StringVar from tkinter
+      self.value = None
+  promptResultHolder = PromptResultHolder()
   
-  def okayCallback():
-    result = entry.get()
-    if not result.endswith(".png"):
-      print("must end with .png")
+  def okayCallback(*args, **kwargs):
+    entryText = entry.get()
+    if not entryText.endswith(".png"):
+      print("name must end with .png")
       return
-    if any(char in "\/\:*?\"<>|" for char in result):
-      print("contains invalid character") # TODO
+    if not len(remove_suffix(entryText, ".png")) > 0:
+      print("name must be longer")
       return
-    userResponseContainer.value = result
+    if entryText.lower() == ATLAS_IMAGE_NAME.lower():
+      print("name must not match the name of the atlas image")
+      return
+    if any(char in "\/\:*?\"<>|" for char in entryText):
+      print("name contains invalid character") # TODO
+      return
+    promptResultHolder.value = Submit(entryText)
     window.destroy()
+  entry.bind('<Return>', okayCallback)
   okayButton = tkinter.Button(text="OK", command=okayCallback)
+  okayButton.bind('<Return>', okayCallback)
   okayButton.pack()
-  def exitCallback():
-    print("Exit button pressed.")
-    exit()
-  exitButton = tkinter.Button(text="Exit", command=exitCallback)
-  exitButton.pack()
-  window.mainloop()
-  print(f"the obtained result is {userResponseContainer.value}.")
-  exit()
   
-  window.quit()
-  return result
+  def skipCallback(*args, **kwargs):
+    promptResultHolder.vale = Skip()
+    window.destroy()
+  skipButton = tkinter.Button(text="Skip", command=skipCallback)
+  skipButton.bind('<Return>', skipCallback)
+  skipButton.pack()
+  
+  def exitCallback(*args, **kwargs):
+    print("Exit button pressed.")
+    promptResultHolder.value = Exit()
+    window.destroy()
+  exitButton = tkinter.Button(text="Exit", command=exitCallback)
+  exitButton.bind('<Return>', exitCallback)
+  exitButton.pack()
+  
+  window.mainloop()
+  
+  return promptResultHolder.value
+  
+  
+  
 
 def tile_image_is_blank(tile_image):
   assert tile_image.mode == "RGB"
@@ -216,7 +258,16 @@ def do_tile_transport(direction, discover=False):
           tileImg = atlasImg.crop(locationInAtlasImage)
           if (x,y) not in config_data["coordinates_to_names"]:
             if discover and not tile_image_is_blank(tileImg):
-              newTileName = prompt_user_for_tile_name(tileImg)
+              response = prompt_user_for_tile_name(tileImg)
+              assert isinstance(response, PromptResponseType)
+              if isinstance(response, Submit):
+                newTileName = response.value
+              elif isinstance(response, Skip):
+                continue
+              elif isinstance(response, Exit):
+                exit(EXIT_CODES["EXIT_BUTTON"])
+              else:
+                raise ValueError()
               config_data["coordinates_to_names"][(x,y)] = newTileName
             else:
               continue # don't attempt to export.
@@ -290,7 +341,7 @@ elif args.subcommand == "transport":
   load_config()
   assert_config_is_saved_correctly()
   do_tile_transport(direction, discover=args.discover)
-  if direction is TRANSPORT_DIRECTION.IMPORT and args.discover:
+  if args.discover:
     save_config()
   else:
     assert_config_is_saved_correctly()
