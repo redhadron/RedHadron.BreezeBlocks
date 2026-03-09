@@ -1,6 +1,6 @@
 
 from bidict import bidict
-from PIL import Image
+from PIL import Image, ImageTk # the k in ImageTk is lowercase.
 
 import enum
 import argparse
@@ -25,6 +25,7 @@ ATLAS_CONFIG_SORT_KEYS = True
 ATLAS_CONFIG_INDENT = 4
 ATLAS_IMAGE_CREATION_FILL_COLOR = (255, 255, 255)
 ATLAS_IMAGE_BLANK_COLOR = ATLAS_IMAGE_CREATION_FILL_COLOR
+PREVIEW_SCALE = 10
 class TRANSPORT_DIRECTION(enum.Enum):
   IMPORT = enum.auto()
   EXPORT = enum.auto()
@@ -55,6 +56,8 @@ def pretty_coordinate_to_tuple(input_string):
   y, x = (int(item) for item in bisect_at_infix(remove_prefix(input_string, "row "), " col "))
   return (x, y)
 assert pretty_coordinate_to_tuple("row 12 col 34") == (34, 12)
+
+# TODO introduce pretty coordinates to actual atlas config file.
   
 
 config_data = {
@@ -145,16 +148,21 @@ def assert_config_is_saved_correctly():
 
 def prompt_user_for_tile_name(tile_image):
   window = tkinter.Tk()
-  topLabel = tkinter.Label(text="Give this tile a name in the terminal")
+  topLabel = tkinter.Label(window, text="Give this tile a name in the terminal")
   topLabel.pack()
-  entry = tkinter.Entry()
+  entry = tkinter.Entry(window)
   entry.pack()
-  """
+  previewSize = (config_data["tile_size"][0]*PREVIEW_SCALE, config_data["tile_size"][1]*PREVIEW_SCALE)
+  canvas = tkinter.Canvas(window, width=previewSize[0], height=previewSize[1])
+  canvas.pack()
+  tkinterImage = ImageTk.PhotoImage(tile_image)
+  tkinterImageSprite = canvas.create_image(previewSize[0], previewSize[1], image=tkinterImage)
   class UserResponseContainer:
     def __init__(self):
       self.value = ""
   userResponseContainer = UserResponseContainer()
-  """
+  # TODO use StringVar from tkinter
+  
   def okayCallback():
     result = entry.get()
     if not result.endswith(".png"):
@@ -163,6 +171,7 @@ def prompt_user_for_tile_name(tile_image):
     if any(char in "\/\:*?\"<>|" for char in result):
       print("contains invalid character") # TODO
       return
+    userResponseContainer.value = result
     window.destroy()
   okayButton = tkinter.Button(text="OK", command=okayCallback)
   okayButton.pack()
@@ -172,13 +181,9 @@ def prompt_user_for_tile_name(tile_image):
   exitButton = tkinter.Button(text="Exit", command=exitCallback)
   exitButton.pack()
   window.mainloop()
-  print(f"the obtained result is {entry.get()}.")
+  print(f"the obtained result is {userResponseContainer.value}.")
   exit()
-  """
-  result = input("new name> ")
-  assert result.endswith(".png")
-  assert all(not result.contains(char) for char in "\/\:*?\"<>|") # TODO allow adding to other paths if they are valid
-  """
+  
   window.quit()
   return result
 
@@ -203,7 +208,7 @@ def do_tile_transport(direction, discover=False):
           locationInAtlasImage = (*get_intersection_coordinate((x,y)), *get_intersection_coordinate((x+1,y+1)))
           tileImg = atlasImg.crop(locationInAtlasImage)
           if (x,y) not in config_data["coordinates_to_names"]:
-            if discover and tile_image_is_blank(tileImg):
+            if discover and not tile_image_is_blank(tileImg):
               newTileName = prompt_user_for_tile_name(tileImg)
               config_data["coordinates_to_names"][(x,y)] = newTileName
             else:
