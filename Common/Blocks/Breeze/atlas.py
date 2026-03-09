@@ -162,10 +162,8 @@ def prompt_user_for_tile_name(tile_image):
   previewSize = (config_data["tile_size"][0]*PREVIEW_SCALE, config_data["tile_size"][1]*PREVIEW_SCALE)
   canvas = tkinter.Canvas(window, width=previewSize[0], height=previewSize[1])
   canvas.pack()
-  tkinterImage = ImageTk.PhotoImage(image=tile_image, size=previewSize)
-  tkinterImageSprite = canvas.create_image(50, 50, image=tkinterImage)
-  canvas.addtag_all("thing")
-  canvas.scale("thing", 0, 0, 4, 4)
+  tkinterImage = ImageTk.PhotoImage(image=tile_image.resize(size=previewSize, resample=Image.Resampling.NEAREST), size=previewSize)
+  tkinterImageSprite = canvas.create_image(previewSize[0]//2, previewSize[1]//2, image=tkinterImage)
   class UserResponseContainer:
     def __init__(self):
       self.value = ""
