@@ -7,11 +7,13 @@ import argparse
 import os
 import json
 import ast
+import tkinter
 
 
 """
 todo:
   2d range
+  search "TODO" in this file
 """
 
 TILE_FOLDER = "."
@@ -22,6 +24,7 @@ ATLAS_CONFIG_PATH = ".\\atlas_config.json"
 ATLAS_CONFIG_SORT_KEYS = True
 ATLAS_CONFIG_INDENT = 4
 ATLAS_IMAGE_CREATION_FILL_COLOR = (255, 255, 255)
+ATLAS_IMAGE_BLANK_COLOR = ATLAS_IMAGE_CREATION_FILL_COLOR
 class TRANSPORT_DIRECTION(enum.Enum):
   IMPORT = enum.auto()
   EXPORT = enum.auto()
@@ -138,8 +141,55 @@ def assert_config_is_saved_correctly():
     print(config_file_to_string())
     print("the program will exit.")
     assert False
-    
 
+
+def prompt_user_for_tile_name(tile_image):
+  window = tkinter.Tk()
+  topLabel = tkinter.Label(text="Give this tile a name in the terminal")
+  topLabel.pack()
+  entry = tkinter.Entry()
+  entry.pack()
+  """
+  class UserResponseContainer:
+    def __init__(self):
+      self.value = ""
+  userResponseContainer = UserResponseContainer()
+  """
+  def okayCallback():
+    result = entry.get()
+    if not result.endswith(".png"):
+      print("must end with .png")
+      return
+    if any(char in "\/\:*?\"<>|" for char in result):
+      print("contains invalid character") # TODO
+      return
+    window.destroy()
+  okayButton = tkinter.Button(text="OK", command=okayCallback)
+  okayButton.pack()
+  def exitCallback():
+    print("Exit button pressed.")
+    exit()
+  exitButton = tkinter.Button(text="Exit", command=exitCallback)
+  exitButton.pack()
+  window.mainloop()
+  print(f"the obtained result is {entry.get()}.")
+  exit()
+  """
+  result = input("new name> ")
+  assert result.endswith(".png")
+  assert all(not result.contains(char) for char in "\/\:*?\"<>|") # TODO allow adding to other paths if they are valid
+  """
+  window.quit()
+  return result
+
+def tile_image_is_blank(tile_image):
+  assert tile_image.mode == "RGB"
+  assert tile_image.size == config_data["tile_size"]
+  for pixelY in range(tile_image.size[1]):
+    for pixelX in range(tile_image.size[0]):
+      if tile_image.getpixel((pixelX,pixelY)) != ATLAS_IMAGE_BLANK_COLOR:
+        return False
+  return True
 
 def do_tile_transport(direction, discover=False):
   if not os.path.exists(ATLAS_IMAGE_PATH):
@@ -147,18 +197,21 @@ def do_tile_transport(direction, discover=False):
     
   with Image.open(ATLAS_IMAGE_PATH) as atlasImg:
     if direction is TRANSPORT_DIRECTION.EXPORT:
-      if discover:
-        raise NotImplementedError("discover is not available while exporting yet.")
       for y in range(config_data["atlas_size"][1]):
         for x in range(config_data["atlas_size"][0]):
-          if (x,y) not in config_data["coordinates_to_names"]:
-            continue
+          
           locationInAtlasImage = (*get_intersection_coordinate((x,y)), *get_intersection_coordinate((x+1,y+1)))
           tileImg = atlasImg.crop(locationInAtlasImage)
+          if (x,y) not in config_data["coordinates_to_names"]:
+            if discover and tile_image_is_blank(tileImg):
+              newTileName = prompt_user_for_tile_name(tileImg)
+              config_data["coordinates_to_names"][(x,y)] = newTileName
+            else:
+              continue # don't attempt to export.
           tileImgPath = TILE_FOLDER + SEP + config_data["coordinates_to_names"][(x,y)]
           if os.path.exists(tileImgPath):
             with Image.open(tileImgPath) as oldTileImg:
-              if oldTileImg.getbbox() != tileImg.getbbox():
+              if oldTileImg.size != tileImg.size:
                 raise FileExistsError("the tile will not be overwritten because it is of a different size.")
           tileImg.save(tileImgPath)
     else:
