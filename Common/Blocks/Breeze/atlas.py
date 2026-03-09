@@ -13,6 +13,7 @@ import tkinter
 """
 todo:
   2d range
+  add check that tile name provided by user is not atlas_image.png.
   search "TODO" in this file
 """
 
