@@ -66,6 +66,12 @@ assert pretty_coordinate_to_tuple("row 12 col 34") == (34, 12)
 
 # TODO introduce pretty coordinates to actual atlas config file.
   
+def nand(a, b):
+  return not (a and b)
+  
+  
+  
+  
 
 config_data = {
   "coordinates_to_names": bidict(),
@@ -296,10 +302,10 @@ def do_tile_transport(direction, discover=False):
 
 """
 texture atlas editor commands:
-  atlas-image <create|delete>
-  atlas-config <create|delete>
+  atlas-image <create|delete|view>
+  atlas-config <create|delete|view>
   transport <in|out> [--discover] //also add a mode that regenerates/detects renaming.
-  tiles create
+  //tiles create
   tiles delete [--confirm] //note: command must fail if confirm is provided when it is not necessary.
   // some way to regenerate or detect renamed tiles.
   // some way to swap tile positions, or copy tiles.
@@ -326,27 +332,33 @@ if args.subcommand == "atlas-image":
     create_atlas_image()
   elif args.subaction == "delete":
     delete_atlas_image()
-  else:
-    assert args.subaction == "view", ars.subaction
+  elif args.subaction == "view":
     assert os.path.exists(ATLAS_IMAGE_PATH) and ATLAS_IMAGE_PATH.endswith(".png")
     os.startfile(ATLAS_IMAGE_PATH)
+  else:
+    raise ValueError(ars.subaction)
 elif args.subcommand == "atlas-config":
   if args.subaction == "create":
     create_atlas_config()
-  else:
-    assert args.subaction == "delete", ars.subaction
+  elif args.subaction == "delete":
     delete_atlas_config()
+  elif args.subaction == "view":
+    raise NotImplementedError()
+  else:
+    raise ValueError(ars.subaction)
 elif args.subcommand == "transport":
-  direction = PARSE_TRANSPORT_DIRECTION(args.direction)
-  assert args.discover is True or args.discover is False
   load_config()
   assert_config_is_saved_correctly()
-  do_tile_transport(direction, discover=args.discover)
+  direction = PARSE_TRANSPORT_DIRECTION(args.direction)
+  assert args.discover is True or args.discover is False
+  assert nand(args.discover, args.organize)
+  if args.organize:
+    raise NotImplementedError()
+  else:
+    do_tile_transport(direction, discover=args.discover)
   if args.discover:
     save_config()
-  else:
-    assert_config_is_saved_correctly()
+  assert_config_is_saved_correctly()
   
 else:
-  assert args.subcommand == "detect-rename", args.subcommand
-  raise NotImplementedError()
+  raise ValueError()
