@@ -32,7 +32,7 @@ class TRANSPORT_DIRECTION(enum.Enum):
   EXPORT = enum.auto()
 def PARSE_TRANSPORT_DIRECTION(string):
   return {"in": TRANSPORT_DIRECTION.IMPORT, "out": TRANSPORT_DIRECTION.EXPORT}[string]
-EXIT_CODES = {"EXIT_BUTTON": 2}
+EXIT_CODES = {"GENERAL_SUCCESS":0, "EXIT_BUTTON": 2}
 
 def validate_int_pair_tuple(int_tuple):
   assert isinstance(int_tuple, tuple) and len(int_tuple) == 2 and all(isinstance(item, int) for item in int_tuple)
@@ -305,7 +305,8 @@ def do_tile_transport(direction, discover=False):
 texture atlas editor commands:
   atlas-image <create|delete|view>
   atlas-config <create|delete|view>
-  transport <in|out> [--discover] //also add a mode that regenerates/detects renaming.
+  transport <in|out> [--discover]
+  //also add a mode that regenerates/detects renaming.
   //tiles create
   tiles delete [--confirm] //note: command must fail if confirm is provided when it is not necessary.
   // some way to regenerate or detect renamed tiles.
@@ -346,7 +347,9 @@ elif args.subcommand == "atlas-config":
   elif args.subaction == "delete":
     delete_atlas_config()
   elif args.subaction == "view":
-    raise NotImplementedError()
+    assert os.path.exists(ATLAS_CONFIG_PATH)
+    with open(ATLAS_CONFIG_PATH, "r") as configFile:
+      print(configFile.read())
   else:
     raise ValueError(ars.subaction)
 elif args.subcommand == "transport":
@@ -368,3 +371,5 @@ elif args.subcommand == "transport":
   
 else:
   raise ValueError()
+  
+exit(EXIT_CODES["GENERAL_SUCCESS"])
