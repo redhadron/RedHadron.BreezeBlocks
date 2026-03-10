@@ -66,10 +66,11 @@ assert pretty_coordinate_to_tuple("row 12 col 34") == (34, 12)
 
 # TODO introduce pretty coordinates to actual atlas config file.
   
-def nand(a, b):
-  return not (a and b)
+# def nand(a, b):
+#  return not (a and b)
   
-  
+def only_one(input_list):
+  return sum(bool(item) for item in input_list) == 1
   
   
 
@@ -322,6 +323,8 @@ atlas_config_cmd_parser.add_argument("subaction")
 transport_cmd_parser = subparser_manager.add_parser("transport")
 transport_cmd_parser.add_argument("direction")
 transport_cmd_parser.add_argument("--discover", action="store_true")
+transport_cmd_parser.add_argument("--organize", action="store_true")
+transport_cmd_parser.add_argument("--organize-all", action="store_true")
 
 detect_rename_cmd_parser = subparser_manager.add_parser("detect-rename")
 
@@ -351,11 +354,14 @@ elif args.subcommand == "transport":
   assert_config_is_saved_correctly()
   direction = PARSE_TRANSPORT_DIRECTION(args.direction)
   assert args.discover is True or args.discover is False
-  assert nand(args.discover, args.organize)
-  if args.organize:
-    raise NotImplementedError()
+  assert only_one((args.discover, args.organize, args.organize_all))
+  if args.organize_all:
+    raise NotImplementedError("a window to allow all tiles to be placed by the user into the atlas one by one")
   else:
-    do_tile_transport(direction, discover=args.discover)
+    if direction is TRANSPORT_DIRECTION.EXPORT:
+      assert not args.organize
+      assert not args.organize_all
+    do_tile_transport(direction, discover=args.discover, organize=args.organize)
   if args.discover:
     save_config()
   assert_config_is_saved_correctly()
