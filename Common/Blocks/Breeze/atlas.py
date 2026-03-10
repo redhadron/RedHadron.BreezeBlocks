@@ -12,9 +12,8 @@ import tkinter
 
 """
 todo:
-  eliminate default values for atlas size and tile size.
+  make a better atlas_config.json creation process, eliminate default values for atlas size and tile size.
   2d range
-  add check that tile name provided by user is not atlas_image.png.
   search "TODO" in this file
 """
 
@@ -26,7 +25,7 @@ ATLAS_CONFIG_PATH = ".\\atlas_config.json"
 ATLAS_CONFIG_SORT_KEYS = True
 ATLAS_CONFIG_INDENT = 4
 ATLAS_IMAGE_CREATION_FILL_COLOR = (255, 255, 255)
-ATLAS_IMAGE_BLANK_COLOR = ATLAS_IMAGE_CREATION_FILL_COLOR
+ATLAS_IMAGE_BLANK_COLOR = (*ATLAS_IMAGE_CREATION_FILL_COLOR, 255)
 PREVIEW_SCALE = 10
 class TRANSPORT_DIRECTION(enum.Enum):
   IMPORT = enum.auto()
@@ -237,7 +236,7 @@ def prompt_user_for_tile_name(tile_image):
   
 
 def tile_image_is_blank(tile_image):
-  assert tile_image.mode == "RGB"
+  # assert tile_image.mode == "RGB", tile_image.mode
   assert tile_image.size == config_data["tile_size"]
   for pixelY in range(tile_image.size[1]):
     for pixelX in range(tile_image.size[0]):
@@ -299,9 +298,11 @@ def do_tile_transport(direction, discover=False):
 texture atlas editor commands:
   atlas-image <create|delete>
   atlas-config <create|delete>
-  transport in [--discover]
-  transport out
-  detect-rename //only pays attention to files that can no longer be found
+  transport <in|out> [--discover] //also add a mode that regenerates/detects renaming.
+  tiles create
+  tiles delete [--confirm] //note: command must fail if confirm is provided when it is not necessary.
+  // some way to regenerate or detect renamed tiles.
+  // some way to swap tile positions, or copy tiles.
 """
 parser = argparse.ArgumentParser()
 subparser_manager = parser.add_subparsers(dest="subcommand")

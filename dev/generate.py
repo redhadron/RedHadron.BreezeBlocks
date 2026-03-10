@@ -3,6 +3,12 @@ import os
 import itertools
 from PIL import Image, ImageChops
 
+"""
+todo:
+replace scandir with listdir
+"""
+
+
 
 HYTALE_ASSETS_PATH = "E:\Hytale Assets 20260221" # path to a folder in which you have put the contents of Assets.zip after extracting them.
 
@@ -54,7 +60,6 @@ if len(templateFileLines) == 0:
   
   
 modelFileNamesList = list(dirEntry.name for dirEntry in os.scandir(modelFolderPath) if dirEntry.name.endswith(".blockymodel"))
-  
   
 for modelFileName in modelFileNamesList:
   shapeName = remove_suffix(modelFileName, ".blockymodel")
