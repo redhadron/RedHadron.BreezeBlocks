@@ -305,9 +305,8 @@ def do_tile_transport(direction, discover=False):
 texture atlas editor commands:
   atlas-image <create|delete|view>
   atlas-config <create|delete|view>
-  transport <in|out> [--discover]
-  //also add a mode that regenerates/detects renaming.
-  //tiles create
+  transport in [<--discover|--organize|--organize-all>]
+  transport out [--discover]
   tiles delete [--confirm] //note: command must fail if confirm is provided when it is not necessary.
   // some way to regenerate or detect renamed tiles.
   // some way to swap tile positions, or copy tiles.
