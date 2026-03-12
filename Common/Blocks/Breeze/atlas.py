@@ -93,6 +93,7 @@ def get_atlas_image_size():
   
 def get_intersection_coordinate(intersection_address):
   return (config_data["tile_size"][0]*intersection_address[0], config_data["tile_size"][1]*intersection_address[1])
+  # TODO int vec
   
 def get_a_free_coordinate():
   for y in range(config_data["atlas_size"][1]):
@@ -101,7 +102,9 @@ def get_a_free_coordinate():
         return (x,y)
   assert False, "out of room"
 
-
+def tile_coordinate_is_in_bounds(coordinate):
+  validate_int_pair_tuple(coordinate)
+  return 0 <= coordinate[0] < config_data["atlas_size"][0] and 0 <= coordinate[1] < config_data["atlas_size"][1]
 
 
 def config_file_to_string():
@@ -272,10 +275,15 @@ def prompt_user_for_a_free_coordinate(*, tile_image, atlas_image):
   result = None
   while keepPygameRunning:
     hoveredTileCoord = tuple(pygame.mouse.get_pos()[i]//config_data["tile_size"][i] for i in (0,1))
+    if not tile_coordinate_is_in_bounds(hoveredTileCoord):
+      # TODO allow atlas image to be expanded from here?? this would not be done by modifying the argument, but by allowing oob coordinates here and adjusting the image outside of this prompt.
+      hoveredTileCoord = None
+      
     screen.blit(atlasSurf, (0,0))
     screen.blit(tileSurf, (atlasSurf.get_width()+10, 0))
-    pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [get_intersection_coordinate((hoveredTileCoord[0]+a, hoveredTileCoord[1]+b)) for a, b in [(0,0), (1,0), (1,1), (0,1)]]) # TODO int vec math refactor
-    time.sleep(1.0/FPS)
+    if hoveredTileCoord is not None:
+      pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [get_intersection_coordinate((hoveredTileCoord[0]+a, hoveredTileCoord[1]+b)) for a, b in [(0,0), (1,0), (1,1), (0,1)]]) # TODO int vec math refactor
+    time.sleep(1.0/FPS) # the target FPS will never be hit this way but that's ok.
     pygame.display.flip()
     for event in pygame.event.get():
       if event.type == pygame.QUIT:
@@ -285,6 +293,8 @@ def prompt_user_for_a_free_coordinate(*, tile_image, atlas_image):
         break
       # if event.type == pygame.MOUSEMOTION:
       elif event.type == pygame.MOUSEBUTTONDOWN:
+        if hoveredTileCoord is None:
+          continue # invalid click, no data to submit, don't submit.
         result = Submit(hoveredTileCoord)
         keepPygameRunning = False
         break
