@@ -13,6 +13,7 @@ import time
 
 """
 todo:
+  -add check that atlas image file and atlas image size specified by config are the same.
   -allow multiple values to be specified as blank, so that a solid-color tile in any of those colors will be ignored. Introduce checkerboard background pattern.
   -make a better atlas_config.json creation process, eliminate default values for atlas size and tile size.
   -2d range.
@@ -88,7 +89,7 @@ def at_most_one(input_list):
 config_data = {
   "coordinates_to_names": bidict(),
   "tile_size": (32, 32),
-  "atlas_size": (4, 16),
+  "atlas_size": (6, 12),
 }
 
 def get_atlas_image_size():

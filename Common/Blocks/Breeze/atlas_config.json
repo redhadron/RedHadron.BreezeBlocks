@@ -1,27 +1,27 @@
 {
     "atlas_size": [
-        4,
-        16
+        6,
+        12
     ],
     "coordinates_to_names": {
-        "(0, 0)": "Breeze_G1x1T8thHair.png",
-        "(0, 1)": "Breeze_G2x2T8thHead.png",
-        "(0, 2)": "Breeze_G4x4T8thVoid.png",
-        "(0, 3)": "Breeze_G1x1T8thVoid.png",
-        "(0, 4)": "Breeze_G2x2T8thVoid.png",
-        "(0, 8)": "Breeze_G1x1T4thLake.png",
-        "(0, 9)": "Breeze_G1x1T4thDark.png",
-        "(1, 0)": "Breeze_G1x1T8thHead.png",
-        "(1, 1)": "Breeze_G2x2T8thNope.png",
-        "(1, 3)": "Breeze_G1x1T4thVoid.png",
-        "(1, 4)": "Breeze_G2x2T4thVoid.png",
-        "(2, 0)": "Breeze_G2x2T16thHead.png",
-        "(2, 1)": "Breeze_G2x2T8thSlowNeckNeckSlow.png",
-        "(2, 3)": "Breeze_G1x1T2ndVoid.png",
-        "(2, 8)": "aquestionmark.png",
-        "(3, 0)": "Breeze_G2x2T8thDice.png",
-        "(3, 1)": "Breeze_G4x4T16thVoid.png",
-        "(3, 2)": "Breeze_G1x1T4thDice.png"
+        "(0, 0)": "Breeze_G1x1T8thVoid.png",
+        "(0, 1)": "Breeze_G1x1T8thHair.png",
+        "(0, 2)": "Breeze_G1x1T8thHead.png",
+        "(0, 3)": "Breeze_G2x2T16thHead.png",
+        "(0, 4)": "Breeze_G1x1T4thLake.png",
+        "(0, 5)": "Breeze_G1x1T4thDark.png",
+        "(0, 6)": "Breeze_G1x1T4thDice.png",
+        "(0, 7)": "Breeze_G2x2T8thNope.png",
+        "(0, 8)": "Breeze_G2x2T8thSlowNeckNeckSlow.png",
+        "(0, 9)": "Breeze_G4x4T16thVoid.png",
+        "(1, 0)": "Breeze_G1x1T4thVoid.png",
+        "(1, 3)": "Breeze_G2x2T8thHead.png",
+        "(1, 6)": "Breeze_G2x2T8thDice.png",
+        "(1, 9)": "Breeze_G4x4T8thVoid.png",
+        "(2, 0)": "Breeze_G1x1T2ndVoid.png",
+        "(3, 0)": "Breeze_G2x2T8thVoid.png",
+        "(4, 0)": "Breeze_G2x2T4thVoid.png",
+        "(4, 11)": "aquestionmark.png"
     },
     "tile_size": [
         32,
