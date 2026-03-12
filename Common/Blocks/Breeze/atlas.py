@@ -34,12 +34,16 @@ TILE_PREVIEW_SCALE = 10
 # ATLAS_PREVIEW_SCALE = 5
 PREVIEW_GRID_LINE_COLOR = (127, 127, 127)
 HIGHLIGHT_COLOR = (255, 0, 0)
+WINDOW_BACKGROUND_COLOR = (31, 31, 31)
+WINDOW_TEXT_COLOR = (250, 250, 250)
 class TRANSPORT_DIRECTION(enum.Enum):
   IMPORT = enum.auto()
   EXPORT = enum.auto()
 def PARSE_TRANSPORT_DIRECTION(string):
   return {"in": TRANSPORT_DIRECTION.IMPORT, "out": TRANSPORT_DIRECTION.EXPORT}[string]
 EXIT_CODES = {"GENERAL_SUCCESS":0, "EXIT_BUTTON": 2, "PYGAME_QUIT":3}
+
+
 
 def validate_int_pair_tuple(int_tuple):
   assert isinstance(int_tuple, tuple) and len(int_tuple) == 2 and all(isinstance(item, int) for item in int_tuple)
@@ -190,7 +194,7 @@ class Exit(PromptResponseType):
 def prompt_user_for_tile_name(tile_image):
   assert isinstance(tile_image, Image.Image) # tile_image must be a PIL Image
   window = tkinter.Tk()
-  window.configure(bg="#cccccc")
+  window.configure(bg="#cccccc") # TODO
   topLabel = tkinter.Label(window, text="Give this tile a name")
   topLabel.pack()
   
@@ -262,12 +266,16 @@ def prompt_user_for_tile_name(tile_image):
 def pil_image_to_surface(pil_image):
   assert isinstance(pil_image, Image.Image)
   return pygame.image.fromstring(pil_image.tobytes(), pil_image.size, pil_image.mode)
-  
-def prompt_user_for_a_free_coordinate(*, tile_image, atlas_image):
+
+_font = [] # a holder to cache the font
+def prompt_user_for_a_free_coordinate(*, tile_image, tile_name, atlas_image):
+  pygame.init() # I don't know if there are consequences for doing this multiple times.
+  if len(_font) == 0:
+    _font.append(pygame.freetype.SysFont(pygame.freetype.get_default_font(), 18, bold=False))
+  font = _font[0]
   assert isinstance(tile_image, Image.Image)
   assert isinstance(atlas_image, Image.Image)
   
-  pygame.init() # I don't know if there are consequences for doing this multiple times.
   screen = pygame.display.set_mode((600,400))
   atlasSurf = pil_image_to_surface(atlas_image)
   tileSurf = pil_image_to_surface(tile_image)
@@ -278,9 +286,11 @@ def prompt_user_for_a_free_coordinate(*, tile_image, atlas_image):
     if not tile_coordinate_is_in_bounds(hoveredTileCoord):
       # TODO allow atlas image to be expanded from here?? this would not be done by modifying the argument, but by allowing oob coordinates here and adjusting the image outside of this prompt.
       hoveredTileCoord = None
-      
+    
+    screen.fill(WINDOW_BACKGROUND_COLOR)
     screen.blit(atlasSurf, (0,0))
     screen.blit(tileSurf, (atlasSurf.get_width()+10, 0))
+    font.render_to(screen, dest=(atlasSurf.get_width()+10, tileSurf.get_height()+10), text=tile_name, fgcolor=WINDOW_TEXT_COLOR) # , style=pygame.freettype.STYLE_NORMAL)
     if hoveredTileCoord is not None:
       pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [get_intersection_coordinate((hoveredTileCoord[0]+a, hoveredTileCoord[1]+b)) for a, b in [(0,0), (1,0), (1,1), (0,1)]]) # TODO int vec math refactor
     time.sleep(1.0/FPS) # the target FPS will never be hit this way but that's ok.
@@ -385,7 +395,7 @@ def do_tile_transport(direction, discover=False, organize=False):
             placementCoordinate = get_a_free_coordinate()
           elif organize:
             with Image.open(tile_name_to_path(tileName)) as tileImgForPrompt:
-              promptResult = prompt_user_for_a_free_coordinate(tile_image=tileImgForPrompt, atlas_image=atlasImg)
+              promptResult = prompt_user_for_a_free_coordinate(tile_image=tileImgForPrompt, tile_name=tileName, atlas_image=atlasImg)
               if isinstance(promptResult, Submit):
                 placementCoordinate = promptResult.value
               elif isinstance(promptResult, Skip):
