@@ -293,6 +293,13 @@ def prompt_user_for_a_free_coordinate(*, tile_image, tile_name, atlas_image):
     font.render_to(screen, dest=(atlasSurf.get_width()+10, tileSurf.get_height()+10), text=tile_name, fgcolor=WINDOW_TEXT_COLOR) # , style=pygame.freettype.STYLE_NORMAL)
     if hoveredTileCoord is not None:
       pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [get_intersection_coordinate((hoveredTileCoord[0]+a, hoveredTileCoord[1]+b)) for a, b in [(0,0), (1,0), (1,1), (0,1)]]) # TODO int vec math refactor
+      hoveredTileName = config_data["coordinates_to_names"].get(hoveredTileCoord, default="empty")
+      tooltipSurf, _ = font.render(text=hoveredTileName, fgcolor=WINDOW_TEXT_COLOR, bgcolor=WINDOW_BACKGROUND_COLOR)
+      tooltipSurfSize = tooltipSurf.get_size()
+      # assert isinstance(tooltipSurf, pygame.Surface), type(tooltipSurf)
+      # assert len(tooltipSurfSize) == 2
+      screen.fill(WINDOW_TEXT_COLOR, rect=(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1]+20, tooltipSurfSize[0]+4, tooltipSurfSize[1]+4)) # TODO int vec math
+      screen.blit(tooltipSurf, dest=(pygame.mouse.get_pos()[0]+2, pygame.mouse.get_pos()[1]+22)) # TODO int vec math
     time.sleep(1.0/FPS) # the target FPS will never be hit this way but that's ok.
     pygame.display.flip()
     for event in pygame.event.get():
