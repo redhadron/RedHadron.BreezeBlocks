@@ -251,10 +251,12 @@ def tile_image_is_blank(tile_image):
       if tile_image.getpixel((pixelX,pixelY)) != ATLAS_IMAGE_BLANK_COLOR:
         return False
   return True
+  
+def find_tile_names():
+  return [item for item in os.listdir(TILE_FOLDER) if item.endswith(".png") and item != ATLAS_IMAGE_NAME]
 
-def do_tile_transport(direction, discover=False):
-  if not os.path.exists(ATLAS_IMAGE_PATH):
-    create_atlas_image()
+def do_tile_transport(direction, discover=False, organize=False):
+  assert not (discover and organize)
     
   with Image.open(ATLAS_IMAGE_PATH) as atlasImg:
     if direction is TRANSPORT_DIRECTION.EXPORT:
@@ -286,13 +288,20 @@ def do_tile_transport(direction, discover=False):
           tileImg.save(tileImgPath)
     else:
       assert direction is TRANSPORT_DIRECTION.IMPORT
-      for tileName in (item for item in os.listdir(TILE_FOLDER) if item.endswith(".png") and item != ATLAS_IMAGE_NAME):
+      if not os.path.exists(ATLAS_IMAGE_PATH):
+        create_atlas_image()
+      for tileName in find_tile_names():
         if tileName not in config_data["coordinates_to_names"].inverse:
           if discover:
             config_data["coordinates_to_names"].inverse[tileName] = get_a_free_address()
+          elif organize:
+            raise NotImplementedError("prompt to place a single tile")
         if tileName in config_data["coordinates_to_names"].inverse:
           with Image.open(TILE_FOLDER + SEP + tileName) as tileImg:
             # TODO check whether coordinate is valid
+            if tileImg.size != config_data["tile_size"]:
+              print(f"WARNING: Tile with name {tileName} will not be imported because it is the wrong size: {tileImg.size}")
+              continue
             atlasImg.paste(tileImg, get_intersection_coordinate(config_data["coordinates_to_names"].inverse[tileName]))
             
     atlasImg.save(ATLAS_IMAGE_PATH)
@@ -360,7 +369,7 @@ elif args.subcommand == "transport":
   assert args.discover is True or args.discover is False
   assert at_most_one((args.discover, args.organize, args.organize_all))
   if args.organize_all:
-    raise NotImplementedError("a window to allow all tiles to be placed by the user into the atlas one by one")
+    raise NotImplementedError("a window to allow all tiles to be placed by the user into the atlas one by one") # this is only allowed while an atlas image does not exist, to prevent confusion from the atlas image and atlas config being completely different, which could cause data loss if you forget about it and then transport out and delete the atlas image.
   else:
     if direction is TRANSPORT_DIRECTION.EXPORT:
       assert not args.organize
