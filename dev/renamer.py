@@ -5,7 +5,8 @@ print("multiple folders can be specified with commas between them")
 foldersOfNamesToChange = input("path of folder in which to perform edits> ").split(",")
 assert all(os.path.exists(name) for name in foldersOfNamesToChange)
 
-foldersOfContentsToEdit = input("path of folder in which to edit file contents (optional)> ").split(",")
+foldersOfContentsToEditStr = input("path of folder in which to edit file contents (optional)> ")
+foldersOfContentsToEdit = foldersOfContentsToEditStr.split(",") if len(foldersOfContentsToEditStr) > 0 else []
 assert all(os.path.exists(name) for name in foldersOfContentsToEdit)
 
 extensionsToEdit = input("extensions to edit (default .json,.txt)> ")

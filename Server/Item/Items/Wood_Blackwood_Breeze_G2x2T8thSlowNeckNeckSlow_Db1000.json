@@ -1,10 +1,10 @@
 {
   "TranslationProperties": {
-    "Name": "server.items.Rock_Volcanic_Breeze_G2x2T8thSlowNeckSlowNeck_Db1000.name"
+    "Name": "server.items.Wood_Blackwood_Breeze_G2x2T8thSlowNeckSlowNeck_Db1000.name"
   },
   "ItemLevel": 15,
   "MaxStack": 100,
-  "Icon": "Icons/ItemsGenerated/Rock_Volcanic_Breeze_G2x2T8thSlowNeckSlowNeck_Db1000.png",
+  "Icon": "Icons/ItemsGenerated/Wood_Blackwood_Breeze_G2x2T8thSlowNeckNeckSlow_Db1000.png",
   "Categories": [
     "Blocks.Rocks",
     "Blocks.Structural"
@@ -15,11 +15,11 @@
   
   
   
-  "Set": "Rock_Volcanic_Brick_Smooth",
+  "Set": "Wood_Blackwood_Planks",
   "Recipe": {
     "Input": [
       {
-        "ResourceTypeId": "Rock_Volcanic",
+        "ResourceTypeId": "Wood_Blackwood",
         "Quantity": 1
       }
     ],
@@ -38,12 +38,12 @@
   "BlockType": {
     "Material": "Solid",
     "DrawType": "Model",
-    "CustomModel": "Blocks/Breeze/Breeze_G2x2T8thSlowNeckSlowNeck_Db1000.blockymodel",
+    "CustomModel": "Blocks/Breeze/Breeze_G2x2T8thSlowNeckNeckSlow_Db1000.blockymodel",
     "Opacity": "Semitransparent",
     "HitboxType": "Block_Quarter",
     "CustomModelTexture": [
       {
-        "Texture": "BlockTextures/Rock_Volcanic_Brick_Smooth.png",
+        "Texture": "BlockTextures/Wood_Blackwood_Planks.png",
         "Weight": 1
       }
     ],

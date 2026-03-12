@@ -12,9 +12,10 @@ import tkinter
 
 """
 todo:
-  make a better atlas_config.json creation process, eliminate default values for atlas size and tile size.
-  2d range
-  search "TODO" in this file
+  -allow multiple values to be specified as blank, so that a solid-color tile in any of those colors will be ignored. Introduce checkerboard background pattern.
+  -make a better atlas_config.json creation process, eliminate default values for atlas size and tile size.
+  -2d range.
+  -search "TODO" and "NotImplementedError" in this file.
 """
 
 TILE_FOLDER = "."
@@ -69,8 +70,8 @@ assert pretty_coordinate_to_tuple("row 12 col 34") == (34, 12)
 # def nand(a, b):
 #  return not (a and b)
   
-def only_one(input_list):
-  return sum(bool(item) for item in input_list) == 1
+def at_most_one(input_list):
+  return sum(bool(item) for item in input_list) in (0, 1)
   
   
 
@@ -314,10 +315,10 @@ texture atlas editor commands:
 parser = argparse.ArgumentParser()
 subparser_manager = parser.add_subparsers(dest="subcommand")
 
-atlas_image_cmd_parser = subparser_manager.add_parser("atlas-image")
+atlas_image_cmd_parser = subparser_manager.add_parser("atlas-image", help="commands for handling the single atlas image for the project")
 atlas_image_cmd_parser.add_argument("subaction")
 
-atlas_config_cmd_parser = subparser_manager.add_parser("atlas-config")
+atlas_config_cmd_parser = subparser_manager.add_parser("atlas-config", help="commands for handling the single atlas image")
 atlas_config_cmd_parser.add_argument("subaction")
 
 transport_cmd_parser = subparser_manager.add_parser("transport")
@@ -326,11 +327,11 @@ transport_cmd_parser.add_argument("--discover", action="store_true")
 transport_cmd_parser.add_argument("--organize", action="store_true")
 transport_cmd_parser.add_argument("--organize-all", action="store_true")
 
-detect_rename_cmd_parser = subparser_manager.add_parser("detect-rename")
 
 
 args = parser.parse_args()
 if args.subcommand == "atlas-image":
+  assert not any((args.discover, args.organize, args.organize_all))
   if args.subaction == "create":
     create_atlas_image()
   elif args.subaction == "delete":
@@ -341,6 +342,7 @@ if args.subcommand == "atlas-image":
   else:
     raise ValueError(ars.subaction)
 elif args.subcommand == "atlas-config":
+  assert not any((args.discover, args.organize, args.organize_all))
   if args.subaction == "create":
     create_atlas_config()
   elif args.subaction == "delete":
@@ -356,7 +358,7 @@ elif args.subcommand == "transport":
   assert_config_is_saved_correctly()
   direction = PARSE_TRANSPORT_DIRECTION(args.direction)
   assert args.discover is True or args.discover is False
-  assert only_one((args.discover, args.organize, args.organize_all))
+  assert at_most_one((args.discover, args.organize, args.organize_all))
   if args.organize_all:
     raise NotImplementedError("a window to allow all tiles to be placed by the user into the atlas one by one")
   else:
@@ -367,8 +369,7 @@ elif args.subcommand == "transport":
   if args.discover:
     save_config()
   assert_config_is_saved_correctly()
-  
 else:
-  raise ValueError()
+  raise ValueError(args.subcommand)
   
 exit(EXIT_CODES["GENERAL_SUCCESS"])
