@@ -181,7 +181,7 @@ class Exit(PromptResponseType):
   pass 
   
 def prompt_user_for_tile_name(tile_image):
-  assert isinstance(tile_image, Image.Image) # tile_image must be a PIL Image # is this even true?
+  assert isinstance(tile_image, Image.Image) # tile_image must be a PIL Image
   window = tkinter.Tk()
   window.configure(bg="#cccccc")
   topLabel = tkinter.Label(window, text="Give this tile a name")
@@ -194,7 +194,6 @@ def prompt_user_for_tile_name(tile_image):
     imageDrawer.line((0,y*PREVIEW_SCALE,modifiedTileImage.size[0],y*PREVIEW_SCALE), PREVIEW_GRID_LINE_COLOR)
   for x in range(config_data["tile_size"][0]):
     imageDrawer.line((x*PREVIEW_SCALE, 0, x*PREVIEW_SCALE, modifiedTileImage.size[1]), PREVIEW_GRID_LINE_COLOR)
-    
   
   canvas = tkinter.Canvas(window, width=previewSize[0], height=previewSize[1])
   canvas.pack()
@@ -326,6 +325,7 @@ def do_tile_transport(direction, discover=False, organize=False):
 texture atlas editor commands:
   atlas-image <create|delete|view>
   atlas-config <create|delete|view>
+  atlas-config regenerate //look at tile files and atlas image to restore a missing config file. possibly helpful in mass renaming. Might require the user to choose what happens with duplicate tiles, or, the command might require all duplicates to be deleted before it works.
   transport in [<--discover|--organize|--organize-all>]
   transport out [--discover]
   tiles delete [--confirm] //note: command must fail if confirm is provided when it is not necessary.
@@ -336,16 +336,16 @@ parser = argparse.ArgumentParser()
 subparser_manager = parser.add_subparsers(dest="subcommand")
 
 atlas_image_cmd_parser = subparser_manager.add_parser("atlas-image", help="commands for handling the single atlas image for the project")
-atlas_image_cmd_parser.add_argument("subaction")
+atlas_image_cmd_parser.add_argument("subaction", help="may be any of: create, delete, view")
 
-atlas_config_cmd_parser = subparser_manager.add_parser("atlas-config", help="commands for handling the single atlas image")
-atlas_config_cmd_parser.add_argument("subaction")
+atlas_config_cmd_parser = subparser_manager.add_parser("atlas-config", help="commands for handling the single atlas config file for the project")
+atlas_config_cmd_parser.add_argument("subaction", help="may be any of: create, delete, view")
 
-transport_cmd_parser = subparser_manager.add_parser("transport")
-transport_cmd_parser.add_argument("direction")
-transport_cmd_parser.add_argument("--discover", action="store_true")
-transport_cmd_parser.add_argument("--organize", action="store_true")
-transport_cmd_parser.add_argument("--organize-all", action="store_true")
+transport_cmd_parser = subparser_manager.add_parser("transport", help="commands for transporting artwork into or out of the atlas image")
+transport_cmd_parser.add_argument("direction", help="in or out")
+transport_cmd_parser.add_argument("--discover", action="store_true", help="discover new art and add it to the config")
+transport_cmd_parser.add_argument("--organize", action="store_true", help="discover new art and add it to the config at user-specified location")
+transport_cmd_parser.add_argument("--organize-all", action="store_true", help="the user specifies the location of every tile from scratch")
 
 
 
@@ -380,7 +380,7 @@ elif args.subcommand == "transport":
   assert args.discover is True or args.discover is False
   assert at_most_one((args.discover, args.organize, args.organize_all))
   if args.organize_all:
-    raise NotImplementedError("a window to allow all tiles to be placed by the user into the atlas one by one") # this is only allowed while an atlas image does not exist, to prevent confusion from the atlas image and atlas config being completely different, which could cause data loss if you forget about it and then transport out and delete the atlas image.
+    raise NotImplementedError("a window to allow all tiles to be placed by the user into the atlas one by one") # this is only allowed while an atlas image does not exist, to prevent confusion from the atlas image and atlas config being completely different, which could cause data loss if you forget about it and then either (1) transport out and then delete the atlas image or (2) transport in and then delete the tile images.
   else:
     if direction is TRANSPORT_DIRECTION.EXPORT:
       assert not args.organize
