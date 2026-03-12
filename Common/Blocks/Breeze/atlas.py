@@ -28,7 +28,8 @@ ATLAS_CONFIG_SORT_KEYS = True
 ATLAS_CONFIG_INDENT = 4
 ATLAS_IMAGE_CREATION_FILL_COLOR = (255, 255, 255)
 ATLAS_IMAGE_BLANK_COLOR = (*ATLAS_IMAGE_CREATION_FILL_COLOR, 255)
-PREVIEW_SCALE = 10
+TILE_PREVIEW_SCALE = 10
+ATLAS_PREVIEW_SCALE = 5
 PREVIEW_GRID_LINE_COLOR = (127, 127, 127)
 class TRANSPORT_DIRECTION(enum.Enum):
   IMPORT = enum.auto()
@@ -69,8 +70,8 @@ assert pretty_coordinate_to_tuple("row 12 col 34") == (34, 12)
 
 # TODO introduce pretty coordinates to actual atlas config file.
   
-# def nand(a, b):
-#  return not (a and b)
+def nand(a, b):
+  return not (a and b)
   
 def at_most_one(input_list):
   return sum(bool(item) for item in input_list) in (0, 1)
@@ -90,7 +91,7 @@ def get_atlas_image_size():
 def get_intersection_coordinate(intersection_address):
   return (config_data["tile_size"][0]*intersection_address[0], config_data["tile_size"][1]*intersection_address[1])
   
-def get_a_free_address():
+def get_a_free_coordinate():
   for y in range(config_data["atlas_size"][1]):
     for x in range(config_data["atlas_size"][0]):
       if (x,y) not in config_data["coordinates_to_names"]:
@@ -187,13 +188,13 @@ def prompt_user_for_tile_name(tile_image):
   topLabel = tkinter.Label(window, text="Give this tile a name")
   topLabel.pack()
   
-  previewSize = (config_data["tile_size"][0]*PREVIEW_SCALE, config_data["tile_size"][1]*PREVIEW_SCALE)
+  previewSize = (config_data["tile_size"][0]*TILE_PREVIEW_SCALE, config_data["tile_size"][1]*TILE_PREVIEW_SCALE)
   modifiedTileImage = tile_image.resize(size=previewSize, resample=Image.Resampling.NEAREST) # resizing makes a copy so we are not drawing on the original.
   imageDrawer = ImageDraw.Draw(modifiedTileImage) 
   for y in range(config_data["tile_size"][1]):
-    imageDrawer.line((0,y*PREVIEW_SCALE,modifiedTileImage.size[0],y*PREVIEW_SCALE), PREVIEW_GRID_LINE_COLOR)
+    imageDrawer.line((0,y*TILE_PREVIEW_SCALE,modifiedTileImage.size[0],y*TILE_PREVIEW_SCALE), PREVIEW_GRID_LINE_COLOR)
   for x in range(config_data["tile_size"][0]):
-    imageDrawer.line((x*PREVIEW_SCALE, 0, x*PREVIEW_SCALE, modifiedTileImage.size[1]), PREVIEW_GRID_LINE_COLOR)
+    imageDrawer.line((x*TILE_PREVIEW_SCALE, 0, x*TILE_PREVIEW_SCALE, modifiedTileImage.size[1]), PREVIEW_GRID_LINE_COLOR)
   
   canvas = tkinter.Canvas(window, width=previewSize[0], height=previewSize[1])
   canvas.pack()
@@ -252,6 +253,13 @@ def prompt_user_for_tile_name(tile_image):
   
   
   
+def prompt_user_for_a_free_coordinate():
+  raise NotImplementedError()
+  pygame.init() # I don't know if there are consequences for doing this multiple times.
+  screen = pygame.display.set_mode((400,400))
+  pygame.display.quit()
+  
+  
 
 def tile_image_is_blank(tile_image):
   # assert tile_image.mode == "RGB", tile_image.mode
@@ -265,11 +273,28 @@ def tile_image_is_blank(tile_image):
 def find_tile_names():
   return [item for item in os.listdir(TILE_FOLDER) if item.endswith(".png") and item != ATLAS_IMAGE_NAME]
 
+def tile_name_to_path(tile_name):
+  return TILE_FOLDER + SEP + tile_name
+
+def import_tile_with_name(tile_name, destination_atlas_pil_image):
+  assert isinstance(tile_name, str)
+  assert isinstance(destination_atlas_pil_image, Image.Image)
+  assert tile_name in config_data["coordinates_to_names"].inverse
+  with Image.open(tile_name_to_path(tile_name)) as tileImg:
+    # TODO check whether coordinate is valid
+    if tileImg.size != config_data["tile_size"]:
+      print(f"WARNING: Tile with name {tileName} will not be imported because it is the wrong size: {tileImg.size}")
+      return
+    destination_atlas_pil_image.paste(tileImg, get_intersection_coordinate(config_data["coordinates_to_names"].inverse[tile_name]))
+
+
 def do_tile_transport(direction, discover=False, organize=False):
   assert not (discover and organize)
     
   with Image.open(ATLAS_IMAGE_PATH) as atlasImg:
     if direction is TRANSPORT_DIRECTION.EXPORT:
+      if not os.path.exists(ATLAS_IMAGE_PATH):
+        raise FileNotFoundError("can't export when atlas image does not exist.")
       for y in range(config_data["atlas_size"][1]):
         for x in range(config_data["atlas_size"][0]):
           
@@ -290,7 +315,7 @@ def do_tile_transport(direction, discover=False, organize=False):
               config_data["coordinates_to_names"][(x,y)] = newTileName
             else:
               continue # don't attempt to export.
-          tileImgPath = TILE_FOLDER + SEP + config_data["coordinates_to_names"][(x,y)]
+          tileImgPath = tile_name_to_path(config_data["coordinates_to_names"][(x,y)])
           if os.path.exists(tileImgPath):
             with Image.open(tileImgPath) as oldTileImg:
               if oldTileImg.size != tileImg.size:
@@ -300,20 +325,27 @@ def do_tile_transport(direction, discover=False, organize=False):
       assert direction is TRANSPORT_DIRECTION.IMPORT
       if not os.path.exists(ATLAS_IMAGE_PATH):
         create_atlas_image()
+        
+      newlyDiscoveredNames = []
       for tileName in find_tile_names():
-        if tileName not in config_data["coordinates_to_names"].inverse:
-          if discover:
-            config_data["coordinates_to_names"].inverse[tileName] = get_a_free_address()
-          elif organize:
-            raise NotImplementedError("prompt to place a single tile")
         if tileName in config_data["coordinates_to_names"].inverse:
-          with Image.open(TILE_FOLDER + SEP + tileName) as tileImg:
-            # TODO check whether coordinate is valid
-            if tileImg.size != config_data["tile_size"]:
-              print(f"WARNING: Tile with name {tileName} will not be imported because it is the wrong size: {tileImg.size}")
-              continue
-            atlasImg.paste(tileImg, get_intersection_coordinate(config_data["coordinates_to_names"].inverse[tileName]))
-            
+          import_tile_with_name(tileName, atlasImg)
+        else:
+          newlyDiscoveredNames.append(tileName)
+          
+      if discover or organize:
+        assert nand(discover, organize), "the following code is designed for either discover or organize to be true, but not both"
+        for tileName in newlyDiscoveredNames:
+          placementCoordinate = None # must not carry over from previous iteration
+          if discover:
+            placementCoordinate = get_a_free_coordinate()
+          elif organize:
+            with Image.open(tile_name_to_path(tileName)) as tileImgForPrompt:
+              config_data["coordinates_to_names"].inverse[tileName] = prompt_user_for_a_free_coordinate(tileImgForPrompt)
+          else:
+            assert False, "unreachable"
+          assert placementCoordinate is not None
+          config_data["coordinates_to_names"].inverse[tileName] = placementCoordinate
     atlasImg.save(ATLAS_IMAGE_PATH)
 
 
@@ -335,17 +367,17 @@ texture atlas editor commands:
 parser = argparse.ArgumentParser()
 subparser_manager = parser.add_subparsers(dest="subcommand")
 
-atlas_image_cmd_parser = subparser_manager.add_parser("atlas-image", help="commands for handling the single atlas image for the project")
-atlas_image_cmd_parser.add_argument("subaction", help="may be any of: create, delete, view")
+atlas_image_cmd_parser = subparser_manager.add_parser("atlas-image", help="Command for handling the single atlas image for the project")
+atlas_image_cmd_parser.add_argument("subaction", help="May be any of: create, delete, view")
 
-atlas_config_cmd_parser = subparser_manager.add_parser("atlas-config", help="commands for handling the single atlas config file for the project")
-atlas_config_cmd_parser.add_argument("subaction", help="may be any of: create, delete, view")
+atlas_config_cmd_parser = subparser_manager.add_parser("atlas-config", help="Command for handling the single atlas config file for the project")
+atlas_config_cmd_parser.add_argument("subaction", help="May be any of: create, delete, view")
 
-transport_cmd_parser = subparser_manager.add_parser("transport", help="commands for transporting artwork into or out of the atlas image")
+transport_cmd_parser = subparser_manager.add_parser("transport", help="Command for transporting artwork into or out of the atlas image")
 transport_cmd_parser.add_argument("direction", help="in or out")
-transport_cmd_parser.add_argument("--discover", action="store_true", help="discover new art and add it to the config")
-transport_cmd_parser.add_argument("--organize", action="store_true", help="discover new art and add it to the config at user-specified location")
-transport_cmd_parser.add_argument("--organize-all", action="store_true", help="the user specifies the location of every tile from scratch")
+transport_cmd_parser.add_argument("--discover", action="store_true", help="Discover new art and add it to the config")
+transport_cmd_parser.add_argument("--organize", action="store_true", help="Discover new art and add it to the config at user-specified locations")
+transport_cmd_parser.add_argument("--organize-all", action="store_true", help="The user specifies the location of every tile from scratch")
 
 
 
