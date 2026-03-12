@@ -1,6 +1,6 @@
 
 from bidict import bidict
-from PIL import Image, ImageTk # the k in ImageTk is lowercase.
+from PIL import Image, ImageTk, ImageDraw # the k in ImageTk is lowercase.
 
 import enum
 import argparse
@@ -12,6 +12,7 @@ import tkinter
 
 """
 todo:
+  -outline pixels in the save name prompt.
   -allow multiple values to be specified as blank, so that a solid-color tile in any of those colors will be ignored. Introduce checkerboard background pattern.
   -make a better atlas_config.json creation process, eliminate default values for atlas size and tile size.
   -2d range.
@@ -28,6 +29,7 @@ ATLAS_CONFIG_INDENT = 4
 ATLAS_IMAGE_CREATION_FILL_COLOR = (255, 255, 255)
 ATLAS_IMAGE_BLANK_COLOR = (*ATLAS_IMAGE_CREATION_FILL_COLOR, 255)
 PREVIEW_SCALE = 10
+PREVIEW_GRID_LINE_COLOR = (127, 127, 127)
 class TRANSPORT_DIRECTION(enum.Enum):
   IMPORT = enum.auto()
   EXPORT = enum.auto()
@@ -179,15 +181,24 @@ class Exit(PromptResponseType):
   pass 
   
 def prompt_user_for_tile_name(tile_image):
+  assert isinstance(tile_image, Image.Image) # tile_image must be a PIL Image # is this even true?
   window = tkinter.Tk()
   window.configure(bg="#cccccc")
   topLabel = tkinter.Label(window, text="Give this tile a name")
   topLabel.pack()
   
   previewSize = (config_data["tile_size"][0]*PREVIEW_SCALE, config_data["tile_size"][1]*PREVIEW_SCALE)
+  modifiedTileImage = tile_image.resize(size=previewSize, resample=Image.Resampling.NEAREST) # resizing makes a copy so we are not drawing on the original.
+  imageDrawer = ImageDraw.Draw(modifiedTileImage) 
+  for y in range(config_data["tile_size"][1]):
+    imageDrawer.line((0,y*PREVIEW_SCALE,modifiedTileImage.size[0],y*PREVIEW_SCALE), PREVIEW_GRID_LINE_COLOR)
+  for x in range(config_data["tile_size"][0]):
+    imageDrawer.line((x*PREVIEW_SCALE, 0, x*PREVIEW_SCALE, modifiedTileImage.size[1]), PREVIEW_GRID_LINE_COLOR)
+    
+  
   canvas = tkinter.Canvas(window, width=previewSize[0], height=previewSize[1])
   canvas.pack()
-  tkinterImage = ImageTk.PhotoImage(image=tile_image.resize(size=previewSize, resample=Image.Resampling.NEAREST), size=previewSize)
+  tkinterImage = ImageTk.PhotoImage(image=modifiedTileImage, size=previewSize)
   tkinterImageSprite = canvas.create_image(previewSize[0]//2, previewSize[1]//2, image=tkinterImage)
   
   entryStringVar = tkinter.StringVar()
@@ -340,7 +351,7 @@ transport_cmd_parser.add_argument("--organize-all", action="store_true")
 
 args = parser.parse_args()
 if args.subcommand == "atlas-image":
-  assert not any((args.discover, args.organize, args.organize_all))
+  # assert not any((args.discover, args.organize, args.organize_all))
   if args.subaction == "create":
     create_atlas_image()
   elif args.subaction == "delete":
@@ -351,7 +362,7 @@ if args.subcommand == "atlas-image":
   else:
     raise ValueError(ars.subaction)
 elif args.subcommand == "atlas-config":
-  assert not any((args.discover, args.organize, args.organize_all))
+  # assert not any((args.discover, args.organize, args.organize_all))
   if args.subaction == "create":
     create_atlas_config()
   elif args.subaction == "delete":
