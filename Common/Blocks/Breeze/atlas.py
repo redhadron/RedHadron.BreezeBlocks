@@ -1,26 +1,28 @@
 
 from bidict import bidict
 from PIL import Image, ImageTk, ImageDraw # the k in ImageTk is lowercase.
-
 import enum
 import argparse
 import os
 import json
 import ast
 import tkinter
-
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "True"
+import pygame
+import time
 
 """
 todo:
-  -outline pixels in the save name prompt.
   -allow multiple values to be specified as blank, so that a solid-color tile in any of those colors will be ignored. Introduce checkerboard background pattern.
   -make a better atlas_config.json creation process, eliminate default values for atlas size and tile size.
   -2d range.
+  -vector math methods.
   -search "TODO" and "NotImplementedError" in this file.
 """
 
 TILE_FOLDER = "."
 SEP = os.sep
+FPS = 30.0
 ATLAS_IMAGE_NAME = "atlas_image.png"
 ATLAS_IMAGE_PATH = ".\\" + ATLAS_IMAGE_NAME
 ATLAS_CONFIG_PATH = ".\\atlas_config.json"
@@ -29,14 +31,15 @@ ATLAS_CONFIG_INDENT = 4
 ATLAS_IMAGE_CREATION_FILL_COLOR = (255, 255, 255)
 ATLAS_IMAGE_BLANK_COLOR = (*ATLAS_IMAGE_CREATION_FILL_COLOR, 255)
 TILE_PREVIEW_SCALE = 10
-ATLAS_PREVIEW_SCALE = 5
+# ATLAS_PREVIEW_SCALE = 5
 PREVIEW_GRID_LINE_COLOR = (127, 127, 127)
+HIGHLIGHT_COLOR = (255, 0, 0)
 class TRANSPORT_DIRECTION(enum.Enum):
   IMPORT = enum.auto()
   EXPORT = enum.auto()
 def PARSE_TRANSPORT_DIRECTION(string):
   return {"in": TRANSPORT_DIRECTION.IMPORT, "out": TRANSPORT_DIRECTION.EXPORT}[string]
-EXIT_CODES = {"GENERAL_SUCCESS":0, "EXIT_BUTTON": 2}
+EXIT_CODES = {"GENERAL_SUCCESS":0, "EXIT_BUTTON": 2, "PYGAME_QUIT":3}
 
 def validate_int_pair_tuple(int_tuple):
   assert isinstance(int_tuple, tuple) and len(int_tuple) == 2 and all(isinstance(item, int) for item in int_tuple)
@@ -253,12 +256,42 @@ def prompt_user_for_tile_name(tile_image):
   
   
   
-def prompt_user_for_a_free_coordinate():
-  raise NotImplementedError()
-  pygame.init() # I don't know if there are consequences for doing this multiple times.
-  screen = pygame.display.set_mode((400,400))
-  pygame.display.quit()
+def pil_image_to_surface(pil_image):
+  assert isinstance(pil_image, Image.Image)
+  return pygame.image.fromstring(pil_image.tobytes(), pil_image.size, pil_image.mode)
   
+def prompt_user_for_a_free_coordinate(*, tile_image, atlas_image):
+  assert isinstance(tile_image, Image.Image)
+  assert isinstance(atlas_image, Image.Image)
+  
+  pygame.init() # I don't know if there are consequences for doing this multiple times.
+  screen = pygame.display.set_mode((600,400))
+  atlasSurf = pil_image_to_surface(atlas_image)
+  tileSurf = pil_image_to_surface(tile_image)
+  keepPygameRunning = True
+  result = None
+  while keepPygameRunning:
+    hoveredTileCoord = tuple(pygame.mouse.get_pos()[i]//config_data["tile_size"][i] for i in (0,1))
+    screen.blit(atlasSurf, (0,0))
+    screen.blit(tileSurf, (atlasSurf.get_width()+10, 0))
+    pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [get_intersection_coordinate((hoveredTileCoord[0]+a, hoveredTileCoord[1]+b)) for a, b in [(0,0), (1,0), (1,1), (0,1)]]) # TODO int vec math refactor
+    time.sleep(1.0/FPS)
+    pygame.display.flip()
+    for event in pygame.event.get():
+      if event.type == pygame.QUIT:
+        print("exiting from within pygame")
+        result = Exit()
+        keepPygameRunning = False
+        break
+      # if event.type == pygame.MOUSEMOTION:
+      elif event.type == pygame.MOUSEBUTTONDOWN:
+        result = Submit(hoveredTileCoord)
+        keepPygameRunning = False
+        break
+  
+  pygame.display.quit()
+  assert isinstance(result, PromptResponseType)
+  return result
   
 
 def tile_image_is_blank(tile_image):
@@ -311,7 +344,7 @@ def do_tile_transport(direction, discover=False, organize=False):
               elif isinstance(response, Exit):
                 exit(EXIT_CODES["EXIT_BUTTON"])
               else:
-                raise ValueError()
+                raise ValueError(response)
               config_data["coordinates_to_names"][(x,y)] = newTileName
             else:
               continue # don't attempt to export.
@@ -332,6 +365,7 @@ def do_tile_transport(direction, discover=False, organize=False):
           import_tile_with_name(tileName, atlasImg)
         else:
           newlyDiscoveredNames.append(tileName)
+      atlasImg.save(ATLAS_IMAGE_PATH) # save progress.
           
       if discover or organize:
         assert nand(discover, organize), "the following code is designed for either discover or organize to be true, but not both"
@@ -341,11 +375,23 @@ def do_tile_transport(direction, discover=False, organize=False):
             placementCoordinate = get_a_free_coordinate()
           elif organize:
             with Image.open(tile_name_to_path(tileName)) as tileImgForPrompt:
-              config_data["coordinates_to_names"].inverse[tileName] = prompt_user_for_a_free_coordinate(tileImgForPrompt)
+              promptResult = prompt_user_for_a_free_coordinate(tile_image=tileImgForPrompt, atlas_image=atlasImg)
+              if isinstance(promptResult, Submit):
+                placementCoordinate = promptResult.value
+              elif isinstance(promptResult, Skip):
+                raise NotImplementedError()
+              elif isinstance(promptResult, Exit):
+                exit(EXIT_CODES["PYGAME_QUIT"])
+              else:
+                raise ValueError(promptResult)
           else:
             assert False, "unreachable"
           assert placementCoordinate is not None
+          validate_int_pair_tuple(placementCoordinate)
           config_data["coordinates_to_names"].inverse[tileName] = placementCoordinate
+          import_tile_with_name(tileName, atlasImg)
+          # don't save atlasImg within this loop because a crash or exit later in this loop might prevent the atlas config from being saved to match the atlasImg.
+          # TODO put transport in charge of whether and when atlas config gets saved.
     atlasImg.save(ATLAS_IMAGE_PATH)
 
 
@@ -418,8 +464,8 @@ elif args.subcommand == "transport":
       assert not args.organize
       assert not args.organize_all
     do_tile_transport(direction, discover=args.discover, organize=args.organize)
-  if args.discover:
-    save_config()
+  if args.discover or args.organize or args.organize_all:
+    save_config() # TODO move into transport
   assert_config_is_saved_correctly()
 else:
   raise ValueError(args.subcommand)
