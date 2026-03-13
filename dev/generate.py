@@ -27,6 +27,8 @@ DATA_PAGES = [
     ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
     ("JSON_GATHERING_BREAKING_GATHERTYPE_STR", "Woods"),
     ("JSON_FUEL_QUALITY_LINE", "\"FuelQuality\": 3.0,"),
+    ("JSON_BLOCKTYPE_BLOCKSOUNDSETID_STR", "Wood")
+    
   ],
   [
     ("TEXTURE_NAME_PREFIX", "Rock_"),
@@ -37,6 +39,7 @@ DATA_PAGES = [
     ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
     ("JSON_GATHERING_BREAKING_GATHERTYPE_STR", "Rocks"),
     ("JSON_FUEL_QUALITY_LINE", ""),
+    ("JSON_BLOCKTYPE_BLOCKSOUNDSETID_STR", "Stone")
   ],
 ]
 #  Aqua Calcite Gold Ledge Lime Marble # these are available as smooth bricks in-game but their textures have irregular names.

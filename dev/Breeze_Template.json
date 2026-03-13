@@ -9,7 +9,7 @@
     "Blocks.Rocks",
     "Blocks.Structural"
   ],
-  "FuelQuality": 3.0,
+  ${JSON_FUEL_QUALITY_LINE}
   "PlayerAnimationsId": "Block",
   
   
@@ -19,7 +19,7 @@
   "Recipe": {
     "Input": [
       {
-        "ResourceTypeId": "${RESOURCE_TYPE_ID}",
+        "ResourceTypeId": "${RESOURCE_TYPE_ID_TO_CRAFT}",
         "Quantity": 1
       }
     ],
@@ -38,7 +38,7 @@
   "BlockType": {
     "Material": "Solid",
     "DrawType": "Model",
-    "CustomModel": "Blocks/Breeze/${MODEL_NAME}.blockymodel",
+    "CustomModel": "Blocks/Breeze/${MODEL_BASE_NAME}.blockymodel",
     "Opacity": "Semitransparent",
     "HitboxType": "Block_Quarter",
     "CustomModelTexture": [
@@ -51,7 +51,7 @@
     "Flags": {},
     "Gathering": {
       "Breaking": {
-        "GatherType": "Woods"
+        "GatherType": "${JSON_GATHERING_BREAKING_GATHERTYPE_STR}"
       }
     },
     "VariantRotation": "DoublePipe",
@@ -62,7 +62,7 @@
       ]
     },
     "ParticleColor": "#65482d",
-    "BlockSoundSetId": "Stone",
+    "BlockSoundSetId": "${JSON_BLOCKTYPE_BLOCKSOUNDSETID_STR}",
     "State": {
       "Definitions": {
         
@@ -72,11 +72,8 @@
   
   "Tags": {
     "Type": [
-      "Wood"
-    ],
-    "SubType": [
-      "Planks"
-    ]
+      "${JSON_TAGS_TYPE_STR}"
+    ]${JSON_TAGS_SUBTYPE}${JSON_TAGS_FAMILY}
   },
   "ItemSoundSetId": "ISS_Blocks_Wood",
   "IconProperties": {

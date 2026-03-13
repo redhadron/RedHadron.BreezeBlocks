@@ -1,21 +1,49 @@
 
 Breeze_G4x4_T8th_D4th_S3 (all faces)(uncustom texture), Breeze_G4x4_T8th_D4th_S3 (wip)(all faces)(uncustom texture), Breeze_G4x4_T16th_D4th_S3 (all faces)(uncustom texture) all have slight UV errors around the center hole of each cluster of 5 holes.
-BW stands for basketweave
+useless tags (just rename the shape):
+  Ud = upside-down
+  Iv = inverted
+  Np = non-prismatic
+useless tags (just use multiple shape names):
+  Bw = basketweave
 potential tags:
-  UD = upside-down
-  I = inverted
-  NP = non-prismatic
+  Is = inset
   Fl = frameless
-  FlFl = frameless frameless
-  BW
-Tags are not needed if every variant of every idea has a unique name.
+  for both of the above tags:
+    can come before the shape name(s) to affect only the outer frame
+    can come after any shape name to affect the shape
+    Can come after an underscore after the shape names to affect every shape individually
 
+Da = Depth amount, Db = depth binary, Dc = Depth centered amount.
 
-Breeze 2x2 [ornate] <slab|<center|side>-aligned>
+universal format of numbers:
+  [num"p"][num"n"][num"d"]
+  at least one section must be used.
+  p is for pixels
+  n is for numerator
+  d is for denominator
+  when denominator is used without numerator, numerator is 1.
+  when numerator is used without denominator, denominator is the smallest power of 10 greater than the numerator.
+  examples:
+    1p = 1
+    1p2n = 1.2
+    1p2n3d = 1.66
+    2n3d = 0.66
+    3d = 0.33
+    1p3d = 1.33
+    
+Thickness specifiers:
+  T = frame and big details and little details
+  F = frame
+  D = big details and little details
+  B = big details
+  L = little details
+    
+Wood_Tropicalwood_Breeze_G1x1F6pB5pL4pSameNearI1pNearI1pSame
 
-Breeze G<1x1|2x2|1x2|2x1|2x4|4x2|4x4> T<8|16>th <Da<025|050|075|100>|Db<1000|1100|1110|1111|0100|0110|0111|0010|0011|0001>|Dcq> AabcAabcAabcAabc
-// Da = Depth amount, Db = depth binary, Dcq = Depth centered quarterblock.
-Longest possible name: Wood Tropicalwood Breeze G1x1 T16th Db1000 AabcAabcAabcAabc
+-----------------------------
+
+Breeze G<1x1|2x2|1x2|2x1|2x4|4x2|4x4> T<8|16>th 
 
 ----------------------------------------------------------------------------
 
