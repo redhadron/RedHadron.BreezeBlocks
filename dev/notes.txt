@@ -57,18 +57,32 @@ the sound set for Rock is called "Stone"
 
 
 Roadmap:
-make a thumbnail generation system.
-upgrade generate.py to support stone and terracotta.
-Make system for changing the depth of breeze blocks.
-finish creating all models from designs canvas.
-create ornate versions of some models.
+rename thicknesses from meter fractions to pixel counts.
 finalize asset names.
 publish mod.
-diagonal breeze blocks??
-corner breeze blocks
+upgrade generate.py to support terracotta.
+create a partical color system.
+  3d median in perceptual color space.
+upgrade thumbnail generator to invert background when dark textures are detected.
+Make system for changing the depth of breeze blocks.
+finish creating all models from designs canvas.
+improve texture shading on all models.
+create ornate versions of some models.
+outer corner breeze blocks.
+inner corner breeze blocks (G2x2 and higher only).
+Add breeze blocks for wood types and stone types from other popular mods.
+Add pattern "None".
+diagonal breeze blocks.
+curved breeze blocks.
+optimize models.
+patterns bigger than a single block.
+make a breeze mason's bench that can make weirder blocks with other depth modes.
 
 cancelled:
-upgrade renamer.py to optionally edit the content of asset definition files (or any other files in a second directory) too.
+none
 
 done:
+upgrade renamer.py to optionally edit the content of asset definition files (or any other files in a second directory) too.
 upgrade generate.py to support all woods.
+make a thumbnail generation system.
+upgrade generate.py to support stone
