@@ -47,22 +47,24 @@ Breeze G<1x1|2x2|1x2|2x1|2x4|4x2|4x4> T<8|16>th
 
 ----------------------------------------------------------------------------
 
-darkwood planks full: set darkwood planks, requires darkwood trunk
-darkwood planks half: set darkwood planks, requires darkwood
-resource types may be defined at the bottom of an asset json.
-the sound set for Rock is called "Stone"
-
+notes that are helpful for planning:
+  resource types may be defined at the bottom of an asset json.
+  the sound set for Rock is called "Stone"
+  As long as the mod continues to provide asset jsons for deprecated block IDs, it can also specify in those jsons that the deprecated blocks drop the newer blocks.
 
 ==============================================================================
 
 
 Roadmap:
-add CLI args to renamer
+thicken G2x2 Nope.
+thicken SlowNeckNeckSlow.
+renameGx2T2pHead to G2x2T2pL1pHead.
+add CLI args to renamer.
+rework atlas organize window so that it only returns when it meets an objective which can be specified as an argument. Add keyboard shortcuts to link, unlink, and delete.
 finalize asset names.
 publish mod.
 fix top textures.
-upgrade generate.py to support terracotta.
-create a partical color system.
+create a particle color system.
   3d median in perceptual color space.
 upgrade thumbnail generator to invert background when dark textures are detected.
 Make system for changing the depth of breeze blocks.
@@ -89,3 +91,4 @@ make a thumbnail generation system.
 upgrade generate.py to support stone
 add directory tree to the top of renamer
 rename thicknesses from meter fractions to pixel counts.
+upgrade generate.py to support terracotta.
