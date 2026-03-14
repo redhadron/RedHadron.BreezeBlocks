@@ -22,24 +22,28 @@ DATA_PAGES = [
     ("TEXTURE_NAME_PREFIX", "Wood_"),
     ("FAMILY_LIST", list("Blackwood Darkwood Deadwood Drywood Goldenwood Greenwood Hardwood Lightwood Redwood Softwood Tropicalwood".split(" "))),
     ("TEXTURE_NAME_SUFFIX", "_Planks"),
-    ("JSON_TAGS_TYPE_STR", "Wood"),
-    ("JSON_TAGS_SUBTYPE", ",\n    \"SubType\": [\n      \"Planks\"\n    ]"),
-    ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
-    ("JSON_GATHERING_BREAKING_GATHERTYPE_STR", "Woods"),
-    ("JSON_FUEL_QUALITY_LINE", "\"FuelQuality\": 3.0,"),
-    ("JSON_BLOCKTYPE_BLOCKSOUNDSETID_STR", "Wood")
+    ("AUTOMATIC_JSON_ITEMS", [
+      ("JSON_TAGS_TYPE_STR", "Wood"),
+      ("JSON_TAGS_SUBTYPE", ",\n    \"SubType\": [\n      \"Planks\"\n    ]"),
+      ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
+      ("JSON_GATHERING_BREAKING_GATHERTYPE_STR", "Woods"),
+      ("JSON_FUEL_QUALITY_LINE", "\"FuelQuality\": 3.0,"),
+      ("JSON_BLOCKTYPE_BLOCKSOUNDSETID_STR", "Wood"),
+    ]),
     
   ],
   [
     ("TEXTURE_NAME_PREFIX", "Rock_"),
     ("FAMILY_LIST", list("Basalt Quartzite Shale Stone Volcanic".split(" "))),
     ("TEXTURE_NAME_SUFFIX", "_Brick_Smooth"),
-    ("JSON_TAGS_TYPE_STR", "Rock"),
-    ("JSON_TAGS_SUBTYPE", ""),
-    ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
-    ("JSON_GATHERING_BREAKING_GATHERTYPE_STR", "Rocks"),
-    ("JSON_FUEL_QUALITY_LINE", ""),
-    ("JSON_BLOCKTYPE_BLOCKSOUNDSETID_STR", "Stone")
+    ("AUTOMATIC_JSON_ITEMS", [
+      ("JSON_TAGS_TYPE_STR", "Rock"),
+      ("JSON_TAGS_SUBTYPE", ""),
+      ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
+      ("JSON_GATHERING_BREAKING_GATHERTYPE_STR", "Rocks"),
+      ("JSON_FUEL_QUALITY_LINE", ""),
+      ("JSON_BLOCKTYPE_BLOCKSOUNDSETID_STR", "Stone"),
+    ]),
   ],
 ]
 #  Aqua Calcite Gold Ledge Lime Marble # these are available as smooth bricks in-game but their textures have irregular names.
@@ -49,12 +53,20 @@ SOIL_CLAY_COLORS = "Black Blue Cyan Green Grey Lime Orange Pink Purple Red White
 # there is also a regular clay: Soil_Clay.
 # there is also clay brick and ocean clay brick.
 def data_page_get_value(data_page, key):
-  assert isinstance(key, str) and isinstance(data_page, list)
-  for item in data_page:
-    assert len(item) == 2 and isinstance(item[0], str)
-    if item[0] == key:
-      return item[1]
-  raise KeyError(key)
+  assert isinstance(data_page, list)
+  if isinstance(key, tuple):
+    if len(key) > 1:
+      return data_page_get_value(data_page_get_value(data_page, key[0]), key[1:])
+    else:
+      return data_page_get_value(data_page, key[0])
+  elif isinstance(key, str):
+    for item in data_page:
+      assert len(item) == 2 and isinstance(item[0], str)
+      if item[0] == key:
+        return item[1]
+    raise KeyError(key)
+  else:
+    raise TypeError(type(key))
 def data_page_has_key(data_page, key):
   assert isinstance(key, str) and isinstance(data_page, list)
   return any(item[0] == key for item in data_page)
@@ -103,7 +115,7 @@ for modelFileName in modelFileNamesList:
       unpatchedTextureFileBaseName = f"{data_page_get_value(dataPage, 'TEXTURE_NAME_PREFIX')}{family}{data_page_get_value(dataPage, 'TEXTURE_NAME_SUFFIX')}"
       textureFileName = patch_texture_name(unpatchedTextureFileBaseName+".png")
       
-      assetInfo = {"full_name": data_page_get_value(dataPage, "JSON_TAGS_TYPE_STR") + "_" + family + "_" + shapeNameWithoutDepth}
+      assetInfo = {"full_name": data_page_get_value(dataPage, ("AUTOMATIC_JSON_ITEMS", "JSON_TAGS_TYPE_STR")) + "_" + family + "_" + shapeNameWithoutDepth}
       assetInfo["output_file_path"] = OUTPUT_FOLDER_PATH + SEP + assetInfo["full_name"] + ".json"
       assetInfo["icon_file_name"] = assetInfo["full_name"] + ".png"
       assetInfo["icon_file_path"] = ICON_FOLDER_PATH + SEP + assetInfo["icon_file_name"]
@@ -112,7 +124,7 @@ for modelFileName in modelFileNamesList:
         "ICON_PATH_IN_MOD": "Icons/ItemsGenerated/" + assetInfo["icon_file_name"],
         "BLOCK_SET": unpatchedTextureFileBaseName,
         "TEXTURE_PATH_IN_MOD": f"BlockTextures/{textureFileName}",
-        "RESOURCE_TYPE_ID_TO_CRAFT": f"{data_page_get_value(dataPage, 'JSON_TAGS_TYPE_STR')}_{family}",
+        "RESOURCE_TYPE_ID_TO_CRAFT": f"{data_page_get_value(dataPage, ('AUTOMATIC_JSON_ITEMS', 'JSON_TAGS_TYPE_STR'))}_{family}",
       }
       
       with Image.open(MODEL_FOLDER_PATH + SEP + iconMaskFileName) as thumbnailMaskImage:
@@ -139,13 +151,11 @@ for modelFileName in modelFileNamesList:
             ).replace("${SET}", assetContents["BLOCK_SET"]
             ).replace("${RESOURCE_TYPE_ID_TO_CRAFT}", assetContents["RESOURCE_TYPE_ID_TO_CRAFT"]
             ).replace("${TEXTURE_PATH_IN_MOD}", assetContents["TEXTURE_PATH_IN_MOD"]
-            ).replace("${JSON_TAGS_TYPE_STR}", data_page_get_value(dataPage, "JSON_TAGS_TYPE_STR")
-            ).replace("${JSON_TAGS_SUBTYPE}", data_page_get_value(dataPage, "JSON_TAGS_SUBTYPE")
-            ).replace("${JSON_TAGS_FAMILY}", data_page_get_value(dataPage, "JSON_TAGS_FAMILY")
-            ).replace("${JSON_GATHERING_BREAKING_GATHERTYPE_STR}", data_page_get_value(dataPage, "JSON_GATHERING_BREAKING_GATHERTYPE_STR")
-            ).replace("${JSON_FUEL_QUALITY_LINE}", data_page_get_value(dataPage, "JSON_FUEL_QUALITY_LINE")
-            ).replace("${FAMILY}", family # must happen after json_ items
             )
+          for jsonOld, jsonNew in data_page_get_value(dataPage, "AUTOMATIC_JSON_ITEMS"):
+            outputLine = outputLine.replace("${" + jsonOld + "}", jsonNew)
+          outputLine = outputLine.replace("${FAMILY}", family) # must happen after json_ items
+          
           assert "${" not in outputLine, outputLine
           outputFile.write(outputLine)
       

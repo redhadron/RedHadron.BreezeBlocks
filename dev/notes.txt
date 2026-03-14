@@ -57,9 +57,12 @@ the sound set for Rock is called "Stone"
 
 
 Roadmap:
+add directory tree to the top of renamer
+add CLI args to renamer
 rename thicknesses from meter fractions to pixel counts.
 finalize asset names.
 publish mod.
+fix top textures.
 upgrade generate.py to support terracotta.
 create a partical color system.
   3d median in perceptual color space.
