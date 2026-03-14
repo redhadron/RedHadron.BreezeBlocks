@@ -51,11 +51,11 @@
     "Flags": {},
     "Gathering": {
       "Breaking": {
-        "GatherType": "${JSON_GATHERING_BREAKING_GATHERTYPE_STR}"
+        "GatherType": "${JSON_BLOCKTYPE_GATHERING_BREAKING_GATHERTYPE_STR}"
       }
     },
     "VariantRotation": "DoublePipe",
-    "BlockParticleSetId": "Stone",
+    "BlockParticleSetId": "${JSON_BLOCKTYPE_BLOCKPARTICLESETID_STR}",
     "Supporting": {
       "Down": [
         {}
@@ -75,7 +75,7 @@
       "${JSON_TAGS_TYPE_STR}"
     ]${JSON_TAGS_SUBTYPE}${JSON_TAGS_FAMILY}
   },
-  "ItemSoundSetId": "ISS_Blocks_Wood",
+  "ItemSoundSetId": "${JSON_ITEMSOUNDSETID_STR}",
   "IconProperties": {
     "Scale": 0.58823,
     "Rotation": [
