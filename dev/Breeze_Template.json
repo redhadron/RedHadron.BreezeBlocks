@@ -19,7 +19,7 @@
   "Recipe": {
     "Input": [
       {
-        "ResourceTypeId": "${RESOURCE_TYPE_ID_TO_CRAFT}",
+        "ResourceTypeId": "${JSON_RECIPE_INPUT_RESOURCETYPEID_STR}",
         "Quantity": 1
       }
     ],

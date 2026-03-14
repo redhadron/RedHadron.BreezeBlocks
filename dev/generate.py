@@ -21,14 +21,16 @@ DATA_PAGES = [
   [
     ("TEXTURE_NAME_PREFIX", "Wood_"),
     ("FAMILY_LIST", list("Blackwood Darkwood Deadwood Drywood Goldenwood Greenwood Hardwood Lightwood Redwood Softwood Tropicalwood".split(" "))),
-    ("TEXTURE_NAME_SUFFIX", "_Planks"),
+    ("TEXTURE_NAME_SUFFIX_LIST", ["_Planks"]),
+    ("INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME", False),
     ("AUTOMATIC_JSON_ITEMS", [
+      ("JSON_RECIPE_INPUT_RESOURCETYPEID_STR", "Wood_${FAMILY}"),
       ("JSON_TAGS_TYPE_STR", "Wood"),
       ("JSON_TAGS_SUBTYPE", ",\n    \"SubType\": [\n      \"Planks\"\n    ]"),
       ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
       ("JSON_BLOCKTYPE_GATHERING_BREAKING_GATHERTYPE_STR", "Woods"),
       ("JSON_BLOCKTYPE_BLOCKPARTICLESETID_STR", "Wood"),
-      ("JSON_FUEL_QUALITY_LINE", "\"FuelQuality\": 3.0,"),
+      ("JSON_FUEL_QUALITY_LINE", "\"FuelQuality\": 0.75,"),
       ("JSON_BLOCKTYPE_BLOCKSOUNDSETID_STR", "Wood"),
       ("JSON_ITEMSOUNDSETID_STR", "ISS_Blocks_Wood"),
     ]),
@@ -37,8 +39,27 @@ DATA_PAGES = [
   [
     ("TEXTURE_NAME_PREFIX", "Rock_"),
     ("FAMILY_LIST", list("Basalt Quartzite Shale Stone Volcanic".split(" "))),
-    ("TEXTURE_NAME_SUFFIX", "_Brick_Smooth"),
+    ("TEXTURE_NAME_SUFFIX_LIST", ["_Brick_Smooth"]),
+    ("INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME", False),
     ("AUTOMATIC_JSON_ITEMS", [
+      ("JSON_RECIPE_INPUT_RESOURCETYPEID_STR", "Rock_${FAMILY}_Brick"),
+      ("JSON_TAGS_TYPE_STR", "Rock"),
+      ("JSON_TAGS_SUBTYPE", ""),
+      ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
+      ("JSON_BLOCKTYPE_GATHERING_BREAKING_GATHERTYPE_STR", "Rocks"),
+      ("JSON_BLOCKTYPE_BLOCKPARTICLESETID_STR", "Stone"),
+      ("JSON_FUEL_QUALITY_LINE", ""),
+      ("JSON_BLOCKTYPE_BLOCKSOUNDSETID_STR", "Stone"),
+      ("JSON_ITEMSOUNDSETID_STR", "ISS_Blocks_Stone"),
+    ]),
+  ],
+  [
+    ("TEXTURE_NAME_PREFIX", ""),
+    ("FAMILY_LIST", ["Clay"]),
+    ("TEXTURE_NAME_SUFFIX_LIST", list("_"+item for item in "Black Blue Cyan Green Grey Lime Orange Pink Purple Red White Yellow".split())),
+    ("INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME", True), # this flag exists because of clay.
+    ("AUTOMATIC_JSON_ITEMS", [
+      ("JSON_RECIPE_INPUT_RESOURCETYPEID_STR", "Soil_${FAMILY}${TEXTURE_NAME_SUFFIX}"),
       ("JSON_TAGS_TYPE_STR", "Rock"),
       ("JSON_TAGS_SUBTYPE", ""),
       ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
@@ -52,7 +73,7 @@ DATA_PAGES = [
 ]
 #  Aqua Calcite Gold Ledge Lime Marble # these are available as smooth bricks in-game but their textures have irregular names.
 # "Rock": {"LIST": ["Runic_Blue", "Runic_Dark", "Runic_Teal"], "SUFFIX": ""}, # irregular texture names
-SOIL_CLAY_COLORS = "Black Blue Cyan Green Grey Lime Orange Pink Purple Red White Yellow"
+
 # ocean is also like a color of soil clay (non-smooth naming), but I did not include it because it has no smooth counterpart.
 # there is also a regular clay: Soil_Clay.
 # there is also clay brick and ocean clay brick.
@@ -71,6 +92,7 @@ def data_page_get_value(data_page, key):
     raise KeyError(key)
   else:
     raise TypeError(type(key))
+    
 def data_page_has_key(data_page, key):
   assert isinstance(key, str) and isinstance(data_page, list)
   return any(item[0] == key for item in data_page)
@@ -116,50 +138,53 @@ for modelFileName in modelFileNamesList:
   
   for dataPage in DATA_PAGES:
     for family in data_page_get_value(dataPage, "FAMILY_LIST"):
-      unpatchedTextureFileBaseName = f"{data_page_get_value(dataPage, 'TEXTURE_NAME_PREFIX')}{family}{data_page_get_value(dataPage, 'TEXTURE_NAME_SUFFIX')}"
-      textureFileName = patch_texture_name(unpatchedTextureFileBaseName+".png")
-      
-      assetInfo = {"full_name": data_page_get_value(dataPage, ("AUTOMATIC_JSON_ITEMS", "JSON_TAGS_TYPE_STR")) + "_" + family + "_" + shapeNameWithoutDepth}
-      assetInfo["output_file_path"] = OUTPUT_FOLDER_PATH + SEP + assetInfo["full_name"] + ".json"
-      assetInfo["icon_file_name"] = assetInfo["full_name"] + ".png"
-      assetInfo["icon_file_path"] = ICON_FOLDER_PATH + SEP + assetInfo["icon_file_name"]
-      
-      assetContents = {
-        "ICON_PATH_IN_MOD": "Icons/ItemsGenerated/" + assetInfo["icon_file_name"],
-        "BLOCK_SET": unpatchedTextureFileBaseName,
-        "TEXTURE_PATH_IN_MOD": f"BlockTextures/{textureFileName}",
-        "RESOURCE_TYPE_ID_TO_CRAFT": f"{data_page_get_value(dataPage, ('AUTOMATIC_JSON_ITEMS', 'JSON_TAGS_TYPE_STR'))}_{family}",
-      }
-      
-      with Image.open(MODEL_FOLDER_PATH + SEP + iconMaskFileName) as thumbnailMaskImage:
-        print(thumbnailMaskImage.size)
-        with Image.open(HYTALE_BLOCKTEXTURES_PATH + SEP + textureFileName) as thumbnailTextureImage:
-          print(thumbnailTextureImage.size)
-          thumbnailResultImage = ImageChops.multiply(thumbnailMaskImage.convert("RGB"), thumbnailTextureImage.convert("RGB"))
-          thumbnailResultImage.save(assetInfo["icon_file_path"])
-          
-          
-      outputFilePath = assetInfo["output_file_path"]
-      if os.path.exists(outputFilePath):
-        print(f"replacing {outputFilePath}")
-        os.remove(outputFilePath)
-      else:
-        print(f"creating {outputFilePath}")
+      for textureNameSuffix in data_page_get_value(dataPage, "TEXTURE_NAME_SUFFIX_LIST"):
+        unpatchedTextureFileBaseName = f"{data_page_get_value(dataPage, 'TEXTURE_NAME_PREFIX')}{family}{textureNameSuffix}"
+        textureFileName = patch_texture_name(unpatchedTextureFileBaseName+".png")
         
-      with open(outputFilePath, "w") as outputFile:
-
-        for currentLine in templateFileLines:
-          outputLine = currentLine.replace("${FULL_NAME}", assetInfo["full_name"]
-            ).replace("${MODEL_BASE_NAME}", shapeNameWithDepth
-            ).replace("${ICON_PATH_IN_MOD}", assetContents["ICON_PATH_IN_MOD"]
-            ).replace("${SET}", assetContents["BLOCK_SET"]
-            ).replace("${RESOURCE_TYPE_ID_TO_CRAFT}", assetContents["RESOURCE_TYPE_ID_TO_CRAFT"]
-            ).replace("${TEXTURE_PATH_IN_MOD}", assetContents["TEXTURE_PATH_IN_MOD"]
-            )
-          for jsonOld, jsonNew in data_page_get_value(dataPage, "AUTOMATIC_JSON_ITEMS"):
-            outputLine = outputLine.replace("${" + jsonOld + "}", jsonNew)
-          outputLine = outputLine.replace("${FAMILY}", family) # must happen after json_ items
+        assetInfo = {"full_name": data_page_get_value(dataPage, ("AUTOMATIC_JSON_ITEMS", "JSON_TAGS_TYPE_STR")) + "_" + family + (textureNameSuffix if data_page_get_value(dataPage, "INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME") else "") + "_" + shapeNameWithoutDepth}
+        assetInfo["output_file_path"] = OUTPUT_FOLDER_PATH + SEP + assetInfo["full_name"] + ".json"
+        assetInfo["icon_file_name"] = assetInfo["full_name"] + ".png"
+        assetInfo["icon_file_path"] = ICON_FOLDER_PATH + SEP + assetInfo["icon_file_name"]
+        
+        assetContents = {
+          "ICON_PATH_IN_MOD": "Icons/ItemsGenerated/" + assetInfo["icon_file_name"],
+          "BLOCK_SET": unpatchedTextureFileBaseName,
+          "TEXTURE_PATH_IN_MOD": f"BlockTextures/{textureFileName}",
+          # "RESOURCE_TYPE_ID_TO_CRAFT": f"{data_page_get_value(dataPage, ('AUTOMATIC_JSON_ITEMS', 'JSON_TAGS_TYPE_STR'))}_{family}",
+        }
+        
+        with Image.open(MODEL_FOLDER_PATH + SEP + iconMaskFileName) as thumbnailMaskImage:
+          print(thumbnailMaskImage.size)
+          with Image.open(HYTALE_BLOCKTEXTURES_PATH + SEP + textureFileName) as thumbnailTextureImage:
+            print(thumbnailTextureImage.size)
+            thumbnailResultImage = ImageChops.multiply(thumbnailMaskImage.convert("RGB"), thumbnailTextureImage.convert("RGB"))
+            thumbnailResultImage.save(assetInfo["icon_file_path"])
+            
+            
+        outputFilePath = assetInfo["output_file_path"]
+        if os.path.exists(outputFilePath):
+          print(f"replacing {outputFilePath}")
+          os.remove(outputFilePath)
+        else:
+          print(f"creating {outputFilePath}")
           
-          assert "${" not in outputLine, outputLine
-          outputFile.write(outputLine)
+        with open(outputFilePath, "w") as outputFile:
+
+          for currentLine in templateFileLines:
+            outputLine = currentLine.replace("${FULL_NAME}", assetInfo["full_name"]
+              ).replace("${MODEL_BASE_NAME}", shapeNameWithDepth
+              ).replace("${ICON_PATH_IN_MOD}", assetContents["ICON_PATH_IN_MOD"]
+              ).replace("${SET}", assetContents["BLOCK_SET"]
+              ).replace("${TEXTURE_PATH_IN_MOD}", assetContents["TEXTURE_PATH_IN_MOD"]
+              )
+            for jsonOld, jsonNew in data_page_get_value(dataPage, "AUTOMATIC_JSON_ITEMS"):
+              outputLine = outputLine.replace("${" + jsonOld + "}", jsonNew)
+            # the following must happen after automatic json items because they are used inside those items:
+            outputLine = outputLine.replace("${FAMILY}", family)
+            outputLine = outputLine.replace("${TEXTURE_NAME_SUFFIX}", textureNameSuffix)
+            
+            assert "${" not in outputLine, outputLine
+            assert "__" not in outputLine, outputLine # this probably should never happen.
+            outputFile.write(outputLine)
       

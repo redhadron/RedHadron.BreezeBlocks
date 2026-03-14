@@ -57,9 +57,7 @@ the sound set for Rock is called "Stone"
 
 
 Roadmap:
-add directory tree to the top of renamer
 add CLI args to renamer
-rename thicknesses from meter fractions to pixel counts.
 finalize asset names.
 publish mod.
 fix top textures.
@@ -89,3 +87,5 @@ upgrade renamer.py to optionally edit the content of asset definition files (or 
 upgrade generate.py to support all woods.
 make a thumbnail generation system.
 upgrade generate.py to support stone
+add directory tree to the top of renamer
+rename thicknesses from meter fractions to pixel counts.
