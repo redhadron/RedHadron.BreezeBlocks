@@ -51,6 +51,7 @@ notes that are helpful for planning:
   resource types may be defined at the bottom of an asset json.
   the sound set for Rock is called "Stone"
   As long as the mod continues to provide asset jsons for deprecated block IDs, it can also specify in those jsons that the deprecated blocks drop the newer blocks.
+  on windows, The "date created" tag persists when a file is deleted and another one with the same name is created, which makes it not very useful.
 
 ==============================================================================
 
@@ -59,11 +60,12 @@ Roadmap:
 thicken G2x2 Nope.
 thicken SlowNeckNeckSlow.
 renameGx2T2pHead to G2x2T2pL1pHead.
-add CLI args to renamer.
-rework atlas organize window so that it only returns when it meets an objective which can be specified as an argument. Add keyboard shortcuts to link, unlink, and delete.
 finalize asset names.
 publish mod.
 fix top textures.
+add default values to renamer.
+add command line args to renamer.
+rework atlas organize window so that it only returns when it meets an objective which can be specified as an argument. Add keyboard shortcuts to link, unlink, and delete. Add command line arg for interactive mode.
 create a particle color system.
   3d median in perceptual color space.
 upgrade thumbnail generator to invert background when dark textures are detected.

@@ -1,6 +1,7 @@
 import os
 # import shutil
 import itertools
+import pathlib
 from PIL import Image, ImageChops
 
 """
@@ -11,7 +12,7 @@ replace readlines with read
 
 
 
-HYTALE_ASSETS_PATH = "E:\Hytale Assets 20260221" # path to a folder in which you have put the contents of Assets.zip after extracting them.
+HYTALE_ASSETS_PATH = "E:\Hytale Assets 20260221" # path to a folder in which you have put the contents of Assets.zip after decompressing.
 
 
 SEP = os.sep
@@ -98,14 +99,20 @@ def data_page_has_key(data_page, key):
   return any(item[0] == key for item in data_page)
 
 MOD_PATH = SEP.join([os.getcwd(), ".."])
+
 MODEL_FOLDER_PATH = SEP.join([MOD_PATH, "Common", "Blocks", "Breeze"])
 assert os.path.exists(MODEL_FOLDER_PATH)
+
 OUTPUT_FOLDER_PATH = SEP.join([MOD_PATH, "Server", "Item", "Items"])
 assert os.path.exists(OUTPUT_FOLDER_PATH)
+
 ICON_FOLDER_PATH = SEP.join([MOD_PATH, "Common", "Icons", "ItemsGenerated"])
 assert os.path.exists(ICON_FOLDER_PATH)
+
 TEMPLATE_FILE_PATH = os.getcwd() + SEP + "Breeze_Template.json"
 assert os.path.exists(TEMPLATE_FILE_PATH)
+
+
 
 
 
@@ -116,11 +123,23 @@ def remove_suffix(a, b):
 def patch_texture_name(input_string):
   return input_string.replace("Wood_Softwood_Planks.png", "Wood_Softwood_Planks_Top.png").replace("Wood_Greenwood_Planks.png", "Wood_Green.png") # .replace("Rock_Aqua_Brick_Smooth.png"
   
+def clear_folder(folder_path, expected_extension):
+  for nameToDelete in os.listdir(folder_path):
+    pathToDelete = folder_path + SEP + nameToDelete
+    assert "RedHadron.BreezeBlocks" in str(pathlib.Path(pathToDelete).resolve())
+    assert os.path.exists(pathToDelete)
+    assert pathToDelete.endswith(expected_extension)
+    assert not os.path.isdir(pathToDelete)
+    os.remove(pathToDelete)
   
+  
+  
+  
+# Load template file \/
 
 templateFileLines = []
 with open(TEMPLATE_FILE_PATH, "r") as templateFile:
-  print("opened template file.")
+  # print("opened template file.")
   currentLine = templateFile.readline()
   while len(currentLine) > 0:
     templateFileLines.append(currentLine)
@@ -128,10 +147,19 @@ with open(TEMPLATE_FILE_PATH, "r") as templateFile:
 if len(templateFileLines) == 0:
   raise ValueError("empty template file?? failed.")
   
+
+
+# clear assets folder \/
+
+clear_folder(OUTPUT_FOLDER_PATH, ".json")
+clear_folder(ICON_FOLDER_PATH, ".png")
+
+
+
+
+# generate assets \/  
   
-modelFileNamesList = list(dirEntry.name for dirEntry in os.scandir(MODEL_FOLDER_PATH) if dirEntry.name.endswith(".blockymodel"))
-  
-for modelFileName in modelFileNamesList:
+for modelFileName in (name for name in os.listdir(MODEL_FOLDER_PATH) if name.endswith(".blockymodel")):
   shapeNameWithDepth = remove_suffix(modelFileName, ".blockymodel")
   shapeNameWithoutDepth = remove_suffix(shapeNameWithDepth, "_Db1000")
   iconMaskFileName = shapeNameWithoutDepth + ".png"
@@ -155,22 +183,21 @@ for modelFileName in modelFileNamesList:
         }
         
         with Image.open(MODEL_FOLDER_PATH + SEP + iconMaskFileName) as thumbnailMaskImage:
-          print(thumbnailMaskImage.size)
           with Image.open(HYTALE_BLOCKTEXTURES_PATH + SEP + textureFileName) as thumbnailTextureImage:
-            print(thumbnailTextureImage.size)
+            assert thumbnailMaskImage.size == thumbnailTextureImage.size
             thumbnailResultImage = ImageChops.multiply(thumbnailMaskImage.convert("RGB"), thumbnailTextureImage.convert("RGB"))
             thumbnailResultImage.save(assetInfo["icon_file_path"])
             
             
         outputFilePath = assetInfo["output_file_path"]
         if os.path.exists(outputFilePath):
-          print(f"replacing {outputFilePath}")
+          # print(f"replacing {outputFilePath}")
           os.remove(outputFilePath)
         else:
-          print(f"creating {outputFilePath}")
+          # print(f"creating {outputFilePath}")
+          pass
           
         with open(outputFilePath, "w") as outputFile:
-
           for currentLine in templateFileLines:
             outputLine = currentLine.replace("${FULL_NAME}", assetInfo["full_name"]
               ).replace("${MODEL_BASE_NAME}", shapeNameWithDepth
@@ -180,11 +207,12 @@ for modelFileName in modelFileNamesList:
               )
             for jsonOld, jsonNew in data_page_get_value(dataPage, "AUTOMATIC_JSON_ITEMS"):
               outputLine = outputLine.replace("${" + jsonOld + "}", jsonNew)
+              
             # the following must happen after automatic json items because they are used inside those items:
             outputLine = outputLine.replace("${FAMILY}", family)
             outputLine = outputLine.replace("${TEXTURE_NAME_SUFFIX}", textureNameSuffix)
             
             assert "${" not in outputLine, outputLine
-            assert "__" not in outputLine, outputLine # this probably should never happen.
+            assert "__" not in outputLine, outputLine # because this probably should never happen.
             outputFile.write(outputLine)
       
