@@ -1,23 +1,27 @@
 import os
 import directory_tree
 
+
+
+def pretty_input(prompt, *, default):
+  assert isinstance(prompt, str) and isinstance(default, str)
+  print("\ndefault value: " + default)
+  result = input(prompt)
+  return result if len(result) > 0 else default
+
+
 os.chdir("..")
 directory_tree.DisplayTree(onlyDirs=True, ignoreList=["*.ignore*"]) # https://pypi.org/project/directory-tree/
 
 print("\nmultiple folders can be specified with commas between them")
 
-foldersOfNamesToChange = input("path of folder in which to perform edits> ").split(",")
+foldersOfNamesToChange = pretty_input("path of folder in which to perform edits> ", default=".\\Common\\Blocks\\Breeze,.\\Common\\Icons\\ItemsGenerated,.\\Server\\Item\\Items").split(",")
 assert all(os.path.exists(name) for name in foldersOfNamesToChange)
 
-foldersOfContentsToEditStr = input("path of folder in which to edit file contents (optional)> ")
-foldersOfContentsToEdit = foldersOfContentsToEditStr.split(",") if len(foldersOfContentsToEditStr) > 0 else []
+foldersOfContentsToEdit = pretty_input("path of folder in which to edit file contents> ", default=".\\Server\\Item\\Items,.\\Common\\Blocks\\Breeze").split(",")
 assert all(os.path.exists(name) for name in foldersOfContentsToEdit)
 
-extensionsToEdit = input("extensions to edit (default .json,.txt)> ")
-if extensionsToEdit == "":
-  extensionsToEdit = [".json", ".txt"]
-else:
-  extensionsToEdit = extensionsToEdit.split(",")
+extensionsToEdit = pretty_input("extensions to edit> ", default=".json,.txt").split(",")
 assert all(item.startswith(".") and len(item)>1 for item in extensionsToEdit)
 
 changesStr = input("semicolon-separated pairs of comma-separated values> ")

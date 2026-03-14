@@ -57,6 +57,7 @@ notes that are helpful for planning:
 
 
 Roadmap:
+create mismatch.py
 thicken G2x2 Nope.
 thicken SlowNeckNeckSlow.
 renameGx2T2pHead to G2x2T2pL1pHead.
@@ -68,7 +69,7 @@ add command line args to renamer.
 rework atlas organize window so that it only returns when it meets an objective which can be specified as an argument. Add keyboard shortcuts to link, unlink, and delete. Add command line arg for interactive mode.
 create a particle color system.
   3d median in perceptual color space.
-upgrade thumbnail generator to invert background when dark textures are detected.
+  upgrade thumbnail generator to invert background when dark textures are detected.
 Make system for changing the depth of breeze blocks.
 finish creating all models from designs canvas.
 improve texture shading on all models.

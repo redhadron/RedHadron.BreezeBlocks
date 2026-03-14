@@ -11,7 +11,7 @@
         "(0, 4)": "Breeze_G1x1T8pLake.png",
         "(0, 5)": "Breeze_G1x1T8pDark.png",
         "(0, 6)": "Breeze_G1x1T8pDice.png",
-        "(0, 7)": "Breeze_G2x2T4pNope.png",
+        "(0, 7)": "Breeze_G2x2F4pD2pNope.png",
         "(0, 8)": "Breeze_G2x2F4pD2pSlowNeckNeckSlow.png",
         "(0, 9)": "Breeze_G4x4T2pVoid.png",
         "(1, 0)": "Breeze_G1x1T8pVoid.png",
@@ -21,7 +21,6 @@
         "(2, 0)": "Breeze_G1x1T16pVoid.png",
         "(3, 0)": "Breeze_G2x2T4pVoid.png",
         "(4, 0)": "Breeze_G2x2T8pVoid.png",
-        "(4, 11)": "aquestionmark.png"
     },
     "tile_size": [
         32,
