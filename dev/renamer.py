@@ -1,5 +1,7 @@
 import os
 import directory_tree
+import sys
+import subprocess
 
 
 
@@ -9,16 +11,36 @@ def pretty_input(prompt, *, default):
   result = input(prompt)
   return result if len(result) > 0 else default
 
+"""
+def list_with_one_value_removed(input_list, value_to_remove):
+  result = [item for item in input_list if item != value_to_remove]
+  assert len(result) == len(input_list) - 1
+  return result
+"""
+def remove_one_value_from_list(input_list, value_to_remove):
+  assert hasattr(input_list, "__delitem__")
+  startingLength = len(input_list)
+  for i, value in enumerate(input_list):
+    if value == value_to_remove:
+      del input_list[i]
+  assert len(input_list) == startingLength - 1
+
 
 os.chdir("..")
 directory_tree.DisplayTree(onlyDirs=True, ignoreList=["*.ignore*"]) # https://pypi.org/project/directory-tree/
 
+
+MODEL_FOLDER = ".\\Common\\Blocks\\Breeze"
+ICON_FOLDER = ".\\Common\\Icons\\ItemsGenerated"
+ITEM_FOLDER = ".\\Server\\Item\\Items"
+GENERATE_SCRIPT_PATH = ".\\dev\\generate.py"
+
 print("\nmultiple folders can be specified with commas between them")
 
-foldersOfNamesToChange = pretty_input("path of folder in which to perform edits> ", default=".\\Common\\Blocks\\Breeze,.\\Common\\Icons\\ItemsGenerated,.\\Server\\Item\\Items").split(",")
+foldersOfNamesToChange = pretty_input("path of folder in which to perform edits> ", default=MODEL_FOLDER + "," + ICON_FOLDER + "," + ITEM_FOLDER).split(",")
 assert all(os.path.exists(name) for name in foldersOfNamesToChange)
 
-foldersOfContentsToEdit = pretty_input("path of folder in which to edit file contents> ", default=".\\Server\\Item\\Items,.\\Common\\Blocks\\Breeze").split(",")
+foldersOfContentsToEdit = pretty_input("path of folder in which to edit file contents> ", default=ITEM_FOLDER "," + MODEL_FOLDER).split(",")
 assert all(os.path.exists(name) for name in foldersOfContentsToEdit)
 
 extensionsToEdit = pretty_input("extensions to edit> ", default=".json,.txt").split(",")
@@ -26,7 +48,13 @@ assert all(item.startswith(".") and len(item)>1 for item in extensionsToEdit)
 
 changesStr = input("semicolon-separated pairs of comma-separated values> ")
 
+regenerateAssets = {"y": True, "": True, "n": False}[input("regenerate assets Y/n> ").lower()]
 
+if regenerateAssets:
+  remove_one_value_from_list(foldersOfContentsToEdit, ITEM_FOLDER)
+  # at the end of this file, GENERATE_SCRIPT_PATH will run in a subprocess. This means that all items in the item folder will be deleted and regenerated anyway, so there is no point in editing them first.
+  
+  
 
 def bisect_at_infix(string, infix):
   assert string.count(infix) == 1
@@ -70,3 +98,8 @@ for folderOfContentsToEdit in foldersOfContentsToEdit:
         currentFile.seek(0)
         currentFile.write(text)
         currentFile.truncate()
+
+
+
+if regenerateAssets: # (BreezeBlocks mod-specific)
+  subprocess.run([sys.executable, GENERATE_SCRIPT_PATH])
