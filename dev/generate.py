@@ -13,9 +13,18 @@ replace readlines with read
 
 
 
-def remove_suffix(a, b):
-  assert a.endswith(b)
-  return a[:-len(b)]
+  
+def remove_suffix(string, suffix):
+  assert len(suffix) <= len(string)
+  assert len(suffix) > 0
+  assert string.endswith(suffix)
+  return string[:-len(suffix)]
+  
+def remove_prefix(string, prefix):
+  assert len(prefix) <= len(string)
+  assert len(prefix) > 0
+  assert string.startswith(prefix)
+  return string[len(prefix):]
 
 
 # ----- helper functions for working with data pages -----
@@ -83,7 +92,11 @@ def patch_wood_texture_name(input_string):
 def select_best_texture_name_by_cost(required_substring, substring_costs):
   assert isinstance(required_substring, str) and isinstance(substring_costs, dict)
   costOfName = lambda inputName: sum(inputName.count(substringValue)*substringCost for substringValue, substringCost in substring_costs.items())*1024 + len(inputName)
-  return min((name for name in HYTALE_BLOCKTEXTURE_FILE_NAMES if required_substring in name), key=costOfName)
+  try:
+    bestName = min((name for name in HYTALE_BLOCKTEXTURE_FILE_NAMES if required_substring in name), key=costOfName)
+  except ValueError:
+    raise ValueError(f"search failed with {required_substring=}")
+  return bestName
 
 def select_best_texture_file_name(*, base_name):
   assert isinstance(base_name, str), type(base_name)
@@ -92,6 +105,15 @@ def select_best_texture_file_name(*, base_name):
     return patch_wood_texture_name(base_name + ".png")
   elif base_name.startswith("Rock_"):
     assert base_name.endswith("_Brick") or base_name.endswith("_Brick_Smooth"), base_name
+    # print(base_name)
+    for oldSubstr, newSubstr in ROCK_BRICK_TEXTURE_NAME_SUBSTRING_REPLACEMENTS.items():
+      # this must happen first because "peachstone" (And maybe similar things) are detected for the the Rock_ prefix removal logic
+      base_name = base_name.replace(f"_{oldSubstr}_", f"_{newSubstr}_")
+    for rockType in ROCK_BRICK_TEXTURE_NAME_NO_ROCK_PREFIX_REQUIRED:
+      if base_name.startswith(f"Rock_{rockType}_"):
+        base_name = rockType + "_" + remove_prefix(base_name, f"Rock_{rockType}_")
+    # print(base_name)
+    # print()
     return select_best_texture_name_by_cost(base_name, BRICK_TEXTURE_NAME_SUBSTRING_COSTS)
   elif base_name.startswith("Clay_"):
     return base_name + ".png"
@@ -106,11 +128,15 @@ def select_best_texture_file_name(*, base_name):
 
 CLAY_COLORS = "Black Blue Cyan Green Grey Lime Orange Pink Purple Red White Yellow".split()
 
-ROCK_BRICK = "Aqua Basalt Calcite Gold Ledge Lime Marble Peach Quartzite Runic_Blue Runic Runic_Teal Runic_Dark Sandstone Sandstone_Red Sandstone_White Shale Stone Volcanic".split(" ")
+ROCK_BRICK_NO_TEXTURE_NAME_PROCESSING_REQUIRED = list("Basalt Quartzite Shale Stone Volcanic".split(" "))
+ROCK_RUNIC_BRICK = "Runic_Blue Runic Runic_Teal Runic_Dark".split(" ") # the texture names on these are so bad that I am boycotting them.
+ROCK_BRICK = "Aqua Basalt Calcite Gold Ledge Lime Marble Peach Quartzite Sandstone Sandstone_Red Sandstone_White Shale Stone Volcanic".split(" ")
 # in-game ID = Rock_(value)_Brick
 # in-game name = ROCK_BRICK_NAME_UPGRADES[value] + " Brick"
 
-ROCK_BRICK_NAME_UPGRADES = {"Ledge": "Ledgestone", "Lime":"Limestone", "Peach":"Peachstone", "Runic_Blue": "Blue Runic", "Runic_Teal": "Dark Blue Runic", "Runic_Dark": "Dark Runic", "Sandstone_Red":"Red Sandstone", "Sandstone_White": "White Sandstone"}
+ROCK_BRICK_TEXTURE_NAME_SUBSTRING_REPLACEMENTS = {"Ledge": "Ledgestone", "Lime":"Limestone", "Peach":"Peachstone"}
+ROCK_BRICK_TEXTURE_NAME_NO_ROCK_PREFIX_REQUIRED = ["Peachstone", "Calcite", "Runic_Brick_Dark", "Runic_Brick_Dark_Blue"]
+ROCK_BRICK_PURE_NAME_UPGRADES = {"Runic_Blue": "Blue Runic", "Runic_Teal": "Dark Blue Runic", "Runic_Dark": "Dark Runic", "Sandstone_Red":"Red Sandstone", "Sandstone_White": "White Sandstone"}
 """
 ST = "SideTop"
 EM = ""
@@ -156,8 +182,8 @@ DATA_PAGES = [
   ],
   [
     ("TEXTURE_NAME_PREFIX", "Rock_"),
-    ("FAMILY_LIST", list("Basalt Quartzite Shale Stone Volcanic".split(" "))),
-    ("TEXTURE_NAME_SUFFIX_LIST", ["_Brick_Smooth"]),
+    ("FAMILY_LIST", ROCK_BRICK),
+    ("TEXTURE_NAME_SUFFIX_LIST", ["_Brick"]),
     ("INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME", False),
     ("AUTOMATIC_JSON_ITEMS", [
       ("JSON_RECIPE_INPUT_RESOURCETYPEID_STR", "Rock_${FAMILY}_Brick"),
@@ -171,6 +197,8 @@ DATA_PAGES = [
       ("JSON_ITEMSOUNDSETID_STR", "ISS_Blocks_Stone"),
     ]),
   ],
+]
+PROTOTYPE_DATA_PAGES = [
   [
     ("TEXTURE_NAME_PREFIX", ""),
     ("FAMILY_LIST", ["Clay"]),
