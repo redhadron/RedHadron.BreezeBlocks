@@ -13,11 +13,65 @@ replace readlines with read
 
 
 HYTALE_ASSETS_PATH = "E:\Hytale Assets 20260221" # path to a folder in which you have put the contents of Assets.zip after decompressing.
-
+assert pathlib.Path(HYTALE_ASSETS_PATH).isdir()
 
 SEP = os.sep
 
 HYTALE_BLOCKTEXTURES_PATH = HYTALE_ASSETS_PATH + SEP + "Common" + SEP + "BlockTextures"
+assert pathlib.Path(HYTALE_BLOCKTEXTURES_PATH).isdir()
+
+_unspecified_default = object()
+def data_page_get_value(data_page, key, default=_unspecified_default):
+  assert isinstance(data_page, list)
+  if isinstance(key, tuple):
+    innerItem = data_page_get_value(data_page, key[0], default=default)
+    if len(key) > 1:
+      return data_page_get_value(innerItem, key[1:], default=default)
+    else:
+      return innerItem
+  elif isinstance(key, str):
+    for item in data_page:
+      assert len(item) == 2 and isinstance(item[0], str)
+      if item[0] == key:
+        return item[1]
+    if default is _unspecified_default:
+      raise KeyError(key)
+    else:
+      return default
+  else:
+    raise TypeError(type(key))
+    
+def data_page_has_key(data_page, key):
+  assert isinstance(key, (str, tuple))
+  if isinstance(key, tuple):
+    raise NotImplementedError("tuple keys presence test")
+  assert isinstance(data_page, list)
+  return any(item[0] == key for item in data_page)
+
+
+
+
+
+CLAY_COLORS = "Black Blue Cyan Green Grey Lime Orange Pink Purple Red White Yellow".split()
+
+ROCK_BRICK = "Aqua Basalt Calcite Gold Ledge Lime Marble Peach Quartzite Runic_Blue Runic Runic_Teal Runic_Dark Sandstone Sandstone_Red Sandstone_White Shale Stone Volcanic".split(" ")
+# in-game ID = Rock_(value)_Brick
+# in-game name = ROCK_BRICK_NAME_UPGRADES[value] + " Brick"
+
+ROCK_BRICK_NAME_UPGRADES = {"Ledge": "Ledgestone", "Lime":"Limestone", "Peach":"Peachstone", "Runic_Blue": "Blue Runic", "Runic_Teal": "Dark Blue Runic", "Runic_Dark": "Dark Runic", "Sandstone_Red":"Red Sandstone", "Sandstone_White": "White Sandstone"}
+"""
+ST = "SideTop"
+EM = ""
+ROCK_BRICK_TEXTURE_NAME_FORMAT {"Aqua":ST, "Basalt":EM,
+"""
+# gold brick only has a side texture
+BRICK_TEXTURE_SUBSTRING_COSTS = {"Cobble": 100, "Corner": 1000, "Ornate": 150, "Decorative": 175, "Top":20, "Side":21, "0":1, "1":2, "2":3, "3":4, "4":5, "5":6, "6":7, "7":8, "8":9, "9":10} # the texture with the lowest score will be chosen when an exact match to the predicted texture name is not found.
+
+PROTOTYPE_ROCK_BRICKS = "Concrete".split(" ")
+SOIL_BRICK = "Hive Hive_Corrupted Clay Clay_Ocean Snow"
+SOIL_BRICK_NAME_UPGRADES = {"Hive_Corrupted": "Corrupted Hive", "Clay_Ocean": "Ocean Clay"}
+#  Aqua Calcite Gold Ledge Lime Marble # these are available as smooth bricks in-game but their textures have irregular names.
+# "Rock": {"LIST": ["Runic_Blue", "Runic_Dark", "Runic_Teal"], "SUFFIX": ""}, # irregular texture names
 DATA_PAGES = [
   [
     ("TEXTURE_NAME_PREFIX", "Wood_"),
@@ -57,7 +111,7 @@ DATA_PAGES = [
   [
     ("TEXTURE_NAME_PREFIX", ""),
     ("FAMILY_LIST", ["Clay"]),
-    ("TEXTURE_NAME_SUFFIX_LIST", list("_"+item for item in "Black Blue Cyan Green Grey Lime Orange Pink Purple Red White Yellow".split())),
+    ("TEXTURE_NAME_SUFFIX_LIST", list("_"+item for item in CLAY_COLORS)),
     ("INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME", True), # this flag exists because of clay.
     ("AUTOMATIC_JSON_ITEMS", [
       ("JSON_RECIPE_INPUT_RESOURCETYPEID_STR", "Soil_${FAMILY}${TEXTURE_NAME_SUFFIX}"),
@@ -72,31 +126,14 @@ DATA_PAGES = [
     ]),
   ],
 ]
-#  Aqua Calcite Gold Ledge Lime Marble # these are available as smooth bricks in-game but their textures have irregular names.
-# "Rock": {"LIST": ["Runic_Blue", "Runic_Dark", "Runic_Teal"], "SUFFIX": ""}, # irregular texture names
 
-# ocean is also like a color of soil clay (non-smooth naming), but I did not include it because it has no smooth counterpart.
-# there is also a regular clay: Soil_Clay.
-# there is also clay brick and ocean clay brick.
-def data_page_get_value(data_page, key):
-  assert isinstance(data_page, list)
-  if isinstance(key, tuple):
-    if len(key) > 1:
-      return data_page_get_value(data_page_get_value(data_page, key[0]), key[1:])
-    else:
-      return data_page_get_value(data_page, key[0])
-  elif isinstance(key, str):
-    for item in data_page:
-      assert len(item) == 2 and isinstance(item[0], str)
-      if item[0] == key:
-        return item[1]
-    raise KeyError(key)
-  else:
-    raise TypeError(type(key))
-    
-def data_page_has_key(data_page, key):
-  assert isinstance(key, str) and isinstance(data_page, list)
-  return any(item[0] == key for item in data_page)
+
+
+
+
+
+
+
 
 MOD_PATH = SEP.join([os.getcwd(), ".."])
 
