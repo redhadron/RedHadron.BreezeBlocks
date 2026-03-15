@@ -12,13 +12,14 @@ replace readlines with read
 
 
 
-HYTALE_ASSETS_PATH = "E:\Hytale Assets 20260221" # path to a folder in which you have put the contents of Assets.zip after decompressing.
-assert pathlib.Path(HYTALE_ASSETS_PATH).isdir()
 
-SEP = os.sep
+def remove_suffix(a, b):
+  assert a.endswith(b)
+  return a[:-len(b)]
 
-HYTALE_BLOCKTEXTURES_PATH = HYTALE_ASSETS_PATH + SEP + "Common" + SEP + "BlockTextures"
-assert pathlib.Path(HYTALE_BLOCKTEXTURES_PATH).isdir()
+
+# ----- helper functions for working with data pages -----
+# data pages are lists of tuples. They are used instead of dictionaries to preserve order and to allow duplicate entries.
 
 _unspecified_default = object()
 def data_page_get_value(data_page, key, default=_unspecified_default):
@@ -52,6 +53,57 @@ def data_page_has_key(data_page, key):
 
 
 
+
+# ----- Hytale path constants -----
+
+HYTALE_ASSETS_PATH = "E:\Hytale Assets 20260221" # path to a folder in which you have put the contents of Assets.zip after decompressing.
+assert os.path.isdir(HYTALE_ASSETS_PATH)
+
+SEP = os.sep
+
+HYTALE_BLOCKTEXTURES_PATH = HYTALE_ASSETS_PATH + SEP + "Common" + SEP + "BlockTextures"
+assert os.path.isdir(HYTALE_BLOCKTEXTURES_PATH)
+
+HYTALE_BLOCKTEXTURE_FILE_NAMES = [item for item in os.listdir(HYTALE_BLOCKTEXTURES_PATH) if item.endswith(".png")]
+assert len(HYTALE_BLOCKTEXTURE_FILE_NAMES) > 600
+assert "Bone_Side.png" in HYTALE_BLOCKTEXTURE_FILE_NAMES
+
+
+
+
+
+
+# ----- texture file selection tools -----
+
+BRICK_TEXTURE_NAME_SUBSTRING_COSTS = {"Cobble": 100, "Corner": 1000, "Ornate": 150, "Decorative": 175, "Top":20, "Side":21, "0":1, "1":2, "2":3, "3":4, "4":5, "5":6, "6":7, "7":8, "8":9, "9":10} # the texture with the lowest score will be chosen when an exact match to the predicted texture name is not found.
+
+def patch_wood_texture_name(input_string):
+  return input_string.replace("Wood_Softwood_Planks.png", "Wood_Softwood_Planks_Top.png").replace("Wood_Greenwood_Planks.png", "Wood_Green.png")
+
+def select_best_texture_name_by_cost(required_substring, substring_costs):
+  assert isinstance(required_substring, str) and isinstance(substring_costs, dict)
+  costOfName = lambda inputName: sum(inputName.count(substringValue)*substringCost for substringValue, substringCost in substring_costs.items())*1024 + len(inputName)
+  return min((name for name in HYTALE_BLOCKTEXTURE_FILE_NAMES if required_substring in name), key=costOfName)
+
+def select_best_texture_file_name(*, base_name):
+  assert isinstance(base_name, str), type(base_name)
+  # assert ideal_name.endswith(".png")
+  if base_name.startswith("Wood_"):
+    return patch_wood_texture_name(base_name + ".png")
+  elif base_name.startswith("Rock_"):
+    assert base_name.endswith("_Brick") or base_name.endswith("_Brick_Smooth"), base_name
+    return select_best_texture_name_by_cost(base_name, BRICK_TEXTURE_NAME_SUBSTRING_COSTS)
+  elif base_name.startswith("Clay_"):
+    return base_name + ".png"
+  elif base_name.startswith("Soil_Clay_"):
+    raise ValueError("Clay textures do not begin with the word Soil in Hytale: bad base name: " + base_name)
+  else:
+    raise NotImplementedError("unimplemented or incorrect prefix for: " + base_name)
+
+
+
+# ----- Hytale game data constants -----
+
 CLAY_COLORS = "Black Blue Cyan Green Grey Lime Orange Pink Purple Red White Yellow".split()
 
 ROCK_BRICK = "Aqua Basalt Calcite Gold Ledge Lime Marble Peach Quartzite Runic_Blue Runic Runic_Teal Runic_Dark Sandstone Sandstone_Red Sandstone_White Shale Stone Volcanic".split(" ")
@@ -65,19 +117,30 @@ EM = ""
 ROCK_BRICK_TEXTURE_NAME_FORMAT {"Aqua":ST, "Basalt":EM,
 """
 # gold brick only has a side texture
-BRICK_TEXTURE_SUBSTRING_COSTS = {"Cobble": 100, "Corner": 1000, "Ornate": 150, "Decorative": 175, "Top":20, "Side":21, "0":1, "1":2, "2":3, "3":4, "4":5, "5":6, "6":7, "7":8, "8":9, "9":10} # the texture with the lowest score will be chosen when an exact match to the predicted texture name is not found.
 
 PROTOTYPE_ROCK_BRICKS = "Concrete".split(" ")
 SOIL_BRICK = "Hive Hive_Corrupted Clay Clay_Ocean Snow"
 SOIL_BRICK_NAME_UPGRADES = {"Hive_Corrupted": "Corrupted Hive", "Clay_Ocean": "Ocean Clay"}
 #  Aqua Calcite Gold Ledge Lime Marble # these are available as smooth bricks in-game but their textures have irregular names.
 # "Rock": {"LIST": ["Runic_Blue", "Runic_Dark", "Runic_Teal"], "SUFFIX": ""}, # irregular texture names
+
+
+
+
+
+
+
+
+
+# ----- structured data about how to generate assets -----
+
 DATA_PAGES = [
   [
     ("TEXTURE_NAME_PREFIX", "Wood_"),
     ("FAMILY_LIST", list("Blackwood Darkwood Deadwood Drywood Goldenwood Greenwood Hardwood Lightwood Redwood Softwood Tropicalwood".split(" "))),
     ("TEXTURE_NAME_SUFFIX_LIST", ["_Planks"]),
     ("INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME", False),
+    # ("TEXTURE_NAME_POSTPROCESSOR": patch_wood_texture_name),
     ("AUTOMATIC_JSON_ITEMS", [
       ("JSON_RECIPE_INPUT_RESOURCETYPEID_STR", "Wood_${FAMILY}"),
       ("JSON_TAGS_TYPE_STR", "Wood"),
@@ -135,6 +198,8 @@ DATA_PAGES = [
 
 
 
+# ----- mod path constants -----
+
 MOD_PATH = SEP.join([os.getcwd(), ".."])
 
 MODEL_FOLDER_PATH = SEP.join([MOD_PATH, "Common", "Blocks", "Breeze"])
@@ -153,12 +218,9 @@ assert os.path.exists(TEMPLATE_FILE_PATH)
 
 
 
-def remove_suffix(a, b):
-  assert a.endswith(b)
-  return a[:-len(b)]
+
+
   
-def patch_texture_name(input_string):
-  return input_string.replace("Wood_Softwood_Planks.png", "Wood_Softwood_Planks_Top.png").replace("Wood_Greenwood_Planks.png", "Wood_Green.png") # .replace("Rock_Aqua_Brick_Smooth.png"
   
 def clear_folder(folder_path, expected_extension):
   for nameToDelete in os.listdir(folder_path):
@@ -171,6 +233,15 @@ def clear_folder(folder_path, expected_extension):
   
   
   
+  
+  
+  
+  
+  
+  
+  
+  
+# ---------- MAIN PROCEDURE ----------
   
 # Load template file \/
 
@@ -204,8 +275,8 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_PATH) if name.end
   for dataPage in DATA_PAGES:
     for family in data_page_get_value(dataPage, "FAMILY_LIST"):
       for textureNameSuffix in data_page_get_value(dataPage, "TEXTURE_NAME_SUFFIX_LIST"):
-        unpatchedTextureFileBaseName = f"{data_page_get_value(dataPage, 'TEXTURE_NAME_PREFIX')}{family}{textureNameSuffix}"
-        textureFileName = patch_texture_name(unpatchedTextureFileBaseName+".png")
+        unpatchedTextureBaseName = f"{data_page_get_value(dataPage, 'TEXTURE_NAME_PREFIX')}{family}{textureNameSuffix}"
+        textureFileName = select_best_texture_file_name(base_name=unpatchedTextureBaseName)
         
         assetInfo = {"full_name": data_page_get_value(dataPage, ("AUTOMATIC_JSON_ITEMS", "JSON_TAGS_TYPE_STR")) + "_" + family + (textureNameSuffix if data_page_get_value(dataPage, "INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME") else "") + "_" + shapeNameWithoutDepth}
         assetInfo["output_file_path"] = OUTPUT_FOLDER_PATH + SEP + assetInfo["full_name"] + ".json"
@@ -214,7 +285,7 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_PATH) if name.end
         
         assetContents = {
           "ICON_PATH_IN_MOD": "Icons/ItemsGenerated/" + assetInfo["icon_file_name"],
-          "BLOCK_SET": unpatchedTextureFileBaseName,
+          "BLOCK_SET": unpatchedTextureBaseName,
           "TEXTURE_PATH_IN_MOD": f"BlockTextures/{textureFileName}",
           # "RESOURCE_TYPE_ID_TO_CRAFT": f"{data_page_get_value(dataPage, ('AUTOMATIC_JSON_ITEMS', 'JSON_TAGS_TYPE_STR'))}_{family}",
         }
