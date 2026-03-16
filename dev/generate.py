@@ -27,6 +27,9 @@ def remove_prefix(string, prefix):
   return string[len(prefix):]
 
 
+
+
+
 # ----- helper functions for working with data pages -----
 # data pages are lists of tuples. They are used instead of dictionaries to preserve order and to allow duplicate entries.
 
@@ -128,7 +131,7 @@ def select_best_texture_file_name(*, base_name):
 
 CLAY_COLORS = "Black Blue Cyan Green Grey Lime Orange Pink Purple Red White Yellow".split()
 
-ROCK_BRICK_NO_TEXTURE_NAME_PROCESSING_REQUIRED = list("Basalt Quartzite Shale Stone Volcanic".split(" ")) # non-exhaustive # maybe add chalk
+# ROCK_BRICK_NO_TEXTURE_NAME_PROCESSING_REQUIRED = list("Basalt Quartzite Shale Stone Volcanic".split(" ")) # non-exhaustive # maybe add chalk
 ROCK_BRICK = "Aqua Basalt Calcite Chalk Gold Ledge Lime Marble Peach Quartzite Sandstone Sandstone_Red Sandstone_White Shale Stone Volcanic".split(" ")
 # in-game ID = Rock_(value)_Brick
 # in-game name = ROCK_BRICK_NAME_UPGRADES[value] + " Brick"
@@ -137,11 +140,7 @@ ROCK_RUNIC_BRICK = "Runic_Blue Runic Runic_Teal Runic_Dark".split(" ") # the tex
 ROCK_BRICK_TEXTURE_NAME_SUBSTRING_REPLACEMENTS = {"Ledge": "Ledgestone", "Lime":"Limestone", "Peach":"Peachstone"}
 ROCK_BRICK_TEXTURE_NAME_NO_ROCK_PREFIX_REQUIRED = ["Peachstone", "Calcite", "Runic_Brick_Dark", "Runic_Brick_Dark_Blue"]
 ROCK_BRICK_PURE_NAME_UPGRADES = {"Runic_Blue": "Blue Runic", "Runic_Teal": "Dark Blue Runic", "Runic_Dark": "Dark Runic", "Sandstone_Red":"Red Sandstone", "Sandstone_White": "White Sandstone"}
-"""
-ST = "SideTop"
-EM = ""
-ROCK_BRICK_TEXTURE_NAME_FORMAT {"Aqua":ST, "Basalt":EM,
-"""
+
 # gold brick only has a side texture
 
 PROTOTYPE_ROCK_BRICKS = "Concrete".split(" ")

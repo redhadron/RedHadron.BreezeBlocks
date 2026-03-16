@@ -56,13 +56,21 @@ notes that are helpful for planning:
 ==============================================================================
 
 
+
+pre-release checklist:
+  -rename G2x2T2pHead to G2x2T2pL1pHead or fix model.
+  -No texture glitches.
+  -everything looks like Hytale.
+  -plays well in survival.
+  -I will never want to rename any of these blocks.
+  -mod has no unnecessary files.
+
 Roadmap:
-create mismatch.py
-renameGx2T2pHead to G2x2T2pL1pHead.
-finalize asset names.
+complete pre-release checklist.
 publish mod.
+translate to a lot of languages.
 fix top textures.
-add default values to renamer.
+create mismatch.py
 add command line args to renamer.
 rework atlas organize window so that it only returns when it meets an objective which can be specified as an argument. Add keyboard shortcuts to link, unlink, and delete. Add command line arg for interactive mode.
 create a particle color system.
@@ -95,3 +103,4 @@ rename thicknesses from meter fractions to pixel counts.
 upgrade generate.py to support terracotta.
 thicken G2x2 Nope.
 thicken SlowNeckNeckSlow.
+add default values to renamer.
