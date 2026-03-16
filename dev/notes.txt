@@ -58,21 +58,26 @@ notes that are helpful for planning:
 
 
 pre-release checklist:
-  -rename G2x2T2pHead to G2x2T2pL1pHead or fix model.
   -No texture glitches.
   -everything looks like Hytale.
   -plays well in survival.
   -I will never want to rename any of these blocks.
   -mod has no unnecessary files.
 
+
 Roadmap:
+fix G2x2pT2pHead to match its name because it currently DOES NOT. Also fix the names of whichever ones have red cloth above them.
+change naming convention so that frame thickness refers to the thickness of frame present within a single breeze block.
 complete pre-release checklist.
 publish mod.
 translate to a lot of languages.
 fix top textures.
+fix texture errors on the back of G4x4T4pVoid.
 create mismatch.py
-add command line args to renamer.
 rework atlas organize window so that it only returns when it meets an objective which can be specified as an argument. Add keyboard shortcuts to link, unlink, and delete. Add command line arg for interactive mode.
+add command line args to renamer.
+add a command to atlas.py to predict which tiles would be changed upon export or import, and optionally, to show the changes.
+add keyboard shortcut in atlas.py to rename a tile, which can be hooked up to renamer.py.
 create a particle color system.
   3d median in perceptual color space.
   upgrade thumbnail generator to invert background when dark textures are detected.
@@ -104,3 +109,4 @@ upgrade generate.py to support terracotta.
 thicken G2x2 Nope.
 thicken SlowNeckNeckSlow.
 add default values to renamer.
+rename G2x2T2pHead to G2x2T2pL1pHead or fix model.

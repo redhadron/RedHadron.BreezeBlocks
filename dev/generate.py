@@ -227,19 +227,20 @@ PROTOTYPE_DATA_PAGES = [
 
 # ----- mod path constants -----
 
-MOD_PATH = SEP.join([os.getcwd(), ".."])
+MOD_PATH = SEP.join([os.getcwd(), ".."]) if "dev" in os.getcwd() else os.getcwd()
+assert "dev" in os.listdir(MOD_PATH), "mod path may be invalid"
 
 MODEL_FOLDER_PATH = SEP.join([MOD_PATH, "Common", "Blocks", "Breeze"])
-assert os.path.exists(MODEL_FOLDER_PATH)
+assert os.path.exists(MODEL_FOLDER_PATH), MODEL_FOLDER_PATH
 
 OUTPUT_FOLDER_PATH = SEP.join([MOD_PATH, "Server", "Item", "Items"])
-assert os.path.exists(OUTPUT_FOLDER_PATH)
+assert os.path.exists(OUTPUT_FOLDER_PATH), OUTPUT_FOLDER_PATH
 
 ICON_FOLDER_PATH = SEP.join([MOD_PATH, "Common", "Icons", "ItemsGenerated"])
-assert os.path.exists(ICON_FOLDER_PATH)
+assert os.path.exists(ICON_FOLDER_PATH), ICON_FOLDER_PATH
 
-TEMPLATE_FILE_PATH = os.getcwd() + SEP + "Breeze_Template.json"
-assert os.path.exists(TEMPLATE_FILE_PATH)
+TEMPLATE_FILE_PATH = MOD_PATH + SEP + "dev" + SEP + "Breeze_Template.json"
+assert os.path.exists(TEMPLATE_FILE_PATH), TEMPLATE_FILE_PATH
 
 
 

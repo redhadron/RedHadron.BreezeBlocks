@@ -40,7 +40,7 @@ print("\nmultiple folders can be specified with commas between them")
 foldersOfNamesToChange = pretty_input("path of folder in which to perform edits> ", default=MODEL_FOLDER + "," + ICON_FOLDER + "," + ITEM_FOLDER).split(",")
 assert all(os.path.exists(name) for name in foldersOfNamesToChange)
 
-foldersOfContentsToEdit = pretty_input("path of folder in which to edit file contents> ", default=ITEM_FOLDER "," + MODEL_FOLDER).split(",")
+foldersOfContentsToEdit = pretty_input("path of folder in which to edit file contents> ", default=MODEL_FOLDER + "," + ITEM_FOLDER).split(",")
 assert all(os.path.exists(name) for name in foldersOfContentsToEdit)
 
 extensionsToEdit = pretty_input("extensions to edit> ", default=".json,.txt").split(",")
