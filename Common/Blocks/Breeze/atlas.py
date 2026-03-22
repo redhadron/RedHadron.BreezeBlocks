@@ -95,6 +95,7 @@ config_data = {
 def get_atlas_image_size():
   return (config_data["tile_size"][0]*config_data["atlas_size"][0], 
     config_data["tile_size"][1]*config_data["atlas_size"][1])
+  # TODO int vec
   
 def get_intersection_coordinate(intersection_address):
   return (config_data["tile_size"][0]*intersection_address[0], config_data["tile_size"][1]*intersection_address[1])
@@ -124,7 +125,7 @@ def load_config():
     key = ast.literal_eval(keyString)
     validate_int_pair_tuple(key)
     assert key not in config_data["coordinates_to_names"]
-    # value duplicates are allowed, though.
+    # only key duplicates are searched for here, because the bidict itself cathes value duplicates.
     config_data["coordinates_to_names"][key] = value
 
 def config_data_to_string():
@@ -199,7 +200,7 @@ def prompt_user_for_tile_name(tile_image):
   topLabel = tkinter.Label(window, text="Give this tile a name")
   topLabel.pack()
   
-  previewSize = (config_data["tile_size"][0]*TILE_PREVIEW_SCALE, config_data["tile_size"][1]*TILE_PREVIEW_SCALE)
+  previewSize = (config_data["tile_size"][0]*TILE_PREVIEW_SCALE, config_data["tile_size"][1]*TILE_PREVIEW_SCALE) # TODO int vec
   modifiedTileImage = tile_image.resize(size=previewSize, resample=Image.Resampling.NEAREST) # resizing makes a copy so we are not drawing on the original.
   imageDrawer = ImageDraw.Draw(modifiedTileImage) 
   for y in range(config_data["tile_size"][1]):
@@ -270,6 +271,7 @@ def pil_image_to_surface(pil_image):
 
 _font = [] # a holder to cache the font
 def prompt_user_for_a_free_coordinate(*, tile_image, tile_name, atlas_image):
+  # TODO: combine tile image, tile name, and the desired type of prompt into one argument that is a definition of the type of prompt. If it is empty, the method is in looping interactive mode.
   pygame.init() # I don't know if there are consequences for doing this multiple times.
   if len(_font) == 0:
     _font.append(pygame.freetype.SysFont(pygame.freetype.get_default_font(), 18, bold=False))
@@ -382,8 +384,7 @@ def do_tile_transport(direction, discover=False, organize=False):
               if oldTileImg.size != tileImg.size:
                 raise FileExistsError("the tile will not be overwritten because it is of a different size.")
           tileImg.save(tileImgPath)
-    else:
-      assert direction is TRANSPORT_DIRECTION.IMPORT
+    elif direction is TRANSPORT_DIRECTION.IMPORT:
       if not os.path.exists(ATLAS_IMAGE_PATH):
         create_atlas_image()
         
@@ -420,6 +421,8 @@ def do_tile_transport(direction, discover=False, organize=False):
           import_tile_with_name(tileName, atlasImg)
           # don't save atlasImg within this loop because a crash or exit later in this loop might prevent the atlas config from being saved to match the atlasImg.
           # TODO put transport in charge of whether and when atlas config gets saved.
+    else:
+      raise ValueError(direction)
     atlasImg.save(ATLAS_IMAGE_PATH)
 
 
@@ -498,4 +501,6 @@ elif args.subcommand == "transport":
 else:
   raise ValueError(args.subcommand)
   
+  
 exit(EXIT_CODES["GENERAL_SUCCESS"])
+

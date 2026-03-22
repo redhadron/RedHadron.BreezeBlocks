@@ -165,7 +165,6 @@ DATA_PAGES = [
     ("FAMILY_LIST", list("Blackwood Darkwood Deadwood Drywood Goldenwood Greenwood Hardwood Lightwood Redwood Softwood Tropicalwood".split(" "))),
     ("TEXTURE_NAME_SUFFIX_LIST", ["_Planks"]),
     ("INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME", False),
-    # ("TEXTURE_NAME_POSTPROCESSOR": patch_wood_texture_name),
     ("AUTOMATIC_JSON_ITEMS", [
       ("JSON_RECIPE_INPUT_RESOURCETYPEID_STR", "Wood_${FAMILY}"),
       ("JSON_TAGS_TYPE_STR", "Wood"),
