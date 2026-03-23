@@ -66,8 +66,6 @@ pre-release checklist:
 
 
 Roadmap:
-fix G2x2pT2pHead to match its name because it currently DOES NOT. Also fix the names of whichever ones have red cloth above them.
-adjust crafting count
 publish mod.
 translate to a lot of languages.
 fix top textures.
@@ -111,3 +109,5 @@ add default values to renamer.
 rename G2x2T2pHead to G2x2T2pL1pHead or fix model.
 change naming convention so that frame thickness refers to the thickness of frame present within a single breeze block.
 complete pre-release checklist.
+fix G2x2pT2pHead to match its name because it currently DOES NOT. Also fix the names of whichever ones have red cloth above them.
+adjust crafting count
