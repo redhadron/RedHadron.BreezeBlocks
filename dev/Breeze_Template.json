@@ -1,6 +1,6 @@
 {
   "TranslationProperties": {
-    "Name": "server.items.${FULL_NAME}.name"
+    "Name": "items.${FULL_NAME}.name"
   },
   "ItemLevel": 15,
   "MaxStack": 100,

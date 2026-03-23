@@ -17,17 +17,17 @@ replace readlines with read
 def remove_suffix(string, suffix):
   assert len(suffix) <= len(string)
   assert len(suffix) > 0
-  assert string.endswith(suffix)
+  assert string.endswith(suffix), string + " does not end with " + suffix
   return string[:-len(suffix)]
   
 def remove_prefix(string, prefix):
   assert len(prefix) <= len(string)
   assert len(prefix) > 0
-  assert string.startswith(prefix)
+  assert string.startswith(prefix), string + " does not start with " + prefix
   return string[len(prefix):]
 
 def shorten_suffix(string, suffix, new_suffix):
-  assert suffix.startswith(new_suffix), (suffix, new_suffix)
+  assert suffix.startswith(new_suffix), "the suffixes do not have a matching beginning"
   assert len(new_suffix) < len(suffix)
   return remove_suffix(string, suffix) + new_suffix
 
@@ -254,16 +254,20 @@ assert os.path.exists(MODEL_FOLDER_SOURCE_PATH), MODEL_FOLDER_SOURCE_PATH
 assert os.path.exists(MODEL_FOLDER_DESTINATION_PATH), MODEL_FOLDER_DESTINATION_PATH
 
 ASSET_FOLDER_SUBPATH = SEP.join(["Server", "Item", "Items"])
-ASSET_FOLDER_PATH = MOD_DESTINATION_PATH + SEP + ASSET_FOLDER_SUBPATH
-assert os.path.exists(ASSET_FOLDER_PATH), ASSET_FOLDER_PATH
+ASSET_FOLDER_DESTINATION_PATH = MOD_DESTINATION_PATH + SEP + ASSET_FOLDER_SUBPATH
+assert os.path.exists(ASSET_FOLDER_DESTINATION_PATH), ASSET_FOLDER_DESTINATION_PATH
 
 ICON_FOLDER_SUBPATH = SEP.join(["Common", "Icons", "ItemsGenerated"])
-ICON_FOLDER_PATH = MOD_DESTINATION_PATH + SEP + ICON_FOLDER_SUBPATH
-assert os.path.exists(ICON_FOLDER_PATH), ICON_FOLDER_PATH
+ICON_FOLDER_DESTINATION_PATH = MOD_DESTINATION_PATH + SEP + ICON_FOLDER_SUBPATH
+assert os.path.exists(ICON_FOLDER_DESTINATION_PATH), ICON_FOLDER_DESTINATION_PATH
 
 TEMPLATE_FILE_SUBPATH = "dev" + SEP + "Breeze_Template.json"
 TEMPLATE_FILE_PATH = MOD_SOURCE_PATH + SEP + TEMPLATE_FILE_SUBPATH
 assert os.path.exists(TEMPLATE_FILE_PATH), TEMPLATE_FILE_PATH
+
+LANGUAGE_EN_US_FILE_SUBPATH = SEP.join(["Server", "Languages", "en-US", "items.lang"])
+LANGUAGE_EN_US_FILE_DESTINATION_PATH = SEP.join([MOD_DESTINATION_PATH, LANGUAGE_EN_US_FILE_SUBPATH])
+assert os.path.exists(LANGUAGE_EN_US_FILE_DESTINATION_PATH), " could not find: " + LANGUAGE_EN_US_FILE_DESTINATION_PATH
 
 
 
@@ -310,15 +314,17 @@ if len(templateFileLines) == 0:
 
 # clear destination folders and prepare destination mod \/
 
-clear_folder(ASSET_FOLDER_PATH, ".json")
-clear_folder(ICON_FOLDER_PATH, ".png")
+clear_folder(ASSET_FOLDER_DESTINATION_PATH, ".json")
+clear_folder(ICON_FOLDER_DESTINATION_PATH, ".png")
 clear_folder(MODEL_FOLDER_DESTINATION_PATH, ".blockymodel")
 shutil.copy(MOD_SOURCE_PATH+SEP+"manifest.json", MOD_DESTINATION_PATH+SEP+"manifest.json")
-
+os.remove(LANGUAGE_EN_US_FILE_DESTINATION_PATH)
 
 
 # generate assets \/  
-  
+
+languageFileEnUS = open(LANGUAGE_EN_US_FILE_DESTINATION_PATH, "w")
+
 for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if name.endswith(".blockymodel")):
   shutil.copy(MODEL_FOLDER_SOURCE_PATH+SEP+modelFileName, MODEL_FOLDER_DESTINATION_PATH+SEP+modelFileName)
   shapeNameWithDepth = remove_suffix(modelFileName, ".blockymodel")
@@ -332,9 +338,9 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
         textureFileName = select_best_texture_file_name(base_name=unpatchedTextureBaseName)
         
         assetInfo = {"full_name": data_page_get_value(dataPage, ("AUTOMATIC_JSON_ITEMS", "JSON_TAGS_TYPE_STR")) + "_" + family + (textureNameSuffix if data_page_get_value(dataPage, "INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME") else "") + "_" + shapeNameWithoutDepth}
-        assetInfo["output_file_path"] = ASSET_FOLDER_PATH + SEP + assetInfo["full_name"] + ".json"
+        assetInfo["output_file_path"] = ASSET_FOLDER_DESTINATION_PATH + SEP + assetInfo["full_name"] + ".json"
         assetInfo["icon_file_name"] = assetInfo["full_name"] + ".png"
-        assetInfo["icon_file_path"] = ICON_FOLDER_PATH + SEP + assetInfo["icon_file_name"]
+        assetInfo["icon_file_path"] = ICON_FOLDER_DESTINATION_PATH + SEP + assetInfo["icon_file_name"]
         
         assetContents = {
           "ICON_PATH_IN_MOD": "Icons/ItemsGenerated/" + assetInfo["icon_file_name"],
@@ -348,7 +354,10 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
             assert thumbnailMaskImage.size == thumbnailTextureImage.size
             thumbnailResultImage = ImageChops.multiply(thumbnailMaskImage.convert("RGB"), thumbnailTextureImage.convert("RGB"))
             thumbnailResultImage.save(assetInfo["icon_file_path"])
-            
+        
+        # language file stuff
+        displayNameEnUS = f"{family} Breeze Block ({remove_prefix(shapeNameWithoutDepth, 'Breeze_')})"
+        languageFileEnUS.write(f"{assetInfo['full_name']}.name = {displayNameEnUS}\n")
             
         outputFilePath = assetInfo["output_file_path"]
         if os.path.exists(outputFilePath):
@@ -376,4 +385,7 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
             assert "${" not in outputLine, outputLine
             assert "__" not in outputLine, outputLine # because this probably should never happen.
             outputFile.write(outputLine)
-      
+
+languageFileEnUS.close() # probably not necessary in cpython, 
+# but outside of cpython, the lack of a context manager here might result in the file being left open after a crash https://stackoverflow.com/questions/17577137/do-files-get-closed-during-an-exception-exit
+# TODO combine multiple language files into one context manager?

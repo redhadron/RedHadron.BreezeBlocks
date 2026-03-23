@@ -66,7 +66,6 @@ pre-release checklist:
 
 
 Roadmap:
-publish mod.
 translate to a lot of languages.
 fix top textures.
 fix texture errors on the back of G4x4T4pVoid.
@@ -111,3 +110,4 @@ change naming convention so that frame thickness refers to the thickness of fram
 complete pre-release checklist.
 fix G2x2pT2pHead to match its name because it currently DOES NOT. Also fix the names of whichever ones have red cloth above them.
 adjust crafting count
+publish mod.
