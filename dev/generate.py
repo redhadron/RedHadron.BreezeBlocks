@@ -1,5 +1,5 @@
 import os
-# import shutil
+import shutil
 import itertools
 import pathlib
 from PIL import Image, ImageChops
@@ -26,7 +26,10 @@ def remove_prefix(string, prefix):
   assert string.startswith(prefix)
   return string[len(prefix):]
 
-
+def shorten_suffix(string, suffix, new_suffix):
+  assert suffix.startswith(new_suffix), (suffix, new_suffix)
+  assert len(new_suffix) < len(suffix)
+  return remove_suffix(string, suffix) + new_suffix
 
 
 
@@ -226,19 +229,40 @@ PROTOTYPE_DATA_PAGES = [
 
 # ----- mod path constants -----
 
-MOD_PATH = SEP.join([os.getcwd(), ".."]) if "dev" in os.getcwd() else os.getcwd()
-assert "dev" in os.listdir(MOD_PATH), "mod path may be invalid"
+def is_a_valid_mod(modPath):
+  assert os.path.exists(modPath)
+  return all(item in os.listdir(modPath) for item in ["Common", "Server"])
+  
+# TODO Manifest.json copying
 
-MODEL_FOLDER_PATH = SEP.join([MOD_PATH, "Common", "Blocks", "Breeze"])
-assert os.path.exists(MODEL_FOLDER_PATH), MODEL_FOLDER_PATH
+if os.getcwd().count("dev") > 1:
+  raise NotImplementedError()
+assert not os.getcwd().endswith(SEP)
 
-OUTPUT_FOLDER_PATH = SEP.join([MOD_PATH, "Server", "Item", "Items"])
-assert os.path.exists(OUTPUT_FOLDER_PATH), OUTPUT_FOLDER_PATH
+MOD_NAME = "RedHadron.BreezeBlocks"
+assert MOD_NAME in os.getcwd()
+MOD_SOURCE_PATH = shorten_suffix(os.getcwd(), SEP+MOD_NAME+SEP+"dev", SEP+MOD_NAME) if os.getcwd().endswith(SEP+"dev") else os.getcwd()
+assert is_a_valid_mod(MOD_SOURCE_PATH) and "dev" in os.listdir(MOD_SOURCE_PATH), "mod source path or structure may be invalid"
+MOD_DESTINATION_PATH = SEP.join([MOD_SOURCE_PATH, "..", "..", "mods", MOD_NAME])
+assert is_a_valid_mod(MOD_DESTINATION_PATH), "Not a valid mod: " + MOD_DESTINATION_PATH
+assert "dev" not in os.listdir(MOD_DESTINATION_PATH), "mod destination path or structure may be invalid: " + MOD_DESTINATION_PATH
 
-ICON_FOLDER_PATH = SEP.join([MOD_PATH, "Common", "Icons", "ItemsGenerated"])
+MODEL_FOLDER_SUBPATH = SEP.join(["Common", "Blocks", "Breeze"])
+MODEL_FOLDER_SOURCE_PATH = SEP.join([MOD_SOURCE_PATH, MODEL_FOLDER_SUBPATH])
+MODEL_FOLDER_DESTINATION_PATH = SEP.join([MOD_DESTINATION_PATH, MODEL_FOLDER_SUBPATH])
+assert os.path.exists(MODEL_FOLDER_SOURCE_PATH), MODEL_FOLDER_SOURCE_PATH
+assert os.path.exists(MODEL_FOLDER_DESTINATION_PATH), MODEL_FOLDER_DESTINATION_PATH
+
+ASSET_FOLDER_SUBPATH = SEP.join(["Server", "Item", "Items"])
+ASSET_FOLDER_PATH = MOD_DESTINATION_PATH + SEP + ASSET_FOLDER_SUBPATH
+assert os.path.exists(ASSET_FOLDER_PATH), ASSET_FOLDER_PATH
+
+ICON_FOLDER_SUBPATH = SEP.join(["Common", "Icons", "ItemsGenerated"])
+ICON_FOLDER_PATH = MOD_DESTINATION_PATH + SEP + ICON_FOLDER_SUBPATH
 assert os.path.exists(ICON_FOLDER_PATH), ICON_FOLDER_PATH
 
-TEMPLATE_FILE_PATH = MOD_PATH + SEP + "dev" + SEP + "Breeze_Template.json"
+TEMPLATE_FILE_SUBPATH = "dev" + SEP + "Breeze_Template.json"
+TEMPLATE_FILE_PATH = MOD_SOURCE_PATH + SEP + TEMPLATE_FILE_SUBPATH
 assert os.path.exists(TEMPLATE_FILE_PATH), TEMPLATE_FILE_PATH
 
 
@@ -252,7 +276,7 @@ assert os.path.exists(TEMPLATE_FILE_PATH), TEMPLATE_FILE_PATH
 def clear_folder(folder_path, expected_extension):
   for nameToDelete in os.listdir(folder_path):
     pathToDelete = folder_path + SEP + nameToDelete
-    assert "RedHadron.BreezeBlocks" in str(pathlib.Path(pathToDelete).resolve())
+    assert MOD_NAME in str(pathlib.Path(pathToDelete).resolve())
     assert os.path.exists(pathToDelete)
     assert pathToDelete.endswith(expected_extension)
     assert not os.path.isdir(pathToDelete)
@@ -284,17 +308,19 @@ if len(templateFileLines) == 0:
   
 
 
-# clear assets folder \/
+# clear destination folders and prepare destination mod \/
 
-clear_folder(OUTPUT_FOLDER_PATH, ".json")
+clear_folder(ASSET_FOLDER_PATH, ".json")
 clear_folder(ICON_FOLDER_PATH, ".png")
-
+clear_folder(MODEL_FOLDER_DESTINATION_PATH, ".blockymodel")
+shutil.copy(MOD_SOURCE_PATH+SEP+"manifest.json", MOD_DESTINATION_PATH+SEP+"manifest.json")
 
 
 
 # generate assets \/  
   
-for modelFileName in (name for name in os.listdir(MODEL_FOLDER_PATH) if name.endswith(".blockymodel")):
+for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if name.endswith(".blockymodel")):
+  shutil.copy(MODEL_FOLDER_SOURCE_PATH+SEP+modelFileName, MODEL_FOLDER_DESTINATION_PATH+SEP+modelFileName)
   shapeNameWithDepth = remove_suffix(modelFileName, ".blockymodel")
   shapeNameWithoutDepth = remove_suffix(shapeNameWithDepth, "_Db1000")
   iconMaskFileName = shapeNameWithoutDepth + ".png"
@@ -306,7 +332,7 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_PATH) if name.end
         textureFileName = select_best_texture_file_name(base_name=unpatchedTextureBaseName)
         
         assetInfo = {"full_name": data_page_get_value(dataPage, ("AUTOMATIC_JSON_ITEMS", "JSON_TAGS_TYPE_STR")) + "_" + family + (textureNameSuffix if data_page_get_value(dataPage, "INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME") else "") + "_" + shapeNameWithoutDepth}
-        assetInfo["output_file_path"] = OUTPUT_FOLDER_PATH + SEP + assetInfo["full_name"] + ".json"
+        assetInfo["output_file_path"] = ASSET_FOLDER_PATH + SEP + assetInfo["full_name"] + ".json"
         assetInfo["icon_file_name"] = assetInfo["full_name"] + ".png"
         assetInfo["icon_file_path"] = ICON_FOLDER_PATH + SEP + assetInfo["icon_file_name"]
         
@@ -317,7 +343,7 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_PATH) if name.end
           # "RESOURCE_TYPE_ID_TO_CRAFT": f"{data_page_get_value(dataPage, ('AUTOMATIC_JSON_ITEMS', 'JSON_TAGS_TYPE_STR'))}_{family}",
         }
         
-        with Image.open(MODEL_FOLDER_PATH + SEP + iconMaskFileName) as thumbnailMaskImage:
+        with Image.open(MODEL_FOLDER_SOURCE_PATH + SEP + iconMaskFileName) as thumbnailMaskImage:
           with Image.open(HYTALE_BLOCKTEXTURES_PATH + SEP + textureFileName) as thumbnailTextureImage:
             assert thumbnailMaskImage.size == thumbnailTextureImage.size
             thumbnailResultImage = ImageChops.multiply(thumbnailMaskImage.convert("RGB"), thumbnailTextureImage.convert("RGB"))

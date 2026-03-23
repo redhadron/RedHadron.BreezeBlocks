@@ -58,17 +58,16 @@ notes that are helpful for planning:
 
 
 pre-release checklist:
-  -No texture glitches.
-  -everything looks like Hytale.
-  -plays well in survival.
-  -I will never want to rename any of these blocks.
-  -mod has no unnecessary files.
+  -No obvious texture glitches. - OK
+  -everything looks like Hytale. - OK
+  -plays well in survival. - OK
+  -I will never want to rename any of these blocks. - OK
+  -mod has no unnecessary files. - OK
 
 
 Roadmap:
 fix G2x2pT2pHead to match its name because it currently DOES NOT. Also fix the names of whichever ones have red cloth above them.
-change naming convention so that frame thickness refers to the thickness of frame present within a single breeze block.
-complete pre-release checklist.
+adjust crafting count
 publish mod.
 translate to a lot of languages.
 fix top textures.
@@ -110,3 +109,5 @@ thicken G2x2 Nope.
 thicken SlowNeckNeckSlow.
 add default values to renamer.
 rename G2x2T2pHead to G2x2T2pL1pHead or fix model.
+change naming convention so that frame thickness refers to the thickness of frame present within a single breeze block.
+complete pre-release checklist.
