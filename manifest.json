@@ -1,16 +1,16 @@
 {
   "Group": "RedHadron",
   "Name": "BreezeBlocks",
-  "Version": "0.0.1",
+  "Version": "0.0.2",
   "Description": "Breeze blocks to build with!",
   "Authors": [
     {
       "Name": "Red Hadron",
       "Email": "",
-      "Url": "github.com/redhadron"
+      "Url": "https://github.com/redhadron/RedHadron.BreezeBlocks"
     }
   ],
-  "Website": "github.com/redhadron",
+  "Website": "https://www.curseforge.com/hytale/mods/breezeblocks",
   "ServerVersion": "2026.02.19-1a311a592",
   "Dependencies": {},
   "OptionalDependencies": {},

@@ -142,13 +142,13 @@ ROCK_RUNIC_BRICK = "Runic_Blue Runic Runic_Teal Runic_Dark".split(" ") # the tex
 
 ROCK_BRICK_TEXTURE_NAME_SUBSTRING_REPLACEMENTS = {"Ledge": "Ledgestone", "Lime":"Limestone", "Peach":"Peachstone"}
 ROCK_BRICK_TEXTURE_NAME_NO_ROCK_PREFIX_REQUIRED = ["Peachstone", "Calcite", "Runic_Brick_Dark", "Runic_Brick_Dark_Blue"]
-ROCK_BRICK_PURE_NAME_UPGRADES = {"Runic_Blue": "Blue Runic", "Runic_Teal": "Dark Blue Runic", "Runic_Dark": "Dark Runic", "Sandstone_Red":"Red Sandstone", "Sandstone_White": "White Sandstone"}
+ROCK_BRICK_DISPLAY_NAME_TRANSLATIONS = {"Runic_Blue": "Blue Runic", "Runic_Teal": "Dark Blue Runic", "Runic_Dark": "Dark Runic", "Sandstone_Red":"Red Sandstone", "Sandstone_White": "White Sandstone"}
 
 # gold brick only has a side texture
 
 PROTOTYPE_ROCK_BRICKS = "Concrete".split(" ")
 SOIL_BRICK = "Hive Hive_Corrupted Clay Clay_Ocean Snow"
-SOIL_BRICK_NAME_UPGRADES = {"Hive_Corrupted": "Corrupted Hive", "Clay_Ocean": "Ocean Clay"}
+SOIL_BRICK_DISPLAY_NAME_TRANSLATIONS = {"Hive_Corrupted": "Corrupted Hive", "Clay_Ocean": "Ocean Clay"}
 #  Aqua Calcite Gold Ledge Lime Marble # these are available as smooth bricks in-game but their textures have irregular names.
 # "Rock": {"LIST": ["Runic_Blue", "Runic_Dark", "Runic_Teal"], "SUFFIX": ""}, # irregular texture names
 
@@ -387,5 +387,5 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
             outputFile.write(outputLine)
 
 languageFileEnUS.close() # probably not necessary in cpython, 
-# but outside of cpython, the lack of a context manager here might result in the file being left open after a crash https://stackoverflow.com/questions/17577137/do-files-get-closed-during-an-exception-exit
+# and outside of cpython, the lack of a context manager here might result in the file being left open after a crash https://stackoverflow.com/questions/17577137/do-files-get-closed-during-an-exception-exit
 # TODO combine multiple language files into one context manager?

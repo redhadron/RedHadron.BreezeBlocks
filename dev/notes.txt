@@ -57,16 +57,17 @@ notes that are helpful for planning:
 
 
 
-pre-release checklist:
-  -No obvious texture glitches. - OK
-  -everything looks like Hytale. - OK
-  -plays well in survival. - OK
-  -I will never want to rename any of these blocks. - OK
-  -mod has no unnecessary files. - OK
 
 
-Roadmap:
+
+TODO:
+create a particle color system.
+  hytale constants module for python.
+  3d median in perceptual color space.
+  upgrade thumbnail generator to invert background when dark textures are detected.
 translate to a lot of languages.
+  model name parsing by matching strings from lists.
+make a model variants system.
 fix top textures.
 fix texture errors on the back of G4x4T4pVoid.
 create mismatch.py
@@ -74,9 +75,6 @@ rework atlas organize window so that it only returns when it meets an objective 
 add command line args to renamer.
 add a command to atlas.py to predict which tiles would be changed upon export or import, and optionally, to show the changes.
 add keyboard shortcut in atlas.py to rename a tile, which can be hooked up to renamer.py.
-create a particle color system.
-  3d median in perceptual color space.
-  upgrade thumbnail generator to invert background when dark textures are detected.
 Make system for changing the depth of breeze blocks.
 finish creating all models from designs canvas.
 improve texture shading on all models.
@@ -93,6 +91,7 @@ make a breeze mason's bench that can make weirder blocks with other depth modes.
 
 cancelled:
 none
+pickling as a context manager. (this already exists: import shelve)
 
 done:
 upgrade renamer.py to optionally edit the content of asset definition files (or any other files in a second directory) too.
@@ -110,4 +109,10 @@ change naming convention so that frame thickness refers to the thickness of fram
 complete pre-release checklist.
 fix G2x2pT2pHead to match its name because it currently DOES NOT. Also fix the names of whichever ones have red cloth above them.
 adjust crafting count
+pre-release checklist:
+  -No obvious texture glitches. - OK
+  -everything looks like Hytale. - OK
+  -plays well in survival. - OK
+  -I will never want to rename any of these blocks. - OK
+  -mod has no unnecessary files. - OK
 publish mod.
