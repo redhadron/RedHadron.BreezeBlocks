@@ -21,7 +21,7 @@ def setitem_if_valid(dictionary, key, value, test_function):
 def get_mode_from_counter(counter):
   best2 = counter.most_common(2)
   if len(counter) == 1 or best2[0][1] > best2[1][1]:
-    return best2[0]
+    return best2[0][0]
   else:
     return None
     
@@ -56,6 +56,9 @@ def channelwise_median(input_list, snap, *, p):
     raise NotImplementedError("rounding without snapping??")
 
 
+class TransparencyError(Exception):
+  pass
+
 def opaque_pixel_list(raw_pixels):
   result = []
   for rawPixel in raw_pixels:
@@ -68,8 +71,9 @@ def opaque_pixel_list(raw_pixels):
         result.append(rawPixel[:3])
       else:
         if rawPixel[3] != 0:
-          print("WARNING: partial transparency not properly supported")
-        result.append(rawPixel[:3])
+          print(f"WARNING: partial transparency not properly supported: {rawPixel}")
+          raise TransparencyError()
+        # result.append(rawPixel[:3])
   return result
 
 """
@@ -83,10 +87,14 @@ with shelve.open("colors.shelf") as colorsShelf:
   for textureFileName in HYTALE_BLOCKTEXTURE_FILE_NAMES:
     with Image.open(HYTALE_BLOCKTEXTURES_PATH + SEP + textureFileName) as texture:
       textureStats = dict()
-      if not texture.getbands()[:3] == ("R", "G", "B"):
+      if not texture.getbands() in [("R", "G", "B"), ("R", "G", "B", "A")]:
         print(f"skipping {textureFileName} because it has the wrong bands {texture.getbands()}")
         continue
-      pixels = opaque_pixel_list(list(zip(*[texture.getchannel(char).getdata() for char in texture.getbands()])))
+      try:
+        pixels = opaque_pixel_list(list(zip(*[texture.getchannel(char).getdata() for char in texture.getbands()])))
+      except TransparencyError:
+        print(f"skipping {textureFileName} because of a problem with transparency")
+        continue
       assert all(len(pixel)==3 for pixel in pixels)
       
       isAValidColor = lambda x: x is not None and None not in x and len(x) == 3
