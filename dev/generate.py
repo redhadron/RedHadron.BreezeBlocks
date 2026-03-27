@@ -11,6 +11,7 @@ from HYTALE import HYTALE_ASSETS_PATH, SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BL
 from PIL import Image, ImageChops
 from tibs import Tibs
 import shelve
+# import dotted_dict
 
 """
 todo:
@@ -18,7 +19,8 @@ replace scandir with listdir
 replace readlines with read
 """
 
-PARTICLE_COLORATION = "channelwise_median_snapped_to_input_color"
+PARTICLE_COLORATION = "channelwise_median_snapped_to_input_color" # a key provided by colors.py in colors.shelf
+ICON_BACKGROUND_INVERSION_THRESHOLD = 0 # brightness at or below which the background will be inverted from black to white.
 
 
 
@@ -340,53 +342,52 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
   for dataPage in DATA_PAGES:
     for family in data_page_get_value(dataPage, "FAMILY_LIST"):
       for textureNameSuffix in data_page_get_value(dataPage, "TEXTURE_NAME_SUFFIX_LIST"):
-        unpatchedTextureBaseName = f"{data_page_get_value(dataPage, 'TEXTURE_NAME_PREFIX')}{family}{textureNameSuffix}"
-        textureFileName = select_best_texture_file_name(base_name=unpatchedTextureBaseName)
         
-        assetInfo = {"full_name": data_page_get_value(dataPage, ("AUTOMATIC_JSON_ITEMS", "JSON_TAGS_TYPE_STR")) + "_" + family + (textureNameSuffix if data_page_get_value(dataPage, "INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME") else "") + "_" + shapeNameWithoutDepth}
+        assetInfo = dict()
+        
+        assetInfo["unpatched_texture_base_name"] = f"{data_page_get_value(dataPage, 'TEXTURE_NAME_PREFIX')}{family}{textureNameSuffix}" # this is also used as the block set later
+        assetInfo["texture_file_name"] = select_best_texture_file_name(base_name=assetInfo["unpatched_texture_base_name"])
+        assetInfo["full_name"] = data_page_get_value(dataPage, ("AUTOMATIC_JSON_ITEMS", "JSON_TAGS_TYPE_STR")) + "_" + family + (textureNameSuffix if data_page_get_value(dataPage, "INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME") else "") + "_" + shapeNameWithoutDepth
         assetInfo["output_file_path"] = ASSET_FOLDER_DESTINATION_PATH + SEP + assetInfo["full_name"] + ".json"
         assetInfo["icon_file_name"] = assetInfo["full_name"] + ".png"
         assetInfo["icon_file_path"] = ICON_FOLDER_DESTINATION_PATH + SEP + assetInfo["icon_file_name"]
+        assetInfo["particle_color_as_tuple"] = colorsShelf[assetInfo["texture_file_name"]][PARTICLE_COLORATION]
         
         assetContents = {
           "ICON_PATH_IN_MOD": "Icons/ItemsGenerated/" + assetInfo["icon_file_name"],
-          "BLOCK_SET": unpatchedTextureBaseName,
-          "TEXTURE_PATH_IN_MOD": f"BlockTextures/{textureFileName}",
+          "BLOCK_SET": assetInfo["unpatched_texture_base_name"],
+          "TEXTURE_PATH_IN_MOD": f"BlockTextures/{assetInfo['texture_file_name']}",
           # "RESOURCE_TYPE_ID_TO_CRAFT": f"{data_page_get_value(dataPage, ('AUTOMATIC_JSON_ITEMS', 'JSON_TAGS_TYPE_STR'))}_{family}",
+          "PARTICLECOLOR_STR": color_tuple_to_hytale_string(assetInfo["particle_color_as_tuple"]),
         }
         
         with Image.open(MODEL_FOLDER_SOURCE_PATH + SEP + iconMaskFileName) as thumbnailMaskImage:
-          with Image.open(HYTALE_BLOCKTEXTURES_PATH + SEP + textureFileName) as thumbnailTextureImage:
+          with Image.open(HYTALE_BLOCKTEXTURES_PATH + SEP + assetInfo["texture_file_name"]) as thumbnailTextureImage:
             assert thumbnailMaskImage.size == thumbnailTextureImage.size
-            thumbnailResultImage = ImageChops.multiply(thumbnailMaskImage.convert("RGB"), thumbnailTextureImage.convert("RGB"))
+            thumbnailResultImageNoBG = ImageChops.multiply(thumbnailMaskImage.convert("RGB"), thumbnailTextureImage.convert("RGB"))
+            if sum(assetInfo["particle_color_as_tuple"]) <= ICON_BACKGROUND_INVERSION_THRESHOLD:
+              # assert thumbnailResultImageNoBG.size == thumbnailMaskImage.size
+              thumbnailResultImage = ImageChops.add(thumbnailResultImageNoBG, ImageChops.invert(thumbnailMaskImage).convert("RGB"))
+            else:
+              thumbnailResultImage = thumbnailResultImageNoBG
             thumbnailResultImage.save(assetInfo["icon_file_path"])
         
         # language file stuff
         displayNameEnUS = f"{family} Breeze Block ({remove_prefix(shapeNameWithoutDepth, 'Breeze_')})"
         languageFileEnUS.write(f"{assetInfo['full_name']}.name = {displayNameEnUS}\n")
             
-        outputFilePath = assetInfo["output_file_path"]
-        if os.path.exists(outputFilePath):
-          # print(f"replacing {outputFilePath}")
-          os.remove(outputFilePath)
-        else:
-          # print(f"creating {outputFilePath}")
-          pass
-          
-        with open(outputFilePath, "w") as outputFile:
+        if os.path.exists(assetInfo["output_file_path"]):
+          os.remove(assetInfo["output_file_path"])
+        with open(assetInfo["output_file_path"], "w") as outputFile:
           for currentLine in templateFileLines:
             outputLine = currentLine.replace("${FULL_NAME}", assetInfo["full_name"]
               ).replace("${MODEL_BASE_NAME}", shapeNameWithDepth
               ).replace("${ICON_PATH_IN_MOD}", assetContents["ICON_PATH_IN_MOD"]
               ).replace("${SET}", assetContents["BLOCK_SET"]
               ).replace("${TEXTURE_PATH_IN_MOD}", assetContents["TEXTURE_PATH_IN_MOD"]
+              ).replace("${PARTICLECOLOR_STR}", assetContents["PARTICLECOLOR_STR"]
               )
-            try:
-              outputLine = outputLine.replace("${PARTICLECOLOR_STR}", color_tuple_to_hytale_string(colorsShelf[textureFileName][PARTICLE_COLORATION]))
-            except KeyError:
-              print(colorsShelf[textureFileName])
-              print("key error of some kind")
-              exit()
+            
             for jsonOld, jsonNew in data_page_get_value(dataPage, "AUTOMATIC_JSON_ITEMS"):
               outputLine = outputLine.replace("${" + jsonOld + "}", jsonNew)
               

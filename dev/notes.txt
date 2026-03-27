@@ -61,10 +61,7 @@ notes that are helpful for planning:
 
 
 TODO:
-create a particle color system.
-  hytale constants module for python.
-  3d median in perceptual color space.
-  upgrade thumbnail generator to invert background when dark textures are detected.
+upgrade thumbnail generator to invert background when dark textures are detected.
 translate to a lot of languages.
   model name parsing by matching strings from lists.
 make a model variants system.
@@ -116,3 +113,6 @@ pre-release checklist:
   -I will never want to rename any of these blocks. - OK
   -mod has no unnecessary files. - OK
 publish mod.
+create a particle color system.
+  hytale constants module for python.
+  3d median.
