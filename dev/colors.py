@@ -85,26 +85,31 @@ def iter_pixels(image):
 
 with shelve.open("colors.shelf") as colorsShelf:
   for textureFileName in HYTALE_BLOCKTEXTURE_FILE_NAMES:
-    with Image.open(HYTALE_BLOCKTEXTURES_PATH + SEP + textureFileName) as texture:
-      textureStats = dict()
-      if not texture.getbands() in [("R", "G", "B"), ("R", "G", "B", "A")]:
-        print(f"skipping {textureFileName} because it has the wrong bands {texture.getbands()}")
-        continue
-      try:
-        pixels = opaque_pixel_list(list(zip(*[texture.getchannel(char).getdata() for char in texture.getbands()])))
-      except TransparencyError:
-        print(f"skipping {textureFileName} because of a problem with transparency")
-        continue
-      assert all(len(pixel)==3 for pixel in pixels)
+    
+    with Image.open(HYTALE_BLOCKTEXTURES_PATH + SEP + textureFileName) as textureOnDisk:
+      texture = textureOnDisk.convert("RGBA")
       
-      isAValidColor = lambda x: x is not None and None not in x and len(x) == 3
-      
-      if setitem_if_valid(textureStats, "full_pixel_mode", get_mode_from_counter(Counter(pixels)), isAValidColor):
-        assert isinstance(textureStats["full_pixel_mode"], tuple) and len(textureStats["full_pixel_mode"]) == 3
+    textureStats = dict()
+    if not texture.getbands() in [("R", "G", "B"), ("R", "G", "B", "A")]:
+      colorsShelf[textureFileName] = {"ERROR": f"skipping {textureFileName} because it has the wrong bands {texture.getbands()}"}
+      continue
+    try:
+      pixels = opaque_pixel_list(list(zip(*[texture.getchannel(char).getdata() for char in texture.getbands()])))
+    except TransparencyError:
+      colorsShelf[textureFileName]= {"ERROR": f"skipping {textureFileName} because of a problem with transparency"}
+      continue
+    assert all(len(pixel)==3 for pixel in pixels)
+    
+    isAValidColor = lambda x: x is not None and None not in x and len(x) == 3
+    
+    if setitem_if_valid(textureStats, "full_pixel_mode", get_mode_from_counter(Counter(pixels)), isAValidColor):
+      assert isinstance(textureStats["full_pixel_mode"], tuple) and len(textureStats["full_pixel_mode"]) == 3
 
-      setitem_if_valid(textureStats, "channelwise_mode", tuple(get_mode_from_counter(Counter(pixel[subpixelIndex] for pixel in pixels)) for subpixelIndex in range(3)), isAValidColor)
-      
-      setitem_if_valid(textureStats, "channelwise_median_snapped", channelwise_median(pixels, snap=True, p=2), isAValidColor)
+    setitem_if_valid(textureStats, "channelwise_mode", tuple(get_mode_from_counter(Counter(pixel[subpixelIndex] for pixel in pixels)) for subpixelIndex in range(3)), isAValidColor)
+    
+    setitem_if_valid(textureStats, "channelwise_median_snapped_to_input_color", channelwise_median(pixels, snap=True, p=2), isAValidColor)
+    
+    
     print(f"{textureFileName} -> {textureStats}")
     colorsShelf[textureFileName] = textureStats
       

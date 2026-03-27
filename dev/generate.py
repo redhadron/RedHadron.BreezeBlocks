@@ -1,10 +1,16 @@
+# builtin
 import os
 import shutil
 import itertools
 import pathlib
-from PIL import Image, ImageChops
 
+# project
 from HYTALE import HYTALE_ASSETS_PATH, SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
+
+# pip
+from PIL import Image, ImageChops
+from tibs import Tibs
+import shelve
 
 """
 todo:
@@ -12,6 +18,7 @@ replace scandir with listdir
 replace readlines with read
 """
 
+PARTICLE_COLORATION = "channelwise_median_snapped_to_input_color"
 
 
 
@@ -33,7 +40,10 @@ def shorten_suffix(string, suffix, new_suffix):
   assert len(new_suffix) < len(suffix)
   return remove_suffix(string, suffix) + new_suffix
 
-
+def assert_equals(a, b):
+  assert a == b, (a, b)
+  
+  
 
 # ----- helper functions for working with data pages -----
 # data pages are lists of tuples. They are used instead of dictionaries to preserve order and to allow duplicate entries.
@@ -78,7 +88,7 @@ def data_page_has_key(data_page, key):
 
 
 
-# ----- texture file selection tools -----
+# ----- helper methods specific to Hytale -----
 
 BRICK_TEXTURE_NAME_SUBSTRING_COSTS = {"Cobble": 100, "Corner": 1000, "Ornate": 150, "Decorative": 175, "Top":20, "Side":21, "Smooth":30, "0":1, "1":2, "2":3, "3":4, "4":5, "5":6, "6":7, "7":8, "8":9, "9":10} # the texture with the lowest score will be chosen when an exact match to the predicted texture name is not found.
 
@@ -117,7 +127,12 @@ def select_best_texture_file_name(*, base_name):
     raise ValueError("Clay textures do not begin with the word Soil in Hytale: bad base name: " + base_name)
   else:
     raise NotImplementedError("unimplemented or incorrect prefix for: " + base_name)
-
+    
+def color_tuple_to_hytale_string(input_color):
+  assert len(input_color) == 3
+  assert all(isinstance(component, int) and 0 <= component <= 255 for component in input_color)
+  return "#" + "".join(Tibs.from_u(component, 8).to_hex().rjust(2, "0") for component in input_color)
+assert_equals(color_tuple_to_hytale_string((255, 254, 0)), "#fffe00")
 
 
 # ----- Hytale game data constants -----
@@ -314,6 +329,7 @@ os.remove(LANGUAGE_EN_US_FILE_DESTINATION_PATH)
 # generate assets \/  
 
 languageFileEnUS = open(LANGUAGE_EN_US_FILE_DESTINATION_PATH, "w")
+colorsShelf = shelve.open("colors.shelf")
 
 for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if name.endswith(".blockymodel")):
   shutil.copy(MODEL_FOLDER_SOURCE_PATH+SEP+modelFileName, MODEL_FOLDER_DESTINATION_PATH+SEP+modelFileName)
@@ -365,6 +381,12 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
               ).replace("${SET}", assetContents["BLOCK_SET"]
               ).replace("${TEXTURE_PATH_IN_MOD}", assetContents["TEXTURE_PATH_IN_MOD"]
               )
+            try:
+              outputLine = outputLine.replace("${PARTICLECOLOR_STR}", color_tuple_to_hytale_string(colorsShelf[textureFileName][PARTICLE_COLORATION]))
+            except KeyError:
+              print(colorsShelf[textureFileName])
+              print("key error of some kind")
+              exit()
             for jsonOld, jsonNew in data_page_get_value(dataPage, "AUTOMATIC_JSON_ITEMS"):
               outputLine = outputLine.replace("${" + jsonOld + "}", jsonNew)
               
@@ -379,3 +401,4 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
 languageFileEnUS.close() # probably not necessary in cpython, 
 # and outside of cpython, the lack of a context manager here might result in the file being left open after a crash https://stackoverflow.com/questions/17577137/do-files-get-closed-during-an-exception-exit
 # TODO combine multiple language files into one context manager?
+colorsShelf.close()

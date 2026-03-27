@@ -1,15 +1,19 @@
 
-from bidict import bidict
-from PIL import Image, ImageTk, ImageDraw # the k in ImageTk is lowercase.
 import enum
-import argparse
 import os
 import json
 import ast
 import tkinter
+import time
+
+
+# pip
+from bidict import bidict
+from PIL import Image, ImageTk, ImageDraw # the k in ImageTk is lowercase.
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "True"
 import pygame
-import time
+import argparse
+
 
 """
 todo:

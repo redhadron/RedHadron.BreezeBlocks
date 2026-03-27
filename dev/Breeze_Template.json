@@ -61,7 +61,7 @@
         {}
       ]
     },
-    "ParticleColor": "#65482d",
+    "ParticleColor": "${PARTICLECOLOR_STR}",
     "BlockSoundSetId": "${JSON_BLOCKTYPE_BLOCKSOUNDSETID_STR}",
     "State": {
       "Definitions": {
