@@ -61,10 +61,15 @@ notes that are helpful for planning:
 
 
 TODO:
+fix name of white sandstone breeze block
 translate to a lot of languages.
-  model name parsing by matching strings from lists.
+  use model name parsing by matching strings from lists.
+    add an option to flatten result
+  libreparse
 make a model variants system.
+  idea: follow the depth information (Db1000) with "_WoodOnly" or "_StoneOnly" so that suffix must be removed and then generate.py continues as normal.
 fix top texture directions.
+add a smooth stone brick texture simplifier.
 fix texture errors on the back of G4x4T4pVoid.
 create mismatch.py
 rework atlas organize window so that it only returns when it meets an objective which can be specified as an argument. Add keyboard shortcuts to link, unlink, and delete. Add command line arg for interactive mode.
@@ -86,7 +91,6 @@ make a breeze mason's bench that can make weirder blocks with other depth modes.
 create ornate versions of some models.
 
 cancelled:
-none
 pickling as a context manager. (this already exists: import shelve)
 
 done:
@@ -116,3 +120,4 @@ create a particle color system.
   hytale constants module for python.
   3d median.
 upgrade thumbnail generator to invert background when dark textures are detected.
+parse string to match format of structure full of strings

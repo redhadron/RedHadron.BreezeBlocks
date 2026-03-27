@@ -45,6 +45,7 @@ def shorten_suffix(string, suffix, new_suffix):
 
 def assert_equals(a, b):
   assert a == b, (a, b)
+  
 def assert_isinstance(a, b):
   assert isinstance(a, b), (a, b)
   
@@ -130,27 +131,38 @@ assert_equals(parse_string_as_structure("amnz", ["a",["m","n"],"z"]).matched_dat
 assert_equals(parse_string_as_structure("amnz", ["a",["m",("l","m","n","o","p")],"z"]).matched_data, ["a",["m",("n",)],"z"])
 assert_equals(parse_string_as_structure("anz", ["a",(("l","m"),("n","o")),"z"]).matched_data, ["a",(("n",),),"z"])
 assert_equals(parse_string_as_structure("abc", ["a","b","","c"]).matched_data, ["a","b","","c"])
+# match leftmost possible match first:
+assert_equals(parse_string_as_structure("amnz", ["a",(["m","n","o"],["m","n"]),"z"]).matched_data, ["a",(["m","n"],),"z"])
+assert_equals(parse_string_as_structure("amnz", ["a",(["m","n"],["m","n","z"]),"z"]).matched_data, ["a",(["m","n"],),"z"])
 
-"""
-def parse_string_to_list(input_string, structure):
-  assert isinstance(input_string, str)
-  assert not isinstance(structure, str)
-  assert isinstance(structure, (list, tuple, set))
-  if isinstance(structure, set):
-    for item in structure:
-      assert isinstance(item, str)
-      if input_string.startswith(item):
-        return ParseResult(item, remove_prefix(input_string, item))
-    raise ParsePartialFailure()
+def flatten_string_structure(input_structure):
+  if isinstance(input_structure, str):
+    return input_structure
   else:
-    assert isinstance(structure, (list, tuple))
-    assert len(structure) > 0
-""" 
-    
+    assert_isinstance(input_structure, (list, tuple))
+    result = []
+    for item in input_structure:
+      itemResult = flatten_string_structure(item)
+      if isinstance(itemResult, str):
+        result.append(itemResult)
+      else:
+        assert_isinstance(itemResult, (list,tuple))
+        result.extend(itemResult)
+    return result
+assert_equals(flatten_string_structure(["a",("b",),["c"],["d","e"],("f","g"),[("h","i"),"j",("k","l"),["m"]]]), "a b c d e f g h i j k l m".split(" "))
 
+# ---- mod-specific patterns -----
 
-
-
+ALPHABET_LOWERCASE_PATTERN = tuple([*"abcdefghijklmnopqrstuvwxyz"])
+ALPHABET_UPPERCASE_PATTERN = tuple(char.upper() for char in ALPHABET_LOWERCASE_PATTERN)
+SHAPE_NAME_PATTERN = [ALPHABET_UPPERCASE_PATTERN] + ([ALPHABET_LOWERCASE_PATTERN]*3)
+DIGIT_PATTERN = ("0","1","2","3","4","5","6","7","8","9")
+# OPTIONAL_DIGIT_PATTERN = DIGIT_PATTERN + ("",)
+CREATE_UNSIGNED_INTEGER_PATTERN = lambda maxLength: tuple([DIGIT_PATTERN]*i for i in range(maxLength,0,-1))
+CREATE_UNIVERSAL_NUMBER_PATTERN = lambda maxIntegerLength: tuple(list(itertools.chain(zip(itertools.repeat(CREATE_UNSIGNED_INTEGER_PATTERN(maxIntegerLength)), charProvisionsStr))) for charProvisionsStr in ["pnd", "pn", "p", "nd", "n", "d"])
+# print(CREATE_UNIVERSAL_NUMBER_PATTERN(1))
+# exit()
+# TODO test
 
 
 
@@ -438,14 +450,16 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
             assert thumbnailMaskImage.size == thumbnailTextureImage.size
             thumbnailResultImageNoBG = ImageChops.multiply(thumbnailMaskImage.convert("RGB"), thumbnailTextureImage.convert("RGB"))
             if sum(assetInfo["particle_color_as_tuple"]) <= ICON_BACKGROUND_INVERSION_THRESHOLD:
-              # assert thumbnailResultImageNoBG.size == thumbnailMaskImage.size
               thumbnailResultImage = ImageChops.add(thumbnailResultImageNoBG, ImageChops.invert(thumbnailMaskImage).convert("RGB"))
             else:
               thumbnailResultImage = thumbnailResultImageNoBG
             thumbnailResultImage.save(assetInfo["icon_file_path"])
         
         # language file stuff
-        displayNameEnUS = f"{family} Breeze Block ({remove_prefix(shapeNameWithoutDepth, 'Breeze_')})"
+        shapeNameForDecomposition = remove_prefix(shapeNameWithoutDepth, 'Breeze_')
+        # parse_string_as_structure(shapeNameForDecomposition, [[GNxN],[(T F D B L),[....]]
+        displayNameEnUS = f"{family} Breeze Block ({shapeNameForDecomposition})"
+        # TODO finish name creation (don't just use shapeNameForDecomposition)
         languageFileEnUS.write(f"{assetInfo['full_name']}.name = {displayNameEnUS}\n")
             
         if os.path.exists(assetInfo["output_file_path"]):
