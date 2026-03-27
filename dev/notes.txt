@@ -61,11 +61,10 @@ notes that are helpful for planning:
 
 
 TODO:
-upgrade thumbnail generator to invert background when dark textures are detected.
 translate to a lot of languages.
   model name parsing by matching strings from lists.
 make a model variants system.
-fix top textures.
+fix top texture directions.
 fix texture errors on the back of G4x4T4pVoid.
 create mismatch.py
 rework atlas organize window so that it only returns when it meets an objective which can be specified as an argument. Add keyboard shortcuts to link, unlink, and delete. Add command line arg for interactive mode.
@@ -75,7 +74,6 @@ add keyboard shortcut in atlas.py to rename a tile, which can be hooked up to re
 Make system for changing the depth of breeze blocks.
 finish creating all models from designs canvas.
 improve texture shading on all models.
-create ornate versions of some models.
 outer corner breeze blocks.
 inner corner breeze blocks (G2x2 and higher only).
 Add breeze blocks for wood types and stone types from other popular mods.
@@ -85,6 +83,7 @@ curved breeze blocks.
 optimize models.
 patterns bigger than a single block.
 make a breeze mason's bench that can make weirder blocks with other depth modes.
+create ornate versions of some models.
 
 cancelled:
 none
@@ -116,3 +115,4 @@ publish mod.
 create a particle color system.
   hytale constants module for python.
   3d median.
+upgrade thumbnail generator to invert background when dark textures are detected.

@@ -17,23 +17,24 @@ import shelve
 todo:
 replace scandir with listdir
 replace readlines with read
+rename thumbnails to icons
 """
 
 PARTICLE_COLORATION = "channelwise_median_snapped_to_input_color" # a key provided by colors.py in colors.shelf
 ICON_BACKGROUND_INVERSION_THRESHOLD = 0 # brightness at or below which the background will be inverted from black to white.
 
 
-
+# ----- assertion helpers -----
   
 def remove_suffix(string, suffix):
   assert len(suffix) <= len(string)
-  assert len(suffix) > 0
+  # assert len(suffix) > 0
   assert string.endswith(suffix), string + " does not end with " + suffix
   return string[:-len(suffix)]
   
 def remove_prefix(string, prefix):
   assert len(prefix) <= len(string)
-  assert len(prefix) > 0
+  # assert len(prefix) > 0
   assert string.startswith(prefix), string + " does not start with " + prefix
   return string[len(prefix):]
 
@@ -44,10 +45,12 @@ def shorten_suffix(string, suffix, new_suffix):
 
 def assert_equals(a, b):
   assert a == b, (a, b)
+def assert_isinstance(a, b):
+  assert isinstance(a, b), (a, b)
   
   
 
-# ----- helper functions for working with data pages -----
+# ----- helpers for working with data pages -----
 # data pages are lists of tuples. They are used instead of dictionaries to preserve order and to allow duplicate entries.
 
 _unspecified_default = object()
@@ -81,6 +84,69 @@ def data_page_has_key(data_page, key):
 
 
 
+# ----- helpers for name parsing -----
+class ParseResult:
+  pass
+class ParseSuccess(ParseResult):
+  def __init__(self, matched_data, remaining_text):
+    self.matched_data, self.remaining_text = matched_data, remaining_text
+class ParseFailure(ParseResult):
+  def __init__(self, message):
+    self.message = message
+
+def parse_string_as_structure(input_string, structure):
+  # this method contains reassignment to input_string # TODO
+  assert len(input_string) > 0, "an infinite loop might occur, but maybe not"
+  if isinstance(structure, str):
+    if input_string.startswith(structure):
+      return ParseSuccess(structure, remove_prefix(input_string, structure))
+    return ParseFailure("failure while parsing with string structure.")
+  elif isinstance(structure, tuple):
+    for item in structure:
+      result = parse_string_as_structure(input_string, item)
+      if isinstance(result, ParseSuccess):
+        return ParseSuccess((result.matched_data,), result.remaining_text)
+      else:
+        assert isinstance(result, ParseFailure)
+    return ParseFailure("failure while parsing with tuple structure.")
+  else:
+    assert isinstance(structure, list)
+    listResult = list()
+    for item in structure:
+      itemResult = parse_string_as_structure(input_string, item)
+      if isinstance(itemResult, ParseFailure):
+        return ParseFailure("failure while parsing with list structure.")
+      else:
+        assert isinstance(itemResult, ParseSuccess)
+        listResult.append(itemResult.matched_data)
+        input_string = itemResult.remaining_text
+        continue
+    assert len(listResult) > 0, "what?"
+    return ParseSuccess(listResult, input_string)
+  assert False
+assert_equals(parse_string_as_structure("abc", ["a","b","c"]).matched_data, ["a","b","c"])
+assert_equals(parse_string_as_structure("adc", ["a",("b","d"),"c"]).matched_data, ["a",("d",),"c"])
+assert_equals(parse_string_as_structure("amnz", ["a",["m","n"],"z"]).matched_data, ["a",["m","n"],"z"])
+assert_equals(parse_string_as_structure("amnz", ["a",["m",("l","m","n","o","p")],"z"]).matched_data, ["a",["m",("n",)],"z"])
+assert_equals(parse_string_as_structure("anz", ["a",(("l","m"),("n","o")),"z"]).matched_data, ["a",(("n",),),"z"])
+assert_equals(parse_string_as_structure("abc", ["a","b","","c"]).matched_data, ["a","b","","c"])
+
+"""
+def parse_string_to_list(input_string, structure):
+  assert isinstance(input_string, str)
+  assert not isinstance(structure, str)
+  assert isinstance(structure, (list, tuple, set))
+  if isinstance(structure, set):
+    for item in structure:
+      assert isinstance(item, str)
+      if input_string.startswith(item):
+        return ParseResult(item, remove_prefix(input_string, item))
+    raise ParsePartialFailure()
+  else:
+    assert isinstance(structure, (list, tuple))
+    assert len(structure) > 0
+""" 
+    
 
 
 
@@ -89,8 +155,7 @@ def data_page_has_key(data_page, key):
 
 
 
-
-# ----- helper methods specific to Hytale -----
+# ----- helpers specific to Hytale -----
 
 BRICK_TEXTURE_NAME_SUBSTRING_COSTS = {"Cobble": 100, "Corner": 1000, "Ornate": 150, "Decorative": 175, "Top":20, "Side":21, "Smooth":30, "0":1, "1":2, "2":3, "3":4, "4":5, "5":6, "6":7, "7":8, "8":9, "9":10} # the texture with the lowest score will be chosen when an exact match to the predicted texture name is not found.
 
@@ -135,6 +200,13 @@ def color_tuple_to_hytale_string(input_color):
   assert all(isinstance(component, int) and 0 <= component <= 255 for component in input_color)
   return "#" + "".join(Tibs.from_u(component, 8).to_hex().rjust(2, "0") for component in input_color)
 assert_equals(color_tuple_to_hytale_string((255, 254, 0)), "#fffe00")
+
+
+
+
+
+
+
 
 
 # ----- Hytale game data constants -----
