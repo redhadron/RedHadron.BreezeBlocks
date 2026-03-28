@@ -61,7 +61,7 @@ notes that are helpful for planning:
 
 
 TODO:
-fix name of white sandstone breeze block
+fix names of white sandstone, red sandstone, peach, and ledge breeze blocks.
 translate to a lot of languages.
   use model name parsing by matching strings from lists.
     add an option to flatten result
