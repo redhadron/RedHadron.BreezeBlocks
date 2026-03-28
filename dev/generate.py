@@ -211,7 +211,6 @@ assert_equals(get_char_provision_strings("abc"), ["abc", "bc", "ac", "c", "ab", 
 CREATE_SIZE_DESCRIPTION_PATTERN = lambda maxIntegerLength: tuple(list(itertools.chain([char, CREATE_UNIVERSAL_NUMBER_PATTERN(maxIntegerLength)] for char in charProvisionsStr)) for charProvisionsStr in get_char_provision_strings("TFDBL"))
 MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS = 2
 
-
 # _a = CREATE_SIZE_DESCRIPTION_PATTERN(MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS)
 # print(_a)
 # print(parse_string_as_structure("T2p", _a))
@@ -220,6 +219,10 @@ MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS = 2
 # print(parse_string_as_structure("2p", _a))
 # exit()
 # del _a
+
+
+
+
 
 
 
@@ -291,18 +294,17 @@ ROCK_RUNIC_BRICK = "Runic_Blue Runic Runic_Teal Runic_Dark".split(" ") # the tex
 
 ROCK_BRICK_TEXTURE_NAME_SUBSTRING_REPLACEMENTS = {"Ledge": "Ledgestone", "Lime":"Limestone", "Peach":"Peachstone"}
 ROCK_BRICK_TEXTURE_NAME_NO_ROCK_PREFIX_REQUIRED = ["Peachstone", "Calcite", "Runic_Brick_Dark", "Runic_Brick_Dark_Blue"]
-ROCK_BRICK_DISPLAY_NAME_TRANSLATIONS = {"Runic_Blue": "Blue Runic", "Runic_Teal": "Dark Blue Runic", "Runic_Dark": "Dark Runic", "Sandstone_Red":"Red Sandstone", "Sandstone_White": "White Sandstone"}
+_ROCK_BRICK_DISPLAY_NAME_TRANSLATIONS = {"Runic_Blue": "Blue Runic", "Runic_Teal": "Dark Blue Runic", "Runic_Dark": "Dark Runic", "Sandstone_Red":"Red Sandstone", "Sandstone_White": "White Sandstone"}
 
 # gold brick only has a side texture
 
 PROTOTYPE_ROCK_BRICKS = "Concrete".split(" ")
 SOIL_BRICK = "Hive Hive_Corrupted Clay Clay_Ocean Snow"
-SOIL_BRICK_DISPLAY_NAME_TRANSLATIONS = {"Hive_Corrupted": "Corrupted Hive", "Clay_Ocean": "Ocean Clay"}
+_SOIL_BRICK_DISPLAY_NAME_TRANSLATIONS = {"Hive_Corrupted": "Corrupted Hive", "Clay_Ocean": "Ocean Clay"}
 #  Aqua Calcite Gold Ledge Lime Marble # these are available as smooth bricks in-game but their textures have irregular names.
 # "Rock": {"LIST": ["Runic_Blue", "Runic_Dark", "Runic_Teal"], "SUFFIX": ""}, # irregular texture names
 
-
-
+UNIFIED_DISPLAY_NAME_TRANSLATIONS = dict(list(_ROCK_BRICK_DISPLAY_NAME_TRANSLATIONS.items()) + list(_SOIL_BRICK_DISPLAY_NAME_TRANSLATIONS.items()) + list(ROCK_BRICK_TEXTURE_NAME_SUBSTRING_REPLACEMENTS.items()))
 
 
 
@@ -527,7 +529,7 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
         # else:
           # assert isinstance(decomposedModelName, ParseSuccess)
         modelNameLayoutStr, modelNameSizeDescriptionStr, modelNameShapeStr = tuple(flatten_string_structure_and_join(item) for item in decomposedModelName)
-        displayNameEnUS = f"{family} Breeze Block (shape: {modelNameShapeStr}, layout: {modelNameLayoutStr}, thickness: {modelNameSizeDescriptionStr})"
+        displayNameEnUS = f"{UNIFIED_DISPLAY_NAME_TRANSLATIONS.get(family, family)} Breeze Block (shape: {modelNameShapeStr}, layout: {modelNameLayoutStr}, thickness: {modelNameSizeDescriptionStr})"
         # TODO finish name creation (don't just use modelNameForDecomposition)
         languageFileEnUS.write(f"{assetInfo['full_name']}.name = {displayNameEnUS}\n")
         
