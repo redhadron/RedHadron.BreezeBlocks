@@ -65,7 +65,8 @@ fix names of white sandstone, red sandstone, peach, and ledge breeze blocks.
 translate to a lot of languages.
   use model name parsing by matching strings from lists.
     add an option to flatten result
-  libreparse
+  libretranslate
+clean up model name parsing with default values for max integer length.
 make a model variants system.
   idea: follow the depth information (Db1000) with "_WoodOnly" or "_StoneOnly" so that suffix must be removed and then generate.py continues as normal.
 fix top texture directions.
@@ -89,6 +90,7 @@ optimize models.
 patterns bigger than a single block.
 make a breeze mason's bench that can make weirder blocks with other depth modes.
 create ornate versions of some models.
+document what is a family, what is a family suffix, what is a family prefix, and reference assets from base game.
 
 cancelled:
 pickling as a context manager. (this already exists: import shelve)

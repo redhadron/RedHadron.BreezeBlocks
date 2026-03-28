@@ -49,6 +49,9 @@ def assert_equals(a, b):
 def assert_isinstance(a, b):
   assert isinstance(a, b), (a, b)
   
+# def assert_is_empty(a):
+  # assert len(a) == 0, a
+  
   
 
 # ----- helpers for working with data pages -----
@@ -88,16 +91,34 @@ def data_page_has_key(data_page, key):
 # ----- helpers for name parsing -----
 class ParseResult:
   pass
+  
 class ParseSuccess(ParseResult):
   def __init__(self, matched_data, remaining_text):
     self.matched_data, self.remaining_text = matched_data, remaining_text
+  def __repr__(self):
+    assert type(self) is ParseSuccess, "__repr__ is not available for subclasses yet"
+    return f"ParseSuccess(matched_data={self.matched_data}, remaining_text={self.remaining_text!r})"
+  def assert_complete_and_get_matched_data(self):
+    assert len(self.remaining_text) == 0, self.remaining_text
+    return self.matched_data
+    
 class ParseFailure(ParseResult):
   def __init__(self, message):
     self.message = message
+    
+  def __repr__(self):
+    assert type(self) is ParseFailure, "__repr__ is not available for subclasses yet"
+    return f"ParseFailure(message={self.message})"
+
+class ParseError(Exception):
+  """ this is not used for control flow, only for gathering more information during an actual error """
+  pass
 
 def parse_string_as_structure(input_string, structure):
   # this method contains reassignment to input_string # TODO
-  assert len(input_string) > 0, "an infinite loop might occur, but maybe not"
+  # assert len(input_string) > 0, f"an infinite loop might occur, but maybe not. {structure=}"
+  if len(input_string) == 0:
+    return ParseFailure("Parsing an empty input string is bad.") # this is a ParseFailure and not an exception because it needs to be recognized as a non-crash failure in whatever method called it recursively, such as in the case where you are trying to parse (#p#n #p) from string "#p" - #p#n must fail safely for #p to later succeed.
   if isinstance(structure, str):
     if input_string.startswith(structure):
       return ParseSuccess(structure, remove_prefix(input_string, structure))
@@ -109,18 +130,23 @@ def parse_string_as_structure(input_string, structure):
         return ParseSuccess((result.matched_data,), result.remaining_text)
       else:
         assert isinstance(result, ParseFailure)
-    return ParseFailure("failure while parsing with tuple structure.")
+    return ParseFailure(f"parsing tuple failed: could not parse any option provided by the tuple {structure} with the input {input_string}.")
   else:
     assert isinstance(structure, list)
     listResult = list()
     for item in structure:
-      itemResult = parse_string_as_structure(input_string, item)
+      try:
+        itemResult = parse_string_as_structure(input_string, item)
+      except Exception as e:
+        raise ParseError(f"could not parse the string {input_string} with the structure {structure}, while attempting to parse with sub-structure {item} the following exception occurred:\n {e}")
       if isinstance(itemResult, ParseFailure):
-        return ParseFailure("failure while parsing with list structure.")
+        return ParseFailure("failure while parsing with list structure: " + itemResult.message)
       else:
         assert isinstance(itemResult, ParseSuccess)
         listResult.append(itemResult.matched_data)
         input_string = itemResult.remaining_text
+        # if len(input_string) == 0:
+          # break
         continue
     assert len(listResult) > 0, "what?"
     return ParseSuccess(listResult, input_string)
@@ -151,15 +177,21 @@ def flatten_string_structure(input_structure):
     return result
 assert_equals(flatten_string_structure(["a",("b",),["c"],["d","e"],("f","g"),[("h","i"),"j",("k","l"),["m"]]]), "a b c d e f g h i j k l m".split(" "))
 
+def flatten_string_structure_and_join(input_structure):
+  return "".join(flatten_string_structure(input_structure))
+
 # ----- mod-specific patterns -----
 
 ALPHABET_LOWERCASE_PATTERN = tuple([*"abcdefghijklmnopqrstuvwxyz"])
 ALPHABET_UPPERCASE_PATTERN = tuple(char.upper() for char in ALPHABET_LOWERCASE_PATTERN)
 SHAPE_NAME_PATTERN = [ALPHABET_UPPERCASE_PATTERN] + ([ALPHABET_LOWERCASE_PATTERN]*3)
+MULTI_SHAPE_NAME_PATTERN = ([SHAPE_NAME_PATTERN]*4, SHAPE_NAME_PATTERN)
 DIGIT_PATTERN = ("0","1","2","3","4","5","6","7","8","9")
 # OPTIONAL_DIGIT_PATTERN = DIGIT_PATTERN + ("",)
 CREATE_UNSIGNED_INTEGER_PATTERN = lambda maxLength: tuple([DIGIT_PATTERN]*i for i in range(maxLength,0,-1))
-CREATE_UNIVERSAL_NUMBER_PATTERN = lambda maxIntegerLength: tuple(list(itertools.chain(zip(itertools.repeat(CREATE_UNSIGNED_INTEGER_PATTERN(maxIntegerLength)), charProvisionsStr))) for charProvisionsStr in ["pnd", "pn", "pd", "p", "nd", "n", "d"])
+CREATE_UNIVERSAL_NUMBER_PATTERN = lambda maxIntegerLength: tuple(
+  list(itertools.chain(*zip(itertools.repeat(CREATE_UNSIGNED_INTEGER_PATTERN(maxIntegerLength)), charProvisionsStr))) for charProvisionsStr in ["pnd", "pn", "pd", "p", "nd", "n", "d"]
+)
 GRID_PATTERN = ["G", DIGIT_PATTERN, "x", DIGIT_PATTERN]
 # considering the rightmost letter in a charProvisionsStr list, all strings with that letter must occur before all strings without that letter, so that the letter is never missed due to a pattern getting matched that didn't include that letter, but could have.
 
@@ -178,7 +210,17 @@ assert_equals(get_char_provision_strings("abc"), ["abc", "bc", "ac", "c", "ab", 
 
 CREATE_SIZE_DESCRIPTION_PATTERN = lambda maxIntegerLength: tuple(list(itertools.chain([char, CREATE_UNIVERSAL_NUMBER_PATTERN(maxIntegerLength)] for char in charProvisionsStr)) for charProvisionsStr in get_char_provision_strings("TFDBL"))
 MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS = 2
-# TODO test
+
+
+# _a = CREATE_SIZE_DESCRIPTION_PATTERN(MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS)
+# print(_a)
+# print(parse_string_as_structure("T2p", _a))
+# _a = CREATE_UNIVERSAL_NUMBER_PATTERN(1)
+# print(_a)
+# print(parse_string_as_structure("2p", _a))
+# exit()
+# del _a
+
 
 
 
@@ -435,24 +477,27 @@ colorsShelf = shelve.open("colors.shelf")
 
 for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if name.endswith(".blockymodel")):
   shutil.copy(MODEL_FOLDER_SOURCE_PATH+SEP+modelFileName, MODEL_FOLDER_DESTINATION_PATH+SEP+modelFileName)
-  shapeNameWithDepth = remove_suffix(modelFileName, ".blockymodel")
-  shapeNameWithoutDepth = remove_suffix(shapeNameWithDepth, "_Db1000")
-  iconMaskFileName = shapeNameWithoutDepth + ".png"
+  modelNameWithDepth = remove_suffix(modelFileName, ".blockymodel")
+  modelNameWithoutDepth = remove_suffix(modelNameWithDepth, "_Db1000")
+  iconMaskFileName = modelNameWithoutDepth + ".png"
   
   for dataPage in DATA_PAGES:
     for family in data_page_get_value(dataPage, "FAMILY_LIST"):
       for textureNameSuffix in data_page_get_value(dataPage, "TEXTURE_NAME_SUFFIX_LIST"):
         
-        assetInfo = dict()
         
+        # asset info specific to this model and texture:
+        assetInfo = dict()
         assetInfo["unpatched_texture_base_name"] = f"{data_page_get_value(dataPage, 'TEXTURE_NAME_PREFIX')}{family}{textureNameSuffix}" # this is also used as the block set later
         assetInfo["texture_file_name"] = select_best_texture_file_name(base_name=assetInfo["unpatched_texture_base_name"])
-        assetInfo["full_name"] = data_page_get_value(dataPage, ("AUTOMATIC_JSON_ITEMS", "JSON_TAGS_TYPE_STR")) + "_" + family + (textureNameSuffix if data_page_get_value(dataPage, "INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME") else "") + "_" + shapeNameWithoutDepth
+        assetInfo["full_name"] = data_page_get_value(dataPage, ("AUTOMATIC_JSON_ITEMS", "JSON_TAGS_TYPE_STR")) + "_" + family + (textureNameSuffix if data_page_get_value(dataPage, "INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME") else "") + "_" + modelNameWithoutDepth
         assetInfo["output_file_path"] = ASSET_FOLDER_DESTINATION_PATH + SEP + assetInfo["full_name"] + ".json"
         assetInfo["icon_file_name"] = assetInfo["full_name"] + ".png"
         assetInfo["icon_file_path"] = ICON_FOLDER_DESTINATION_PATH + SEP + assetInfo["icon_file_name"]
         assetInfo["particle_color_as_tuple"] = colorsShelf[assetInfo["texture_file_name"]][PARTICLE_COLORATION]
         
+        
+        # asset info specific to this model and texture, for inclusion in asset file:
         assetContents = {
           "ICON_PATH_IN_MOD": "Icons/ItemsGenerated/" + assetInfo["icon_file_name"],
           "BLOCK_SET": assetInfo["unpatched_texture_base_name"],
@@ -461,6 +506,8 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
           "PARTICLECOLOR_STR": color_tuple_to_hytale_string(assetInfo["particle_color_as_tuple"]),
         }
         
+        
+        # icon generation:
         with Image.open(MODEL_FOLDER_SOURCE_PATH + SEP + iconMaskFileName) as thumbnailMaskImage:
           with Image.open(HYTALE_BLOCKTEXTURES_PATH + SEP + assetInfo["texture_file_name"]) as thumbnailTextureImage:
             assert thumbnailMaskImage.size == thumbnailTextureImage.size
@@ -471,19 +518,27 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
               thumbnailResultImage = thumbnailResultImageNoBG
             thumbnailResultImage.save(assetInfo["icon_file_path"])
         
-        # language file stuff
-        shapeNameForDecomposition = remove_prefix(shapeNameWithoutDepth, 'Breeze_')
-        decomposedShapeName = parse_string_as_structure(shapeNameForDecomposition, [GRID_PATTERN,CREATE_SIZE_DESCRIPTION_PATTERN(MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS), SHAPE_NAME_PATTERN])
-        displayNameEnUS = f"{family} Breeze Block ({shapeNameForDecomposition})"
-        # TODO finish name creation (don't just use shapeNameForDecomposition)
+        
+        # language file stuff:
+        modelNameForDecomposition = remove_prefix(modelNameWithoutDepth, 'Breeze_')
+        decomposedModelName = parse_string_as_structure(modelNameForDecomposition, [GRID_PATTERN,CREATE_SIZE_DESCRIPTION_PATTERN(MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS), MULTI_SHAPE_NAME_PATTERN]).assert_complete_and_get_matched_data()
+        #print(f"{modelNameForDecomposition} becomes {decomposedModelName}")
+        # if isinstance(decomposedModelName, ParseFailure):
+        # else:
+          # assert isinstance(decomposedModelName, ParseSuccess)
+        modelNameLayoutStr, modelNameSizeDescriptionStr, modelNameShapeStr = tuple(flatten_string_structure_and_join(item) for item in decomposedModelName)
+        displayNameEnUS = f"{family} Breeze Block (shape: {modelNameShapeStr}, layout: {modelNameLayoutStr}, thickness: {modelNameSizeDescriptionStr})"
+        # TODO finish name creation (don't just use modelNameForDecomposition)
         languageFileEnUS.write(f"{assetInfo['full_name']}.name = {displayNameEnUS}\n")
-            
+        
+        
+        # main procedure:
         if os.path.exists(assetInfo["output_file_path"]):
           os.remove(assetInfo["output_file_path"])
         with open(assetInfo["output_file_path"], "w") as outputFile:
           for currentLine in templateFileLines:
             outputLine = currentLine.replace("${FULL_NAME}", assetInfo["full_name"]
-              ).replace("${MODEL_BASE_NAME}", shapeNameWithDepth
+              ).replace("${MODEL_BASE_NAME}", modelNameWithDepth
               ).replace("${ICON_PATH_IN_MOD}", assetContents["ICON_PATH_IN_MOD"]
               ).replace("${SET}", assetContents["BLOCK_SET"]
               ).replace("${TEXTURE_PATH_IN_MOD}", assetContents["TEXTURE_PATH_IN_MOD"]
@@ -498,7 +553,7 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
             outputLine = outputLine.replace("${TEXTURE_NAME_SUFFIX}", textureNameSuffix)
             
             assert "${" not in outputLine, outputLine
-            assert "__" not in outputLine, outputLine # because this probably should never happen.
+            assert "__" not in outputLine, outputLine # because this should never happen and usually indicates a mistake in the template or data page.
             outputFile.write(outputLine)
 
 languageFileEnUS.close() # probably not necessary in cpython, 
