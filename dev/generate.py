@@ -116,7 +116,6 @@ class ParseError(Exception):
 
 def parse_string_as_structure(input_string, structure):
   # this method contains reassignment to input_string # TODO
-  # assert len(input_string) > 0, f"an infinite loop might occur, but maybe not. {structure=}"
   if len(input_string) == 0:
     return ParseFailure("Parsing an empty input string is bad.") # this is a ParseFailure and not an exception because it needs to be recognized as a non-crash failure in whatever method called it recursively, such as in the case where you are trying to parse (#p#n #p) from string "#p" - #p#n must fail safely for #p to later succeed.
   if isinstance(structure, str):
@@ -219,7 +218,6 @@ MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS = 2
 # print(parse_string_as_structure("2p", _a))
 # exit()
 # del _a
-
 
 
 

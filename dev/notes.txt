@@ -61,18 +61,15 @@ notes that are helpful for planning:
 
 
 TODO:
-fix names of white sandstone, red sandstone, peach, and ledge breeze blocks.
+create mismatch.py
+make string library, add length assertions back to remove_prefix etc.
 translate to a lot of languages.
-  use model name parsing by matching strings from lists.
-    add an option to flatten result
   libretranslate
-clean up model name parsing with default values for max integer length.
 make a model variants system.
   idea: follow the depth information (Db1000) with "_WoodOnly" or "_StoneOnly" so that suffix must be removed and then generate.py continues as normal.
 fix top texture directions.
 add a smooth stone brick texture simplifier.
 fix texture errors on the back of G4x4T4pVoid.
-create mismatch.py
 rework atlas organize window so that it only returns when it meets an objective which can be specified as an argument. Add keyboard shortcuts to link, unlink, and delete. Add command line arg for interactive mode.
 add command line args to renamer.
 add a command to atlas.py to predict which tiles would be changed upon export or import, and optionally, to show the changes.
@@ -123,3 +120,7 @@ create a particle color system.
   3d median.
 upgrade thumbnail generator to invert background when dark textures are detected.
 parse string to match format of structure full of strings
+fix names of white sandstone, red sandstone, peach, and ledge breeze blocks.
+parsing:
+  add an option to flatten result (actually separate method)
+clean up model name parsing with default values for max integer length.
