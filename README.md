@@ -12,4 +12,6 @@ generate.py is the script to generate a working hytale mod from template files. 
 
 renamer.py is a bulk renaming tool, with the additional capability of updating file names where they appear in the text of other files.
 
+colors.py looks at every texture in Hytale's BlockTextures folder, extracts an average color, and saves it in a shelf for later use in choosing particle colors.
+
 Suggestions are appreciated!

@@ -151,7 +151,7 @@ def flatten_string_structure(input_structure):
     return result
 assert_equals(flatten_string_structure(["a",("b",),["c"],["d","e"],("f","g"),[("h","i"),"j",("k","l"),["m"]]]), "a b c d e f g h i j k l m".split(" "))
 
-# ---- mod-specific patterns -----
+# ----- mod-specific patterns -----
 
 ALPHABET_LOWERCASE_PATTERN = tuple([*"abcdefghijklmnopqrstuvwxyz"])
 ALPHABET_UPPERCASE_PATTERN = tuple(char.upper() for char in ALPHABET_LOWERCASE_PATTERN)
@@ -159,9 +159,25 @@ SHAPE_NAME_PATTERN = [ALPHABET_UPPERCASE_PATTERN] + ([ALPHABET_LOWERCASE_PATTERN
 DIGIT_PATTERN = ("0","1","2","3","4","5","6","7","8","9")
 # OPTIONAL_DIGIT_PATTERN = DIGIT_PATTERN + ("",)
 CREATE_UNSIGNED_INTEGER_PATTERN = lambda maxLength: tuple([DIGIT_PATTERN]*i for i in range(maxLength,0,-1))
-CREATE_UNIVERSAL_NUMBER_PATTERN = lambda maxIntegerLength: tuple(list(itertools.chain(zip(itertools.repeat(CREATE_UNSIGNED_INTEGER_PATTERN(maxIntegerLength)), charProvisionsStr))) for charProvisionsStr in ["pnd", "pn", "p", "nd", "n", "d"])
-# print(CREATE_UNIVERSAL_NUMBER_PATTERN(1))
-# exit()
+CREATE_UNIVERSAL_NUMBER_PATTERN = lambda maxIntegerLength: tuple(list(itertools.chain(zip(itertools.repeat(CREATE_UNSIGNED_INTEGER_PATTERN(maxIntegerLength)), charProvisionsStr))) for charProvisionsStr in ["pnd", "pn", "pd", "p", "nd", "n", "d"])
+GRID_PATTERN = ["G", DIGIT_PATTERN, "x", DIGIT_PATTERN]
+# considering the rightmost letter in a charProvisionsStr list, all strings with that letter must occur before all strings without that letter, so that the letter is never missed due to a pattern getting matched that didn't include that letter, but could have.
+
+proper_bin = lambda x: remove_prefix(bin(x), "0b")
+
+def get_char_provision_strings(input_string):
+  # get a list of all strings that can be made by toggling whether each character from the input string is present in the output string, while ensuring that no string in this list is a prefix to another string that comes later in this list.
+  # this is useful for parsing a block of text which may contain any of these optional letters in a known order, and doing so in a single step (if strings in the output list could be prefixes to later strings, parsing would not consume as many characters as possible, and multiple parsing steps would be necessary.)
+  result = []
+  for i in range(2**len(input_string)-1, 0, -1):
+    presencesStr = proper_bin(i)[::-1].ljust(len(input_string), "0")
+    presences = [{"1":True, "0":False}[item] for item in presencesStr]
+    result.append("".join(char for present, char in zip(presences, input_string) if present))
+  return result
+assert_equals(get_char_provision_strings("abc"), ["abc", "bc", "ac", "c", "ab", "b", "a"])
+
+CREATE_SIZE_DESCRIPTION_PATTERN = lambda maxIntegerLength: tuple(list(itertools.chain([char, CREATE_UNIVERSAL_NUMBER_PATTERN(maxIntegerLength)] for char in charProvisionsStr)) for charProvisionsStr in get_char_provision_strings("TFDBL"))
+MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS = 2
 # TODO test
 
 
@@ -457,7 +473,7 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
         
         # language file stuff
         shapeNameForDecomposition = remove_prefix(shapeNameWithoutDepth, 'Breeze_')
-        # parse_string_as_structure(shapeNameForDecomposition, [[GNxN],[(T F D B L),[....]]
+        decomposedShapeName = parse_string_as_structure(shapeNameForDecomposition, [GRID_PATTERN,CREATE_SIZE_DESCRIPTION_PATTERN(MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS), SHAPE_NAME_PATTERN])
         displayNameEnUS = f"{family} Breeze Block ({shapeNameForDecomposition})"
         # TODO finish name creation (don't just use shapeNameForDecomposition)
         languageFileEnUS.write(f"{assetInfo['full_name']}.name = {displayNameEnUS}\n")
