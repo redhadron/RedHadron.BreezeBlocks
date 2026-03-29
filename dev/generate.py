@@ -14,8 +14,23 @@ from PIL import Image, ImageChops
 from tibs import Tibs
 import shelve
 from libretranslatepy import LibreTranslateAPI
-libreTranslateAPI = LibreTranslateAPI("http://127.0.0.1:5000")
-# import dotted_dict
+LIBRETRANSLATE_API = LibreTranslateAPI("http://127.0.0.1:5000")
+LIBRETRANSLATE_SUPPORTED_LANGUAGE_CODES = [item["code"] for item in LIBRETRANSLATE_API.languages()]
+HYTALE_STOCK_LANGUAGE_CODES = ["en-US", "pt-BR", "ru-RU", "uk-UA"]
+BREEZE_BLOCKS_NATIVE_LANGUAGE_CODE = "en-US"
+BREEZE_BLOCKS_LANGUAGE_CODES = HYTALE_STOCK_LANGUAGE_CODES
+LANGUAGE_CODE_LIBRETRANSLATE_SUBSTITUTIONS = {originalCode: originalCode if originalCode in LIBRETRANSLATE_SUPPORTED_LANGUAGE_CODES else originalCode.split("-")[0] if originalCode.split("-")[0] in LIBRETRANSLATE_SUPPORTED_LANGUAGE_CODES else None for originalCode in BREEZE_BLOCKS_LANGUAGE_CODES}
+# for languageCode in HYTALE_STOCK_FOREIGN_LANGUAGE_CODES
+#for lang in HYTALE_STOCK_FOREIGN_LANGUAGE_CODES:
+  # assert lang in LIBRETRANSLATE_SUPPORTED_LANGUAGE_CODES, (lang, LIBRETRANSLATE_SUPPORTED_LANGUAGE_CODES)
+# exit()
+
+PARTICLE_COLORATION = "channelwise_median_snapped_to_input_color" # a key provided by colors.py in colors.shelf
+ICON_BACKGROUND_INVERSION_THRESHOLD = 0 # brightness at or below which the background will be inverted from black to white.
+
+
+
+
 
 """
 todo:
@@ -24,8 +39,10 @@ replace readlines with read
 rename thumbnails to icons
 """
 
-PARTICLE_COLORATION = "channelwise_median_snapped_to_input_color" # a key provided by colors.py in colors.shelf
-ICON_BACKGROUND_INVERSION_THRESHOLD = 0 # brightness at or below which the background will be inverted from black to white.
+
+
+
+
 
 
 # ----- assertion helpers -----
@@ -399,10 +416,6 @@ SHAPE_NICKNAMES_TO_NAMES = {"Hair": "Crosshair", "Head": "Empty Crosshair", "Slo
 def dictionary_translate_if_able(dictionary, key):
   return dictionary.get(key, key)
 
-"""
-REGEX_ESCAPABLE_DELIMETERS = [".", "^", "$"]
-REGEX_FORBIDDEN_DELIMETERS = ["*", "+", "?", "{", "}"]
-"""
 def split_and_keep_delimeters(text, delimeters, keep_empty_strings):
   regexPattern = "(["+"".join("\\"+item for item in delimeters)+"])"
   result = re.split(regexPattern, text)
@@ -426,16 +439,20 @@ def rstrip_and_count(text, suffix):
 
 def translate_with_flavor(text, source, target):
   # flavor includes whitespace and ellipses and other things that might be removed by the translation model. They should always be provided to the translation model in case they improve the output. If the translation model removes them, they should be added back in.
+  if source == target:
+    return text # don't translate from a language to itself
   assert len(text) > 0
   assert len(text.lstrip(" ")) > 0
   if "..." in text:
     raise NotImplementedError("ellipses")
   textWOLeft, leftSpaceCount = lstrip_and_count(text, " ")
   textWOLeftRight, rightSpaceCount = rstrip_and_count(textWOLeft, " ")
-  translationResult = libreTranslateAPI.translate(textWOLeftRight, source=source, target=target)
+  translationResult = LIBRETRANSLATE_API.translate(textWOLeftRight, source=LANGUAGE_CODE_LIBRETRANSLATE_SUBSTITUTIONS[source], target=LANGUAGE_CODE_LIBRETRANSLATE_SUBSTITUTIONS[target])
   return (" "*leftSpaceCount) + translationResult.lstrip(" ").rstrip(" ") + (" "*rightSpaceCount)
 
 def translate_string_piecewise(text, source, target, delimeters):
+  if source == target:
+    return text # don't translate from a language to itself
   inputPieces = split_and_keep_delimeters(text, delimeters, keep_empty_strings=False)
   assert all(len(piece) > 0 for piece in inputPieces)
   isTranslatable = lambda string: not (string in delimeters or any(digit in string for digit in DIGITS))
@@ -484,14 +501,14 @@ TEMPLATE_FILE_SUBPATH = "dev" + SEP + "Breeze_Template.json"
 TEMPLATE_FILE_PATH = MOD_SOURCE_PATH + SEP + TEMPLATE_FILE_SUBPATH
 assert os.path.exists(TEMPLATE_FILE_PATH), TEMPLATE_FILE_PATH
 
-LANGUAGE_EN_US_FILE_SUBPATH = SEP.join(["Server", "Languages", "en-US", "items.lang"])
-LANGUAGE_EN_US_FILE_DESTINATION_PATH = SEP.join([MOD_DESTINATION_PATH, LANGUAGE_EN_US_FILE_SUBPATH])
-assert os.path.exists(LANGUAGE_EN_US_FILE_DESTINATION_PATH), " could not find: " + LANGUAGE_EN_US_FILE_DESTINATION_PATH
 
+def GET_LANGUAGE_FILE_SUBPATH(language_code):
+  if not LANGUAGE_CODE_LIBRETRANSLATE_SUBSTITUTIONS[language_code] in LIBRETRANSLATE_SUPPORTED_LANGUAGE_CODES:
+    print(f"warning: {language_code} is not supported.")
+  return SEP.join(["Server", "Languages", language_code, "items.lang"])
 
-LANGUAGE_PT_BR_FILE_SUBPATH = SEP.join(["Server", "Languages", "pt-BR", "items.lang"])
-LANGUAGE_PT_BR_FILE_DESTINATION_PATH = SEP.join([MOD_DESTINATION_PATH, LANGUAGE_PT_BR_FILE_SUBPATH])
-assert os.path.exists(LANGUAGE_PT_BR_FILE_DESTINATION_PATH), " could not find: " + LANGUAGE_PT_BR_FILE_DESTINATION_PATH
+def GET_LANGUAGE_FILE_DESTINATION_PATH(language_code):
+  return SEP.join([MOD_DESTINATION_PATH, GET_LANGUAGE_FILE_SUBPATH(language_code)])
 
 
 
@@ -541,13 +558,16 @@ clear_folder(ASSET_FOLDER_DESTINATION_PATH, ".json")
 clear_folder(ICON_FOLDER_DESTINATION_PATH, ".png")
 clear_folder(MODEL_FOLDER_DESTINATION_PATH, ".blockymodel")
 shutil.copy(MOD_SOURCE_PATH+SEP+"manifest.json", MOD_DESTINATION_PATH+SEP+"manifest.json")
-os.remove(LANGUAGE_EN_US_FILE_DESTINATION_PATH)
+for langCode in BREEZE_BLOCKS_LANGUAGE_CODES:
+  pathToRemove = GET_LANGUAGE_FILE_DESTINATION_PATH(langCode)
+  if os.path.exists(pathToRemove):
+    os.remove(pathToRemove)
 
 
 # generate assets \/  
 
-languageFileEnUS = open(LANGUAGE_EN_US_FILE_DESTINATION_PATH, "w")
-languageFilePtBR = codecs.open(LANGUAGE_PT_BR_FILE_DESTINATION_PATH, "w", "utf-8-sig")
+languageFileEnUS = open(GET_LANGUAGE_FILE_DESTINATION_PATH("en-US"), "w")
+languageFilePtBR = codecs.open(GET_LANGUAGE_FILE_DESTINATION_PATH("pt-BR"), "w", "utf-8-sig")
 colorsShelf = shelve.open("colors.shelf")
 
 for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if name.endswith(".blockymodel")):
@@ -603,8 +623,9 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
           # assert isinstance(decomposedModelName, ParseSuccess)
         modelNameLayoutStr, modelNameSizeDescriptionStr, modelNameShapeNicknameStr = tuple(flatten_string_structure_and_join(item) for item in decomposedModelName)
         modelNameShapeNameStr = dictionary_translate_if_able(SHAPE_NICKNAMES_TO_NAMES, modelNameShapeNicknameStr)
-        displayNameEnUS = f"{dictionary_translate_if_able(UNIFIED_DISPLAY_NAME_TRANSLATIONS, family)} Breeze Block (shape: {modelNameShapeNameStr}, layout: {modelNameLayoutStr}, thickness: {modelNameSizeDescriptionStr})"
-        displayNamePtBR = translate_string_piecewise(displayNameEnUS, source="en", target="pt-BR", delimeters=("(", ")", ":", ","))
+        displayNameNative = f"{dictionary_translate_if_able(UNIFIED_DISPLAY_NAME_TRANSLATIONS, family)} Breeze Block (shape: {modelNameShapeNameStr}, layout: {modelNameLayoutStr}, thickness: {modelNameSizeDescriptionStr})"
+        displayNameEnUS = translate_string_piecewise(displayNameNative, source=BREEZE_BLOCKS_NATIVE_LANGUAGE_CODE, target="en-US", delimeters=("(", ")", ":", ","))
+        displayNamePtBR = translate_string_piecewise(displayNameNative, source=BREEZE_BLOCKS_NATIVE_LANGUAGE_CODE, target="pt-BR", delimeters=("(", ")", ":", ","))
         languageFileEnUS.write(f"{assetInfo['full_name']}.name = {displayNameEnUS}\n")
         languageFilePtBR.write(f"{assetInfo['full_name']}.name = {displayNamePtBR}\n")
         

@@ -3,8 +3,8 @@ import os
 
 # ----- Hytale path constants -----
 
-HYTALE_ASSETS_PATH = "E:\Hytale Assets 20260221" # path to a folder in which you have put the contents of Assets.zip after decompressing.
-assert os.path.isdir(HYTALE_ASSETS_PATH)
+HYTALE_ASSETS_PATH = "E:\Hytale Assets 20260328" # path to a folder in which you have put the contents of Assets.zip after decompressing.
+assert os.path.isdir(HYTALE_ASSETS_PATH), "please extract hytale assets and configure the path to the exctracted assets within HYTALE.py"
 
 SEP = os.sep
 
