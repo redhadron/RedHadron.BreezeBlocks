@@ -61,12 +61,15 @@ notes that are helpful for planning:
 
 
 TODO:
-rework atlas.py organize window so that it only returns when it meets an objective which can be specified as an argument. Add keyboard shortcuts to link, unlink, and delete. Add command line arg for interactive mode.
-add keyboard shortcut in atlas.py to rename a tile, which can be hooked up to renamer.py.
-add rename detection to atlas.py.
-make string library, add length assertions back to remove_prefix etc.
 translate to a lot of languages.
   libretranslate
+atlas.py interactive mode:
+  rework atlas.py organize window so that it only returns when it meets an objective which can be specified as an argument.
+  Add keyboard shortcuts to link, unlink, and delete.
+  Add command line arg for interactive mode.
+  add keyboard shortcut in atlas.py to rename a tile, which can be hooked up to renamer.py.
+add rename detection to atlas.py.
+make string library, add length assertions back to remove_prefix etc.
 make a model variants system.
   idea: follow the depth information (Db1000) with "_WoodOnly" or "_StoneOnly" so that suffix must be removed and then generate.py continues as normal.
 fix top texture directions.
@@ -75,7 +78,7 @@ fix texture errors on the back of G4x4T4pVoid.
 add command line args to renamer.
 add a command to atlas.py to predict which tiles would be changed upon export or import, and optionally, to show the changes.
 Make system for changing the depth of breeze blocks.
-finish creating all models from designs canvas.
+add all models from designs canvas.
 improve texture shading on all models.
 outer corner breeze blocks.
 inner corner breeze blocks (G2x2 and higher only).

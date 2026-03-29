@@ -312,7 +312,7 @@ def join_surfaces_vertically(surfaces, background_color):
   return newSurf
 
 _font = [] # a holder to cache the font
-def general_interactive_prompt(*, prompt_definition, atlas_image):
+def atlas_interactive_prompt(*, prompt_definition, atlas_image):
   # prompt resources is a dictionary containing tile_image, tile_name
   # this method should never do anything except display a prompt and return the user's choice of action. It should not perform that action.
   pygame.init()
@@ -339,7 +339,7 @@ def general_interactive_prompt(*, prompt_definition, atlas_image):
     if hoveredTileCoord is not None:
       pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [get_intersection_coordinate((hoveredTileCoord[0]+a, hoveredTileCoord[1]+b)) for a, b in [(0,0), (1,0), (1,1), (0,1)]]) # TODO int vec math refactor
       hoveredTileDisplayName = config_data["coordinates_to_names"].get(hoveredTileCoord, default="empty")
-      tooltipText = f"{hoveredTileDisplayName}\n\n[left click] use for prompt\n[r] rename"
+      tooltipText = f"{hoveredTileDisplayName}{prompt_definition['alt_instructions']}"
       tooltipLineSurfs = list(
         font.render(text=tooltipTextLine, fgcolor=WINDOW_TEXT_COLOR, bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tooltipTextLine in tooltipText.split("\n")
       )
@@ -364,14 +364,28 @@ def general_interactive_prompt(*, prompt_definition, atlas_image):
         pygame.display.quit()
         return SubmitCoordinate(coordinate=hoveredTileCoord, event=event)
       elif event.type == pygame.KEYDOWN:
-        if event.key in prompt_definition["acceptable_keys"]:
+        # don't check whether the hoveredTileCoord is None, because some keypresses (such as [s] for skip) are valid even without a valid coordinate.
+        if event.key in prompt_definition["acceptable_keys"]["no_requirements"]:
           pygame.display.quit()
           return Submit(coordinate=hoveredTileCoord, event=event)
-
+        elif event.key in prompt_definition["acceptable_keys"]["coordinate_required"]:
+          if hoveredTileCoord is None:
+            continue
+          pygame.display.quit()
+          return Submit(coordinate=hoveredTileCoord, event=event)
+        elif event.key in prompt_definition["acceptable_keys"]["link_required"]:
+          if hoveredTileCoord is None:
+            continue
+          if hoveredTileCoord not in config_data["coordinates_to_names"]:
+            continue
+          pygame.display.quit()
+          return Submit(coordinate=hoveredTileCoord, event=event)
+        else:
+          print(f"atlas_interactive_prompt: ignoring key {event.key!r} because it is not acceptable.")
 
 
 def prompt_user_for_a_free_coordinate(tile_image, tile_name, atlas_image):
-  return general_interactive_prompt(prompt_definition={"tile_image":tile_image, "tile_name":tile_name, "acceptable_keys":[]}, atlas_image=atlas_image)
+  return atlas_interactive_prompt(prompt_definition={"tile_image":tile_image, "tile_name":tile_name, "acceptable_keys":{"no_requirements":[],"coordinate_required":[],"link_required":[]}, "alt_instructions":"\n\n[left click] use this coordinate"}, atlas_image=atlas_image)
 
 
 
@@ -467,9 +481,9 @@ def do_tile_transport(direction, discover=False, organize=False):
                   config_data["coordinates_to_names"].inverse[tileName] = placementCoordinate
                   import_tile_with_name(tileName, atlasImg)
                 elif promptResult.event.type == pygame.KEYDOWN:
-                  raise ValueError("no keys should be accepted here")
+                  raise ValueError("no keys should be accepted here.")
                 else:
-                  raise ValueError("invalid event")
+                  raise ValueError("invalid event type")
               elif isinstance(promptResult, Skip):
                 raise NotImplementedError()
               elif isinstance(promptResult, Exit):
