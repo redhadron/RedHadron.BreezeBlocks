@@ -54,7 +54,7 @@ EXIT_CODES = {"GENERAL_SUCCESS":0, "EXIT_BUTTON": 2, "PYGAME_QUIT":3}
 
 
 def validate_int_pair_tuple(int_tuple):
-  assert isinstance(int_tuple, tuple) and len(int_tuple) == 2 and all(isinstance(item, int) for item in int_tuple)
+  assert isinstance(int_tuple, tuple) and len(int_tuple) == 2 and all(isinstance(item, int) for item in int_tuple), int_tuple
 
 def tuple_to_pretty_coordinate(input_tuple):
   validate_int_pair_tuple(input_tuple)
@@ -295,7 +295,18 @@ def pil_image_to_surface(pil_image):
   assert isinstance(pil_image, Image.Image)
   return pygame.image.fromstring(pil_image.tobytes(), pil_image.size, pil_image.mode)
 
-
+def join_surfaces_vertically(surfaces, background_color):
+  assert all(isinstance(item, pygame.Surface) for item in surfaces)
+  width = max(surf.get_width() for surf in surfaces)
+  height = sum(surf.get_height() for surf in surfaces)
+  newSurf = pygame.Surface((width, height))
+  newSurf.fill(background_color)
+  y = 0
+  for surf in surfaces:
+    newSurf.blit(surf, (0, y))
+    y += surf.get_height()
+  assert y == newSurf.get_height()
+  return newSurf
 
 _font = [] # a holder to cache the font
 def general_interactive_prompt(*, prompt_definition, atlas_image):
@@ -312,7 +323,7 @@ def general_interactive_prompt(*, prompt_definition, atlas_image):
   atlasSurf = pil_image_to_surface(atlas_image)
   tileSurf = pil_image_to_surface(prompt_definition["tile_image"])
   
-  while keepPygameRunning:
+  while True:
     hoveredTileCoord = tuple(pygame.mouse.get_pos()[i]//config_data["tile_size"][i] for i in (0,1))
     if not tile_coordinate_is_in_bounds(hoveredTileCoord):
       hoveredTileCoord = None
@@ -320,17 +331,20 @@ def general_interactive_prompt(*, prompt_definition, atlas_image):
     screen.fill(WINDOW_BACKGROUND_COLOR)
     screen.blit(atlasSurf, (0,0))
     screen.blit(tileSurf, (atlasSurf.get_width()+10, 0))
-    font.render_to(screen, dest=(atlasSurf.get_width()+10, tileSurf.get_height()+10), text=tile_name, fgcolor=WINDOW_TEXT_COLOR)
+    font.render_to(screen, dest=(atlasSurf.get_width()+10, tileSurf.get_height()+10), text=prompt_definition["tile_name"], fgcolor=WINDOW_TEXT_COLOR)
     
     if hoveredTileCoord is not None:
       pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [get_intersection_coordinate((hoveredTileCoord[0]+a, hoveredTileCoord[1]+b)) for a, b in [(0,0), (1,0), (1,1), (0,1)]]) # TODO int vec math refactor
       hoveredTileDisplayName = config_data["coordinates_to_names"].get(hoveredTileCoord, default="empty")
       tooltipText = f"{hoveredTileDisplayName}\n\n[left click] use for prompt\n[r] rename"
-      tooltipSurf, _ = font.render(text=tooltipText, fgcolor=WINDOW_TEXT_COLOR, bgcolor=WINDOW_BACKGROUND_COLOR)
+      tooltipLineSurfs = list(
+        font.render(text=tooltipTextLine, fgcolor=WINDOW_TEXT_COLOR, bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tooltipTextLine in tooltipText.split("\n")
+      )
+      tooltipSurf = join_surfaces_vertically(tooltipLineSurfs, WINDOW_BACKGROUND_COLOR)
       
       # TODO break out
       tooltipSurfSize = tooltipSurf.get_size()
-      screen.fill(WINDOW_TEXT_COLOR, rect=(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1]+20, tooltipSurfSize[0]+4, tooltipSurfSize[1]+24)) # TODO int vec math
+      screen.fill(WINDOW_TEXT_COLOR, rect=(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1]+20, tooltipSurfSize[0]+4, tooltipSurfSize[1]+4)) # TODO int vec math
       screen.blit(tooltipSurf, dest=(pygame.mouse.get_pos()[0]+2, pygame.mouse.get_pos()[1]+22)) # TODO int vec math
       
     time.sleep(1.0/FPS) # the target FPS will never be hit this way but that's ok.
@@ -353,10 +367,14 @@ def general_interactive_prompt(*, prompt_definition, atlas_image):
 
 
 
-
 def prompt_user_for_a_free_coordinate(tile_image, tile_name, atlas_image):
-  raise NotImplementedError()
-  
+  return general_interactive_prompt(prompt_definition={"tile_image":tile_image, "tile_name":tile_name, "acceptable_keys":[]}, atlas_image=atlas_image)
+
+
+
+
+
+
 
 def tile_image_is_blank(tile_image):
   # assert tile_image.mode == "RGB", tile_image.mode
@@ -440,7 +458,8 @@ def do_tile_transport(direction, discover=False, organize=False):
             with Image.open(tile_name_to_path(tileName)) as tileImgForPrompt:
               promptResult = prompt_user_for_a_free_coordinate(tile_image=tileImgForPrompt, tile_name=tileName, atlas_image=atlasImg)
               if isinstance(promptResult, Submit):
-                placementCoordinate = promptResult.value
+                placementCoordinate, event = promptResult.value
+                assert isinstance(event, pygame.event.Event) # kinda gross
               elif isinstance(promptResult, Skip):
                 raise NotImplementedError()
               elif isinstance(promptResult, Exit):
@@ -503,7 +522,7 @@ if args.subcommand == "atlas-image":
     assert os.path.exists(ATLAS_IMAGE_PATH) and ATLAS_IMAGE_PATH.endswith(".png")
     os.startfile(ATLAS_IMAGE_PATH)
   else:
-    raise ValueError(ars.subaction)
+    raise ValueError(args.subaction)
 elif args.subcommand == "atlas-config":
   # assert not any((args.discover, args.organize, args.organize_all))
   if args.subaction == "create":
