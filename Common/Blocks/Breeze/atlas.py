@@ -50,6 +50,9 @@ EXIT_CODES = {"GENERAL_SUCCESS":0, "EXIT_BUTTON": 2, "PYGAME_QUIT":3}
 
 
 
+
+
+
 def validate_int_pair_tuple(int_tuple):
   assert isinstance(int_tuple, tuple) and len(int_tuple) == 2 and all(isinstance(item, int) for item in int_tuple)
 
@@ -89,12 +92,18 @@ def at_most_one(input_list):
   return sum(bool(item) for item in input_list) in (0, 1)
   
   
+  
+  
+  
 
 config_data = {
   "coordinates_to_names": bidict(),
   "tile_size": (32, 32),
   "atlas_size": (6, 12),
 }
+
+
+
 
 def get_atlas_image_size():
   return (config_data["tile_size"][0]*config_data["atlas_size"][0], 
@@ -151,6 +160,9 @@ def config_data_has_changed():
 
 
 
+
+
+
 def create_atlas_image():
   if os.path.exists(ATLAS_IMAGE_PATH):
     raise FileExistsError()
@@ -186,6 +198,21 @@ def assert_config_is_saved_correctly():
 
 
 
+
+
+
+
+def make_tile_preview_image(tile_image):
+  previewSize = (config_data["tile_size"][0]*TILE_PREVIEW_SCALE, config_data["tile_size"][1]*TILE_PREVIEW_SCALE) # TODO int vec
+  modifiedTileImage = tile_image.resize(size=previewSize, resample=Image.Resampling.NEAREST) # resizing makes a copy so we are not drawing on the original.
+  imageDrawer = ImageDraw.Draw(modifiedTileImage) 
+  for y in range(config_data["tile_size"][1]):
+    imageDrawer.line((0,y*TILE_PREVIEW_SCALE,modifiedTileImage.size[0],y*TILE_PREVIEW_SCALE), PREVIEW_GRID_LINE_COLOR)
+  for x in range(config_data["tile_size"][0]):
+    imageDrawer.line((x*TILE_PREVIEW_SCALE, 0, x*TILE_PREVIEW_SCALE, modifiedTileImage.size[1]), PREVIEW_GRID_LINE_COLOR)
+  return modifiedTileImage
+
+
 class PromptResponseType:
   def __init__(self):
     pass
@@ -195,7 +222,8 @@ class Submit(PromptResponseType):
 class Skip(PromptResponseType):
   pass
 class Exit(PromptResponseType):
-  pass 
+  pass
+  
   
 def prompt_user_for_tile_name(tile_image):
   assert isinstance(tile_image, Image.Image) # tile_image must be a PIL Image
@@ -204,17 +232,11 @@ def prompt_user_for_tile_name(tile_image):
   topLabel = tkinter.Label(window, text="Give this tile a name")
   topLabel.pack()
   
-  previewSize = (config_data["tile_size"][0]*TILE_PREVIEW_SCALE, config_data["tile_size"][1]*TILE_PREVIEW_SCALE) # TODO int vec
-  modifiedTileImage = tile_image.resize(size=previewSize, resample=Image.Resampling.NEAREST) # resizing makes a copy so we are not drawing on the original.
-  imageDrawer = ImageDraw.Draw(modifiedTileImage) 
-  for y in range(config_data["tile_size"][1]):
-    imageDrawer.line((0,y*TILE_PREVIEW_SCALE,modifiedTileImage.size[0],y*TILE_PREVIEW_SCALE), PREVIEW_GRID_LINE_COLOR)
-  for x in range(config_data["tile_size"][0]):
-    imageDrawer.line((x*TILE_PREVIEW_SCALE, 0, x*TILE_PREVIEW_SCALE, modifiedTileImage.size[1]), PREVIEW_GRID_LINE_COLOR)
+  tilePreviewImage = make_tile_preview_image(tile_image)
   
   canvas = tkinter.Canvas(window, width=previewSize[0], height=previewSize[1])
   canvas.pack()
-  tkinterImage = ImageTk.PhotoImage(image=modifiedTileImage, size=previewSize)
+  tkinterImage = ImageTk.PhotoImage(image=tilePreviewImage, size=previewSize)
   tkinterImageSprite = canvas.create_image(previewSize[0]//2, previewSize[1]//2, image=tkinterImage)
   
   entryStringVar = tkinter.StringVar()
@@ -273,59 +295,67 @@ def pil_image_to_surface(pil_image):
   assert isinstance(pil_image, Image.Image)
   return pygame.image.fromstring(pil_image.tobytes(), pil_image.size, pil_image.mode)
 
+
+
 _font = [] # a holder to cache the font
-def prompt_user_for_a_free_coordinate(*, tile_image, tile_name, atlas_image):
-  # TODO: combine tile image, tile name, and the desired type of prompt into one argument that is a definition of the type of prompt. If it is empty, the method is in looping interactive mode.
-  pygame.init() # I don't know if there are consequences for doing this multiple times.
+def general_interactive_prompt(*, prompt_definition, atlas_image):
+  # prompt resources is a dictionary containing tile_image, tile_name
+  # this method should never do anything except display a prompt and return the user's choice of action. It should not perform that action.
+  pygame.init()
   if len(_font) == 0:
     _font.append(pygame.freetype.SysFont(pygame.freetype.get_default_font(), 18, bold=False))
   font = _font[0]
-  assert isinstance(tile_image, Image.Image)
+  # assert isinstance(prompt_definition["tile_image"], Image.Image)
   assert isinstance(atlas_image, Image.Image)
   
   screen = pygame.display.set_mode((600,400))
   atlasSurf = pil_image_to_surface(atlas_image)
-  tileSurf = pil_image_to_surface(tile_image)
-  keepPygameRunning = True
-  result = None
+  tileSurf = pil_image_to_surface(prompt_definition["tile_image"])
+  
   while keepPygameRunning:
     hoveredTileCoord = tuple(pygame.mouse.get_pos()[i]//config_data["tile_size"][i] for i in (0,1))
     if not tile_coordinate_is_in_bounds(hoveredTileCoord):
-      # TODO allow atlas image to be expanded from here?? this would not be done by modifying the argument, but by allowing oob coordinates here and adjusting the image outside of this prompt.
       hoveredTileCoord = None
     
     screen.fill(WINDOW_BACKGROUND_COLOR)
     screen.blit(atlasSurf, (0,0))
     screen.blit(tileSurf, (atlasSurf.get_width()+10, 0))
-    font.render_to(screen, dest=(atlasSurf.get_width()+10, tileSurf.get_height()+10), text=tile_name, fgcolor=WINDOW_TEXT_COLOR) # , style=pygame.freettype.STYLE_NORMAL)
+    font.render_to(screen, dest=(atlasSurf.get_width()+10, tileSurf.get_height()+10), text=tile_name, fgcolor=WINDOW_TEXT_COLOR)
+    
     if hoveredTileCoord is not None:
       pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [get_intersection_coordinate((hoveredTileCoord[0]+a, hoveredTileCoord[1]+b)) for a, b in [(0,0), (1,0), (1,1), (0,1)]]) # TODO int vec math refactor
-      hoveredTileName = config_data["coordinates_to_names"].get(hoveredTileCoord, default="empty")
-      tooltipSurf, _ = font.render(text=hoveredTileName, fgcolor=WINDOW_TEXT_COLOR, bgcolor=WINDOW_BACKGROUND_COLOR)
+      hoveredTileDisplayName = config_data["coordinates_to_names"].get(hoveredTileCoord, default="empty")
+      tooltipText = f"{hoveredTileDisplayName}\n\n[left click] use for prompt\n[r] rename"
+      tooltipSurf, _ = font.render(text=tooltipText, fgcolor=WINDOW_TEXT_COLOR, bgcolor=WINDOW_BACKGROUND_COLOR)
+      
+      # TODO break out
       tooltipSurfSize = tooltipSurf.get_size()
-      # assert isinstance(tooltipSurf, pygame.Surface), type(tooltipSurf)
-      # assert len(tooltipSurfSize) == 2
-      screen.fill(WINDOW_TEXT_COLOR, rect=(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1]+20, tooltipSurfSize[0]+4, tooltipSurfSize[1]+4)) # TODO int vec math
+      screen.fill(WINDOW_TEXT_COLOR, rect=(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1]+20, tooltipSurfSize[0]+4, tooltipSurfSize[1]+24)) # TODO int vec math
       screen.blit(tooltipSurf, dest=(pygame.mouse.get_pos()[0]+2, pygame.mouse.get_pos()[1]+22)) # TODO int vec math
+      
     time.sleep(1.0/FPS) # the target FPS will never be hit this way but that's ok.
     pygame.display.flip()
     for event in pygame.event.get():
+      
       if event.type == pygame.QUIT:
         print("exiting from within pygame")
-        result = Exit()
-        keepPygameRunning = False
-        break
-      # if event.type == pygame.MOUSEMOTION:
+        pygame.display.quit()
+        return Exit()
       elif event.type == pygame.MOUSEBUTTONDOWN:
         if hoveredTileCoord is None:
           continue # invalid click, no data to submit, don't submit.
-        result = Submit(hoveredTileCoord)
-        keepPygameRunning = False
-        break
-  
-  pygame.display.quit()
-  assert isinstance(result, PromptResponseType)
-  return result
+        pygame.display.quit()
+        return Submit((hoveredTileCoord, event))
+      elif event.type == pygame.KEYDOWN:
+        if event.key in prompt_definition["acceptable_keys"]:
+          pygame.display.quit()
+          return Submit((hoveredTileCoord, event))
+
+
+
+
+def prompt_user_for_a_free_coordinate(tile_image, tile_name, atlas_image):
+  raise NotImplementedError()
   
 
 def tile_image_is_blank(tile_image):
