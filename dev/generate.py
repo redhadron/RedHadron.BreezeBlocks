@@ -14,7 +14,6 @@ from tibs import Tibs
 import shelve
 from libretranslatepy import LibreTranslateAPI
 libreTranslateAPI = LibreTranslateAPI("http://127.0.0.1:5000")
-# print(libreTranslateAPI.translate("LibreTranslate is awesome!", "en", "pt-BR"))
 # import dotted_dict
 
 """
@@ -372,9 +371,10 @@ PROTOTYPE_DATA_PAGES = [
   ],
 ]
 
+SHAPE_NICKNAMES_TO_NAMES = {"Hair": "Crosshair", "Head": "Empty Crosshair", "SlowNeckNeckSlow": "Bottleneck Basketweave"}
 
-
-
+def dictionary_translate_if_able(dictionary, key):
+  return dictionary.get(key, key)
 
 
 
@@ -535,8 +535,9 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
         # if isinstance(decomposedModelName, ParseFailure):
         # else:
           # assert isinstance(decomposedModelName, ParseSuccess)
-        modelNameLayoutStr, modelNameSizeDescriptionStr, modelNameShapeStr = tuple(flatten_string_structure_and_join(item) for item in decomposedModelName)
-        displayNameEnUS = f"{UNIFIED_DISPLAY_NAME_TRANSLATIONS.get(family, family)} Breeze Block (shape: {modelNameShapeStr}, layout: {modelNameLayoutStr}, thickness: {modelNameSizeDescriptionStr})"
+        modelNameLayoutStr, modelNameSizeDescriptionStr, modelNameShapeNicknameStr = tuple(flatten_string_structure_and_join(item) for item in decomposedModelName)
+        modelNameShapeNameStr = dictionary_translate_if_able(SHAPE_NICKNAMES_TO_NAMES, modelNameShapeNicknameStr)
+        displayNameEnUS = f"{dictionary_translate_if_able(UNIFIED_DISPLAY_NAME_TRANSLATIONS, family)} Breeze Block (shape: {modelNameShapeNameStr}, layout: {modelNameLayoutStr}, thickness: {modelNameSizeDescriptionStr})"
         displayNamePtBR = libreTranslateAPI.translate(displayNameEnUS, "en", "pt-BR")
         languageFileEnUS.write(f"{assetInfo['full_name']}.name = {displayNameEnUS}\n")
         languageFilePtBR.write(f"{assetInfo['full_name']}.name = {displayNamePtBR}\n")
