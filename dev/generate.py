@@ -5,6 +5,7 @@ import itertools
 import pathlib
 import codecs # for portuguese
 import re
+import functools
 
 # project
 from HYTALE import HYTALE_ASSETS_PATH, SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
@@ -14,7 +15,7 @@ from PIL import Image, ImageChops
 from tibs import Tibs
 import shelve
 from libretranslatepy import LibreTranslateAPI
-LIBRETRANSLATE_API = LibreTranslateAPI("http://127.0.0.1:5000")
+LIBRETRANSLATE_API = LibreTranslateAPI("http://127.0.0.1:5000") # recommended args for libretranslate: --disable-web-ui --translation-cache all
 LIBRETRANSLATE_SUPPORTED_LANGUAGE_CODES = [item["code"] for item in LIBRETRANSLATE_API.languages()]
 HYTALE_STOCK_LANGUAGE_CODES = ["en-US", "pt-BR", "ru-RU", "uk-UA"]
 BREEZE_BLOCKS_NATIVE_LANGUAGE_CODE = "en-US"
@@ -437,6 +438,11 @@ def rstrip_and_count(text, suffix):
   resultStr = text.rstrip(suffix)
   return (resultStr, (len(text)-len(resultStr))//len(suffix)) # TODO int divide exact
 
+@functools.cache
+def cached_libretranslate_call(text, source, target):
+  # functools cache here offers significant speedup even when caching is turned on for the libretranslate instance
+  return LIBRETRANSLATE_API.translate(text, source, target)
+
 def translate_with_flavor(text, source, target):
   # flavor includes whitespace and ellipses and other things that might be removed by the translation model. They should always be provided to the translation model in case they improve the output. If the translation model removes them, they should be added back in.
   if source == target:
@@ -447,7 +453,7 @@ def translate_with_flavor(text, source, target):
     raise NotImplementedError("ellipses")
   textWOLeft, leftSpaceCount = lstrip_and_count(text, " ")
   textWOLeftRight, rightSpaceCount = rstrip_and_count(textWOLeft, " ")
-  translationResult = LIBRETRANSLATE_API.translate(textWOLeftRight, source=LANGUAGE_CODE_LIBRETRANSLATE_SUBSTITUTIONS[source], target=LANGUAGE_CODE_LIBRETRANSLATE_SUBSTITUTIONS[target])
+  translationResult = cached_libretranslate_call(textWOLeftRight, source=LANGUAGE_CODE_LIBRETRANSLATE_SUBSTITUTIONS[source], target=LANGUAGE_CODE_LIBRETRANSLATE_SUBSTITUTIONS[target])
   return (" "*leftSpaceCount) + translationResult.lstrip(" ").rstrip(" ") + (" "*rightSpaceCount)
 
 def translate_string_piecewise(text, source, target, delimeters):
