@@ -216,9 +216,12 @@ def make_tile_preview_image(tile_image):
 class PromptResponseType:
   def __init__(self):
     pass
-class Submit(PromptResponseType):
-  def __init__(self, value):
-    self.value = value
+class SubmitTileName(PromptResponseType):
+  def __init__(self, name):
+    self.name = name
+class SubmitCoordinate(PromptResponseType):
+  def __init__(self, coordinate, event):
+    self.coordinate, self.event = coordinate, event
 class Skip(PromptResponseType):
   pass
 class Exit(PromptResponseType):
@@ -261,9 +264,9 @@ def prompt_user_for_tile_name(tile_image):
       print("name must not match the name of the atlas image")
       return
     if any(char in "\/\:*?\"<>|" for char in entryText):
-      print("name contains invalid character") # TODO
+      print("name contains invalid character")
       return
-    promptResultHolder.value = Submit(entryText)
+    promptResultHolder.value = SubmitTileName(entryText)
     window.destroy()
   entry.bind('<Return>', okayCallback)
   okayButton = tkinter.Button(text="OK", command=okayCallback)
@@ -359,11 +362,11 @@ def general_interactive_prompt(*, prompt_definition, atlas_image):
         if hoveredTileCoord is None:
           continue # invalid click, no data to submit, don't submit.
         pygame.display.quit()
-        return Submit((hoveredTileCoord, event))
+        return SubmitCoordinate(coordinate=hoveredTileCoord, event=event)
       elif event.type == pygame.KEYDOWN:
         if event.key in prompt_definition["acceptable_keys"]:
           pygame.display.quit()
-          return Submit((hoveredTileCoord, event))
+          return Submit(coordinate=hoveredTileCoord, event=event)
 
 
 
@@ -419,8 +422,8 @@ def do_tile_transport(direction, discover=False, organize=False):
             if discover and not tile_image_is_blank(tileImg):
               response = prompt_user_for_tile_name(tileImg)
               assert isinstance(response, PromptResponseType)
-              if isinstance(response, Submit):
-                newTileName = response.value
+              if isinstance(response, SubmitTileName):
+                newTileName = response.name
               elif isinstance(response, Skip):
                 continue
               elif isinstance(response, Exit):
@@ -457,9 +460,16 @@ def do_tile_transport(direction, discover=False, organize=False):
           elif organize:
             with Image.open(tile_name_to_path(tileName)) as tileImgForPrompt:
               promptResult = prompt_user_for_a_free_coordinate(tile_image=tileImgForPrompt, tile_name=tileName, atlas_image=atlasImg)
-              if isinstance(promptResult, Submit):
-                placementCoordinate, event = promptResult.value
-                assert isinstance(event, pygame.event.Event) # kinda gross
+              if isinstance(promptResult, SubmitCoordinate):
+                if promptResult.event.type == pygame.MOUSEBUTTONDOWN:
+                  placementCoordinate = promptResult.coordinate
+                  validate_int_pair_tuple(placementCoordinate)
+                  config_data["coordinates_to_names"].inverse[tileName] = placementCoordinate
+                  import_tile_with_name(tileName, atlasImg)
+                elif promptResult.event.type == pygame.KEYDOWN:
+                  raise ValueError("no keys should be accepted here")
+                else:
+                  raise ValueError("invalid event")
               elif isinstance(promptResult, Skip):
                 raise NotImplementedError()
               elif isinstance(promptResult, Exit):
@@ -468,12 +478,8 @@ def do_tile_transport(direction, discover=False, organize=False):
                 raise ValueError(promptResult)
           else:
             assert False, "unreachable"
-          assert placementCoordinate is not None
-          validate_int_pair_tuple(placementCoordinate)
-          config_data["coordinates_to_names"].inverse[tileName] = placementCoordinate
-          import_tile_with_name(tileName, atlasImg)
-          # don't save atlasImg within this loop because a crash or exit later in this loop might prevent the atlas config from being saved to match the atlasImg.
-          # TODO put transport in charge of whether and when atlas config gets saved.
+
+          # TODO put transport in charge of whether and when atlas config gets saved. Atlas config and atlas image should probably be saved at the same time.
     else:
       raise ValueError(direction)
     atlasImg.save(ATLAS_IMAGE_PATH)
