@@ -299,7 +299,7 @@ def pil_image_to_surface(pil_image):
   return pygame.image.fromstring(pil_image.tobytes(), pil_image.size, pil_image.mode)
 
 def join_surfaces_vertically(surfaces, background_color):
-  assert all(isinstance(item, pygame.Surface) for item in surfaces)
+  assert all(isinstance(item, pygame.Surface) for item in surfaces), surfaces
   width = max(surf.get_width() for surf in surfaces)
   height = sum(surf.get_height() for surf in surfaces)
   newSurf = pygame.Surface((width, height))
@@ -324,7 +324,7 @@ def atlas_interactive_prompt(*, prompt_definition, atlas_image):
   
   screen = pygame.display.set_mode((600,400))
   atlasSurf = pil_image_to_surface(atlas_image)
-  tileSurf = pil_image_to_surface(prompt_definition["tile_image"])
+  tilePreviewSurf = pil_image_to_surface(prompt_definition["tile_preview_image"])
   
   while True:
     hoveredTileCoord = tuple(pygame.mouse.get_pos()[i]//config_data["tile_size"][i] for i in (0,1))
@@ -333,16 +333,16 @@ def atlas_interactive_prompt(*, prompt_definition, atlas_image):
     
     screen.fill(WINDOW_BACKGROUND_COLOR)
     screen.blit(atlasSurf, (0,0))
-    screen.blit(tileSurf, (atlasSurf.get_width()+10, 0))
-    font.render_to(screen, dest=(atlasSurf.get_width()+10, tileSurf.get_height()+10), text=prompt_definition["tile_name"], fgcolor=WINDOW_TEXT_COLOR)
+    tilePreviewTopTextSurf = font.render(text=prompt_definition["tile_preview_top_text"], fgcolor=WINDOW_TEXT_COLOR)[0]
+    tilePreviewBottomTextSurf = font.render(text=prompt_definition["tile_preview_bottom_text"], fgcolor=WINDOW_TEXT_COLOR)[0]
+    labeledTilePreviewSurf = join_surfaces_vertically([tilePreviewTopTextSurf, tilePreviewSurf, tilePreviewBottomTextSurf], WINDOW_BACKGROUND_COLOR)
+    screen.blit(labeledTilePreviewSurf, (atlasSurf.get_width()+10, 0))
     
     if hoveredTileCoord is not None:
       pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [get_intersection_coordinate((hoveredTileCoord[0]+a, hoveredTileCoord[1]+b)) for a, b in [(0,0), (1,0), (1,1), (0,1)]]) # TODO int vec math refactor
       hoveredTileDisplayName = config_data["coordinates_to_names"].get(hoveredTileCoord, default="empty")
       tooltipText = f"{hoveredTileDisplayName}{prompt_definition['alt_instructions']}"
-      tooltipLineSurfs = list(
-        font.render(text=tooltipTextLine, fgcolor=WINDOW_TEXT_COLOR, bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tooltipTextLine in tooltipText.split("\n")
-      )
+      tooltipLineSurfs = [font.render(text=tooltipTextLine, fgcolor=WINDOW_TEXT_COLOR, bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tooltipTextLine in tooltipText.split("\n")]
       tooltipSurf = join_surfaces_vertically(tooltipLineSurfs, WINDOW_BACKGROUND_COLOR)
       
       # TODO break out
@@ -385,7 +385,7 @@ def atlas_interactive_prompt(*, prompt_definition, atlas_image):
 
 
 def prompt_user_for_a_free_coordinate(tile_image, tile_name, atlas_image):
-  return atlas_interactive_prompt(prompt_definition={"tile_image":tile_image, "tile_name":tile_name, "acceptable_keys":{"no_requirements":[],"coordinate_required":[],"link_required":[]}, "alt_instructions":"\n\n[left click] use this coordinate"}, atlas_image=atlas_image)
+  return atlas_interactive_prompt(prompt_definition={"tile_preview_image":tile_image, "tile_preview_top_text":"choose a coordinate for this new tile", "tile_preview_bottom_text":tile_name, "acceptable_keys":{"no_requirements":[],"coordinate_required":[],"link_required":[]}, "alt_instructions":"\n\n[left click] use this coordinate"}, atlas_image=atlas_image)
 
 
 
