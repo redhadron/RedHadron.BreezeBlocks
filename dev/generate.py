@@ -3,6 +3,7 @@ import os
 import shutil
 import itertools
 import pathlib
+import codecs # for portuguese
 
 # project
 from HYTALE import HYTALE_ASSETS_PATH, SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
@@ -11,6 +12,9 @@ from HYTALE import HYTALE_ASSETS_PATH, SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BL
 from PIL import Image, ImageChops
 from tibs import Tibs
 import shelve
+from libretranslatepy import LibreTranslateAPI
+libreTranslateAPI = LibreTranslateAPI("http://127.0.0.1:5000")
+# print(libreTranslateAPI.translate("LibreTranslate is awesome!", "en", "pt-BR"))
 # import dotted_dict
 
 """
@@ -419,6 +423,10 @@ LANGUAGE_EN_US_FILE_DESTINATION_PATH = SEP.join([MOD_DESTINATION_PATH, LANGUAGE_
 assert os.path.exists(LANGUAGE_EN_US_FILE_DESTINATION_PATH), " could not find: " + LANGUAGE_EN_US_FILE_DESTINATION_PATH
 
 
+LANGUAGE_PT_BR_FILE_SUBPATH = SEP.join(["Server", "Languages", "pt-BR", "items.lang"])
+LANGUAGE_PT_BR_FILE_DESTINATION_PATH = SEP.join([MOD_DESTINATION_PATH, LANGUAGE_PT_BR_FILE_SUBPATH])
+assert os.path.exists(LANGUAGE_PT_BR_FILE_DESTINATION_PATH), " could not find: " + LANGUAGE_PT_BR_FILE_DESTINATION_PATH
+
 
 
 
@@ -473,6 +481,7 @@ os.remove(LANGUAGE_EN_US_FILE_DESTINATION_PATH)
 # generate assets \/  
 
 languageFileEnUS = open(LANGUAGE_EN_US_FILE_DESTINATION_PATH, "w")
+languageFilePtBR = codecs.open(LANGUAGE_PT_BR_FILE_DESTINATION_PATH, "w", "utf-8-sig")
 colorsShelf = shelve.open("colors.shelf")
 
 for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if name.endswith(".blockymodel")):
@@ -528,8 +537,9 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
           # assert isinstance(decomposedModelName, ParseSuccess)
         modelNameLayoutStr, modelNameSizeDescriptionStr, modelNameShapeStr = tuple(flatten_string_structure_and_join(item) for item in decomposedModelName)
         displayNameEnUS = f"{UNIFIED_DISPLAY_NAME_TRANSLATIONS.get(family, family)} Breeze Block (shape: {modelNameShapeStr}, layout: {modelNameLayoutStr}, thickness: {modelNameSizeDescriptionStr})"
-        # TODO finish name creation (don't just use modelNameForDecomposition)
+        displayNamePtBR = libreTranslateAPI.translate(displayNameEnUS, "en", "pt-BR")
         languageFileEnUS.write(f"{assetInfo['full_name']}.name = {displayNameEnUS}\n")
+        languageFilePtBR.write(f"{assetInfo['full_name']}.name = {displayNamePtBR}\n")
         
         
         # main procedure:
@@ -559,4 +569,5 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
 languageFileEnUS.close() # probably not necessary in cpython, 
 # and outside of cpython, the lack of a context manager here might result in the file being left open after a crash https://stackoverflow.com/questions/17577137/do-files-get-closed-during-an-exception-exit
 # TODO combine multiple language files into one context manager?
+languageFilePtBR.close()
 colorsShelf.close()

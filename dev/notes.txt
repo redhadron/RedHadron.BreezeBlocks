@@ -63,8 +63,8 @@ notes that are helpful for planning:
 TODO:
 translate to a lot of languages.
   libretranslate
+add sparks when landing on gold breeze block (to match solid gold block).
 atlas.py interactive mode:
-  rework atlas.py organize window so that it only returns when it meets an objective which can be specified as an argument.
   Add keyboard shortcuts to link, unlink, and delete.
   Add command line arg for interactive mode.
   add keyboard shortcut in atlas.py to rename a tile, which can be hooked up to renamer.py.
@@ -128,3 +128,4 @@ parsing:
   add an option to flatten result (actually separate method)
 clean up model name parsing with default values for max integer length.
 create mismatch.py
+rework atlas.py organize window so that it only returns when it meets an objective which can be specified as an argument.
