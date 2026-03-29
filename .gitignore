@@ -1,3 +1,4 @@
 *.ignore
 Common/Icons/ItemsGenerated
 Server/Item/Items
+*.shelf.*

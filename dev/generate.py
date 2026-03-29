@@ -4,6 +4,7 @@ import shutil
 import itertools
 import pathlib
 import codecs # for portuguese
+import re
 
 # project
 from HYTALE import HYTALE_ASSETS_PATH, SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
@@ -47,7 +48,23 @@ def shorten_suffix(string, suffix, new_suffix):
   return remove_suffix(string, suffix) + new_suffix
 
 def assert_equals(a, b):
-  assert a == b, (a, b)
+  if a == b:
+    return
+  hints = [f"{a} does not equal {b}."]
+  if type(a) != type(b):
+    hints.append(f"they are different types ({type(a)} vs {type(b)}).")
+  if hasattr(a, "__len__") and hasattr(b, "__len__"):
+    if len(a) != len(b):
+      hints.append(f"they are different in length ({len(a)} vs {len(b)}).")
+    else:
+      hints.append("while comparing items:")
+      try:
+        for i, aItem, bItem in zip(itertools.count(), a, b):
+          assert_equals(aItem, bItem)
+      except AssertionError as ae:
+        hints.append(f"at index {i}:")
+        hints.append(repr(ae))
+  raise AssertionError("\n".join(hints))
   
 def assert_isinstance(a, b):
   assert isinstance(a, b), (a, b)
@@ -188,7 +205,8 @@ ALPHABET_LOWERCASE_PATTERN = tuple([*"abcdefghijklmnopqrstuvwxyz"])
 ALPHABET_UPPERCASE_PATTERN = tuple(char.upper() for char in ALPHABET_LOWERCASE_PATTERN)
 SHAPE_NAME_PATTERN = [ALPHABET_UPPERCASE_PATTERN] + ([ALPHABET_LOWERCASE_PATTERN]*3)
 MULTI_SHAPE_NAME_PATTERN = ([SHAPE_NAME_PATTERN]*4, SHAPE_NAME_PATTERN)
-DIGIT_PATTERN = ("0","1","2","3","4","5","6","7","8","9")
+DIGITS = ("0","1","2","3","4","5","6","7","8","9") # this constant is used for other things besides string structure parsing
+DIGIT_PATTERN = DIGITS 
 # OPTIONAL_DIGIT_PATTERN = DIGIT_PATTERN + ("",)
 CREATE_UNSIGNED_INTEGER_PATTERN = lambda maxLength: tuple([DIGIT_PATTERN]*i for i in range(maxLength,0,-1))
 CREATE_UNIVERSAL_NUMBER_PATTERN = lambda maxIntegerLength: tuple(
@@ -371,13 +389,40 @@ PROTOTYPE_DATA_PAGES = [
   ],
 ]
 
+
+
+
+# ----- display name translation -----
+
 SHAPE_NICKNAMES_TO_NAMES = {"Hair": "Crosshair", "Head": "Empty Crosshair", "SlowNeckNeckSlow": "Bottleneck Basketweave"}
 
 def dictionary_translate_if_able(dictionary, key):
   return dictionary.get(key, key)
 
+"""
+REGEX_ESCAPABLE_DELIMETERS = [".", "^", "$"]
+REGEX_FORBIDDEN_DELIMETERS = ["*", "+", "?", "{", "}"]
+"""
+def split_and_keep_delimeters(text, delimeters, keep_empty_strings):
+  regexPattern = "(["+"".join("\\"+item for item in delimeters)+"])"
+  result = re.split(regexPattern, text)
+  return result if keep_empty_strings else [item for item in result if len(item) > 0]
+US_KEYBOARD_SYMBOLS = r'`~!@#$%^&*()-_+=[{]}\|;:",<.>/? ' + "'"
+for testChar0 in US_KEYBOARD_SYMBOLS:
+  for testChar1 in US_KEYBOARD_SYMBOLS:
+    _testTup = ("a", testChar0, "b", testChar1, "c", testChar0, testChar1, "d", testChar1, testChar0, "e")
+  assert_equals(tuple(split_and_keep_delimeters("".join(_testTup), [testChar0, testChar1], False)), _testTup)
+del _testTup
 
-
+def translate_string_piecewise(text, source, target, delimeters):
+  inputPieces = split_and_keep_delimeters(text, delimeters, keep_empty_strings=False)
+  assert all(len(piece) > 0 for piece in inputPieces)
+  isTranslatable = lambda string: not (string in delimeters or any(digit in string for digit in DIGITS))
+  outputPieces = [libreTranslateAPI.translate(piece, source=source, target=target) if isTranslatable(piece) else piece for piece in inputPieces]
+  return "".join(outputPieces)
+  
+  
+  
 
 
 # ----- mod path constants -----
@@ -538,7 +583,7 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
         modelNameLayoutStr, modelNameSizeDescriptionStr, modelNameShapeNicknameStr = tuple(flatten_string_structure_and_join(item) for item in decomposedModelName)
         modelNameShapeNameStr = dictionary_translate_if_able(SHAPE_NICKNAMES_TO_NAMES, modelNameShapeNicknameStr)
         displayNameEnUS = f"{dictionary_translate_if_able(UNIFIED_DISPLAY_NAME_TRANSLATIONS, family)} Breeze Block (shape: {modelNameShapeNameStr}, layout: {modelNameLayoutStr}, thickness: {modelNameSizeDescriptionStr})"
-        displayNamePtBR = libreTranslateAPI.translate(displayNameEnUS, "en", "pt-BR")
+        displayNamePtBR = translate_string_piecewise(displayNameEnUS, source="en", target="pt-BR", delimeters=("(", ")", ":", ","))
         languageFileEnUS.write(f"{assetInfo['full_name']}.name = {displayNameEnUS}\n")
         languageFilePtBR.write(f"{assetInfo['full_name']}.name = {displayNamePtBR}\n")
         
