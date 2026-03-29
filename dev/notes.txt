@@ -61,7 +61,6 @@ notes that are helpful for planning:
 
 
 TODO:
-improve name translation by splitting, translating parts, and recombining.
 translate to more languages.
 add sparks when landing on gold breeze block (to match solid gold block).
 add materials from update 4.
@@ -131,3 +130,4 @@ clean up model name parsing with default values for max integer length.
 create mismatch.py
 rework atlas.py organize window so that it only returns when it meets an objective which can be specified as an argument.
 libretranslate
+improve name translation by splitting, translating parts, and recombining.

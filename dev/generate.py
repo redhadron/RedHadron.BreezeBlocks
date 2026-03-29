@@ -414,11 +414,32 @@ for testChar0 in US_KEYBOARD_SYMBOLS:
   assert_equals(tuple(split_and_keep_delimeters("".join(_testTup), [testChar0, testChar1], False)), _testTup)
 del _testTup
 
+def lstrip_and_count(text, prefix):
+  assert len(prefix) > 0
+  resultStr = text.lstrip(prefix)
+  return (resultStr, (len(text)-len(resultStr))//len(prefix)) # TODO int divide exact
+
+def rstrip_and_count(text, suffix):
+  assert len(suffix) > 0
+  resultStr = text.rstrip(suffix)
+  return (resultStr, (len(text)-len(resultStr))//len(suffix)) # TODO int divide exact
+
+def translate_with_flavor(text, source, target):
+  # flavor includes whitespace and ellipses and other things that might be removed by the translation model. They should always be provided to the translation model in case they improve the output. If the translation model removes them, they should be added back in.
+  assert len(text) > 0
+  assert len(text.lstrip(" ")) > 0
+  if "..." in text:
+    raise NotImplementedError("ellipses")
+  textWOLeft, leftSpaceCount = lstrip_and_count(text, " ")
+  textWOLeftRight, rightSpaceCount = rstrip_and_count(textWOLeft, " ")
+  translationResult = libreTranslateAPI.translate(textWOLeftRight, source=source, target=target)
+  return (" "*leftSpaceCount) + translationResult.lstrip(" ").rstrip(" ") + (" "*rightSpaceCount)
+
 def translate_string_piecewise(text, source, target, delimeters):
   inputPieces = split_and_keep_delimeters(text, delimeters, keep_empty_strings=False)
   assert all(len(piece) > 0 for piece in inputPieces)
   isTranslatable = lambda string: not (string in delimeters or any(digit in string for digit in DIGITS))
-  outputPieces = [libreTranslateAPI.translate(piece, source=source, target=target) if isTranslatable(piece) else piece for piece in inputPieces]
+  outputPieces = [translate_with_flavor(piece, source, target) if isTranslatable(piece) else piece for piece in inputPieces]
   return "".join(outputPieces)
   
   
