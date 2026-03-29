@@ -62,6 +62,7 @@ notes that are helpful for planning:
 
 TODO:
 translate to more languages.
+make option to rebuild destination mod.
 add sparks when landing on gold breeze block (to match solid gold block).
 add materials from update 4.
 atlas.py interactive mode:

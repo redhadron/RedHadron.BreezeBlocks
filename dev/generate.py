@@ -572,8 +572,8 @@ for langCode in BREEZE_BLOCKS_LANGUAGE_CODES:
 
 # generate assets \/  
 
-languageFileEnUS = open(GET_LANGUAGE_FILE_DESTINATION_PATH("en-US"), "w")
-languageFilePtBR = codecs.open(GET_LANGUAGE_FILE_DESTINATION_PATH("pt-BR"), "w", "utf-8-sig")
+codecStrings = {"en-US": "utf-8", "pt-BR": "utf-8-sig", "uk-UA": "utf-8", "ru-RU": "utf-8"}
+languageFiles = {langCode: codecs.open(GET_LANGUAGE_FILE_DESTINATION_PATH(langCode), "w", codecStrings[langCode]) for langCode in BREEZE_BLOCKS_LANGUAGE_CODES}
 colorsShelf = shelve.open("colors.shelf")
 
 for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if name.endswith(".blockymodel")):
@@ -630,10 +630,10 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
         modelNameLayoutStr, modelNameSizeDescriptionStr, modelNameShapeNicknameStr = tuple(flatten_string_structure_and_join(item) for item in decomposedModelName)
         modelNameShapeNameStr = dictionary_translate_if_able(SHAPE_NICKNAMES_TO_NAMES, modelNameShapeNicknameStr)
         displayNameNative = f"{dictionary_translate_if_able(UNIFIED_DISPLAY_NAME_TRANSLATIONS, family)} Breeze Block (shape: {modelNameShapeNameStr}, layout: {modelNameLayoutStr}, thickness: {modelNameSizeDescriptionStr})"
-        displayNameEnUS = translate_string_piecewise(displayNameNative, source=BREEZE_BLOCKS_NATIVE_LANGUAGE_CODE, target="en-US", delimeters=("(", ")", ":", ","))
-        displayNamePtBR = translate_string_piecewise(displayNameNative, source=BREEZE_BLOCKS_NATIVE_LANGUAGE_CODE, target="pt-BR", delimeters=("(", ")", ":", ","))
-        languageFileEnUS.write(f"{assetInfo['full_name']}.name = {displayNameEnUS}\n")
-        languageFilePtBR.write(f"{assetInfo['full_name']}.name = {displayNamePtBR}\n")
+        
+        for langCode, langFile in languageFiles.items():
+          displayNameTranslated = translate_string_piecewise(displayNameNative, source=BREEZE_BLOCKS_NATIVE_LANGUAGE_CODE, target=langCode, delimeters=("(", ")", ":", ","))
+          langFile.write(f"{assetInfo['full_name']}.name = {displayNameTranslated}\n")
         
         
         # main procedure:
@@ -660,8 +660,6 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
             assert "__" not in outputLine, outputLine # because this should never happen and usually indicates a mistake in the template or data page.
             outputFile.write(outputLine)
 
-languageFileEnUS.close() # probably not necessary in cpython, 
-# and outside of cpython, the lack of a context manager here might result in the file being left open after a crash https://stackoverflow.com/questions/17577137/do-files-get-closed-during-an-exception-exit
-# TODO combine multiple language files into one context manager?
-languageFilePtBR.close()
+for languageFile in languageFiles.values():
+  languageFile.close()
 colorsShelf.close()
