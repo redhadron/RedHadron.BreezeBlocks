@@ -363,6 +363,7 @@ DATA_PAGES = [
       ("JSON_TAGS_TYPE_STR", "Wood"),
       ("JSON_TAGS_SUBTYPE", ",\n    \"SubType\": [\n      \"Planks\"\n    ]"),
       ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
+      ("JSON_BLOCKTYPE_GROUP_LINE", "\n"), # there's a group for stone, but not for rock.
       ("JSON_BLOCKTYPE_GATHERING_BREAKING_GATHERTYPE_STR", "Woods"),
       ("JSON_BLOCKTYPE_BLOCKPARTICLESETID_STR", "Wood"),
       ("JSON_FUEL_QUALITY_LINE", "\"FuelQuality\": 0.75,"),
@@ -382,9 +383,10 @@ DATA_PAGES = [
       ("JSON_TAGS_TYPE_STR", "Rock"),
       ("JSON_TAGS_SUBTYPE", ""),
       ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
+      ("JSON_BLOCKTYPE_GROUP_LINE", ""),
       ("JSON_BLOCKTYPE_GATHERING_BREAKING_GATHERTYPE_STR", "Rocks"),
       ("JSON_BLOCKTYPE_BLOCKPARTICLESETID_STR", "Stone"),
-      ("JSON_FUEL_QUALITY_LINE", ""),
+      ("JSON_FUEL_QUALITY_LINE", "\n"),
       ("JSON_BLOCKTYPE_BLOCKSOUNDSETID_STR", "Stone"),
       ("JSON_ITEMSOUNDSETID_STR", "ISS_Blocks_Stone"),
     ]),
@@ -400,6 +402,7 @@ DATA_PAGES = [
       ("JSON_TAGS_TYPE_STR", "Rock"), # best option for gold as of update 4
       ("JSON_TAGS_SUBTYPE", ""),
       ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
+      ("JSON_BLOCKTYPE_GROUP_LINE", '"Group": "Metal",\n'), # this seems to control which creative inventory category it shows up in.
       ("JSON_BLOCKTYPE_GATHERING_BREAKING_GATHERTYPE_STR", "Rocks"), # best option for gold as of hytale update 4
       ("JSON_BLOCKTYPE_BLOCKPARTICLESETID_STR", "Metal"),
       ("JSON_FUEL_QUALITY_LINE", ""),
@@ -415,6 +418,7 @@ PROTOTYPE_DATA_PAGES = [
     ("TEXTURE_NAME_SUFFIX_LIST", list("_"+item for item in CLAY_COLORS)),
     ("INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME", True), # this flag exists because of clay.
     ("AUTOMATIC_JSON_ITEMS", [
+      ("JSON_CATEGORIES_LINE", r'"Blocks.Soils", "Blocks.Structural"'), # ?
       ("JSON_RECIPE_INPUT_RESOURCETYPEID_STR", "Soil_${FAMILY}${TEXTURE_NAME_SUFFIX}"),
       ("JSON_TAGS_TYPE_STR", "Rock"),
       ("JSON_TAGS_SUBTYPE", ""),

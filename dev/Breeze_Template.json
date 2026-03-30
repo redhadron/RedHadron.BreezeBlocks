@@ -46,7 +46,7 @@
         "Weight": 1
       }
     ],
-    "Group": "Wood",
+    ${JSON_BLOCKTYPE_GROUP_LINE}
     "Flags": {},
     "Gathering": {
       "Breaking": {
