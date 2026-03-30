@@ -18,7 +18,7 @@
   "Recipe": {
     "Input": [
       {
-        "ResourceTypeId": "${JSON_RECIPE_INPUT_RESOURCETYPEID_STR}",
+        "${JSON_RECIPE_INPUT_REQUIREMENT_KEY_STR}": "${JSON_RECIPE_INPUT_REQUIREMENT_VALUE_STR}",
         "Quantity": 1
       }
     ],
@@ -70,9 +70,9 @@
   },
   
   "Tags": {
-    "Type": [
-      "${JSON_TAGS_TYPE_STR}"
-    ]${JSON_TAGS_SUBTYPE}${JSON_TAGS_FAMILY}
+    ${JSON_TAGS_TYPE}
+    ${JSON_TAGS_SUBTYPE}
+    ${JSON_TAGS_FAMILY}
   },
   "ItemSoundSetId": "${JSON_ITEMSOUNDSETID_STR}",
   "IconProperties": {

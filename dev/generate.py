@@ -288,16 +288,15 @@ def select_best_texture_file_name(*, base_name):
     return patch_wood_texture_name(base_name + ".png")
   elif base_name.startswith("Rock_"):
     assert base_name.endswith("_Brick") or base_name.endswith("_Brick_Smooth"), base_name
-    # print(base_name)
     for oldSubstr, newSubstr in ROCK_BRICK_TEXTURE_NAME_SUBSTRING_REPLACEMENTS.items():
       # this must happen first because "peachstone" (And maybe similar things) are detected for the the Rock_ prefix removal logic
       base_name = base_name.replace(f"_{oldSubstr}_", f"_{newSubstr}_")
     for rockType in ROCK_BRICK_TEXTURE_NAME_NO_ROCK_PREFIX_REQUIRED:
       if base_name.startswith(f"Rock_{rockType}_"):
         base_name = rockType + "_" + remove_prefix(base_name, f"Rock_{rockType}_")
-    # print(base_name)
-    # print()
     return select_best_texture_name_by_cost(base_name, BRICK_TEXTURE_NAME_SUBSTRING_COSTS)
+  elif base_name.startswith("Metal_"):
+    return base_name + ".png"
   elif base_name.startswith("Clay_"):
     return base_name + ".png"
   elif base_name.startswith("Soil_Clay_"):
@@ -329,12 +328,11 @@ ROCK_BRICK = "Aqua Basalt Calcite Chalk Ledge Lime Marble Peach Quartzite Sandst
 # in-game name = ROCK_BRICK_NAME_UPGRADES[value] + " Brick"
 ROCK_RUNIC_BRICK = "Runic_Blue Runic Runic_Teal Runic_Dark".split(" ") # the texture names on these are so bad that I am boycotting them.
 ROCK_BRICK_BUT_ACTUALLY_METAL = ["Gold"]
+METAL = ["Iron", "Bronze", "Copper", "Zinc"]
 
 ROCK_BRICK_TEXTURE_NAME_SUBSTRING_REPLACEMENTS = {"Ledge": "Ledgestone", "Lime":"Limestone", "Peach":"Peachstone"}
 ROCK_BRICK_TEXTURE_NAME_NO_ROCK_PREFIX_REQUIRED = ["Peachstone", "Calcite", "Runic_Brick_Dark", "Runic_Brick_Dark_Blue"]
 _ROCK_BRICK_DISPLAY_NAME_TRANSLATIONS = {"Runic_Blue": "Blue Runic", "Runic_Teal": "Dark Blue Runic", "Runic_Dark": "Dark Runic", "Sandstone_Red":"Red Sandstone", "Sandstone_White": "White Sandstone"}
-
-# gold brick only has a side texture
 
 PROTOTYPE_ROCK_BRICKS = "Concrete".split(" ")
 SOIL_BRICK = "Hive Hive_Corrupted Clay Clay_Ocean Snow"
@@ -352,15 +350,17 @@ UNIFIED_DISPLAY_NAME_TRANSLATIONS = dict(list(_ROCK_BRICK_DISPLAY_NAME_TRANSLATI
 # ----- structured data about how to generate assets -----
 
 DATA_PAGES = [
-  [
+  [ # ----- Wood plank -----
+    ("PRIVATE_TYPE", "Wood"), # this is used in the name of the asset file but might not be included in the file as a type tag.
     ("TEXTURE_NAME_PREFIX", "Wood_"),
     ("FAMILY_LIST", list("Blackwood Darkwood Deadwood Drywood Goldenwood Greenwood Hardwood Lightwood Redwood Softwood Tropicalwood".split(" "))),
     ("TEXTURE_NAME_SUFFIX_LIST", ["_Planks"]),
     ("INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME", False),
     ("AUTOMATIC_JSON_ITEMS", [
-      ("JSON_CATEGORIES_LINE", r'"Blocks.Structural"'), # TODO check again later whether a wood category exists.
-      ("JSON_RECIPE_INPUT_RESOURCETYPEID_STR", "Wood_${FAMILY}"),
-      ("JSON_TAGS_TYPE_STR", "Wood"),
+      ("JSON_CATEGORIES_LINE", r'"Blocks.Structural"'), # TODO check again later whether a wood category exists. 
+      ("JSON_RECIPE_INPUT_REQUIREMENT_KEY_STR", "ResourceTypeId"),
+      ("JSON_RECIPE_INPUT_REQUIREMENT_VALUE_STR", "Wood_${FAMILY}"),
+      ("JSON_TAGS_TYPE", '"Type": [ "Wood" ]'),
       ("JSON_TAGS_SUBTYPE", ",\n    \"SubType\": [\n      \"Planks\"\n    ]"),
       ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
       ("JSON_BLOCKTYPE_GROUP_LINE", "\n"), # there's a group for stone, but not for rock.
@@ -372,15 +372,17 @@ DATA_PAGES = [
     ]),
     
   ],
-  [
+  [ # ----- Rock Brick (except for Gold) -----
+    ("PRIVATE_TYPE", "Rock"),
     ("TEXTURE_NAME_PREFIX", "Rock_"),
     ("FAMILY_LIST", ROCK_BRICK),
     ("TEXTURE_NAME_SUFFIX_LIST", ["_Brick"]),
     ("INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME", False),
     ("AUTOMATIC_JSON_ITEMS", [
       ("JSON_CATEGORIES_LINE", r'"Blocks.Rocks", "Blocks.Structural"'),
-      ("JSON_RECIPE_INPUT_RESOURCETYPEID_STR", "Rock_${FAMILY}_Brick"),
-      ("JSON_TAGS_TYPE_STR", "Rock"),
+      ("JSON_RECIPE_INPUT_REQUIREMENT_KEY_STR", "ResourceTypeId"),
+      ("JSON_RECIPE_INPUT_REQUIREMENT_VALUE_STR", "Rock_${FAMILY}_Brick"),
+      ("JSON_TAGS_TYPE", '"Type": [ "Rock" ]'),
       ("JSON_TAGS_SUBTYPE", ""),
       ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
       ("JSON_BLOCKTYPE_GROUP_LINE", ""),
@@ -391,19 +393,42 @@ DATA_PAGES = [
       ("JSON_ITEMSOUNDSETID_STR", "ISS_Blocks_Stone"),
     ]),
   ],
-  [
+  [ # ----- Gold Brick (both a rock and a metal) -----
+    ("PRIVATE_TYPE", "Rock"),
     ("TEXTURE_NAME_PREFIX", "Rock_"),
     ("FAMILY_LIST", ROCK_BRICK_BUT_ACTUALLY_METAL),
     ("TEXTURE_NAME_SUFFIX_LIST", ["_Brick"]),
     ("INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME", False),
     ("AUTOMATIC_JSON_ITEMS", [
       ("JSON_CATEGORIES_LINE", r'"Blocks.Metal", "Blocks.Structural"'),
-      ("JSON_RECIPE_INPUT_RESOURCETYPEID_STR", "Rock_${FAMILY}_Brick"),
-      ("JSON_TAGS_TYPE_STR", "Rock"), # best option for gold as of update 4
+      ("JSON_RECIPE_INPUT_REQUIREMENT_KEY_STR", "ResourceTypeId"),
+      ("JSON_RECIPE_INPUT_REQUIREMENT_VALUE_STR", "Rock_${FAMILY}_Brick"),
+      ("JSON_TAGS_TYPE", '"Type": [ "Rock" ]'), # best option for gold as of update 4
       ("JSON_TAGS_SUBTYPE", ""),
       ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
       ("JSON_BLOCKTYPE_GROUP_LINE", '"Group": "Metal",\n'), # this seems to control which creative inventory category it shows up in.
       ("JSON_BLOCKTYPE_GATHERING_BREAKING_GATHERTYPE_STR", "Rocks"), # best option for gold as of hytale update 4
+      ("JSON_BLOCKTYPE_BLOCKPARTICLESETID_STR", "Metal"),
+      ("JSON_FUEL_QUALITY_LINE", ""),
+      ("JSON_BLOCKTYPE_BLOCKSOUNDSETID_STR", "Metal"),
+      ("JSON_ITEMSOUNDSETID_STR", "ISS_Items_Metal"),
+    ]),
+  ],
+  [ # ----- Metal (excluding Gold) -----
+    ("PRIVATE_TYPE", "Metal"),
+    ("TEXTURE_NAME_PREFIX", "Metal_"),
+    ("FAMILY_LIST", METAL),
+    ("TEXTURE_NAME_SUFFIX_LIST", [""]),
+    ("INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME", False),
+    ("AUTOMATIC_JSON_ITEMS", [
+      ("JSON_CATEGORIES_LINE", r'"Blocks.Metal", "Blocks.Structural"'),
+      ("JSON_RECIPE_INPUT_REQUIREMENT_KEY_STR", "ItemId"),
+      ("JSON_RECIPE_INPUT_REQUIREMENT_VALUE_STR", "Ingredient_Bar_${FAMILY}"),
+      ("JSON_TAGS_TYPE", ""),
+      ("JSON_TAGS_SUBTYPE", ""),
+      ("JSON_TAGS_FAMILY", ""),
+      ("JSON_BLOCKTYPE_GROUP_LINE", '"Group": "Metal",\n'),
+      ("JSON_BLOCKTYPE_GATHERING_BREAKING_GATHERTYPE_STR", "Rocks"),
       ("JSON_BLOCKTYPE_BLOCKPARTICLESETID_STR", "Metal"),
       ("JSON_FUEL_QUALITY_LINE", ""),
       ("JSON_BLOCKTYPE_BLOCKSOUNDSETID_STR", "Metal"),
@@ -625,12 +650,14 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
         assetInfo = dict()
         assetInfo["unpatched_texture_base_name"] = f"{data_page_get_value(dataPage, 'TEXTURE_NAME_PREFIX')}{family}{textureNameSuffix}" # this is also used as the block set later
         assetInfo["texture_file_name"] = select_best_texture_file_name(base_name=assetInfo["unpatched_texture_base_name"])
-        assetInfo["full_name"] = data_page_get_value(dataPage, ("AUTOMATIC_JSON_ITEMS", "JSON_TAGS_TYPE_STR")) + "_" + family + (textureNameSuffix if data_page_get_value(dataPage, "INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME") else "") + "_" + modelNameWithoutDepth
+        assetInfo["full_name"] = data_page_get_value(dataPage, "PRIVATE_TYPE") + "_" + family + (textureNameSuffix if data_page_get_value(dataPage, "INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME") else "") + "_" + modelNameWithoutDepth
         assetInfo["output_file_path"] = ASSET_FOLDER_DESTINATION_PATH + SEP + assetInfo["full_name"] + ".json"
         assetInfo["icon_file_name"] = assetInfo["full_name"] + ".png"
         assetInfo["icon_file_path"] = ICON_FOLDER_DESTINATION_PATH + SEP + assetInfo["icon_file_name"]
-        assetInfo["particle_color_as_tuple"] = colorsShelf[assetInfo["texture_file_name"]][PARTICLE_COLORATION]
-        
+        try:
+          assetInfo["particle_color_as_tuple"] = colorsShelf[assetInfo["texture_file_name"]][PARTICLE_COLORATION]
+        except KeyError:
+          raise KeyError("Some textures in your hytale assets folder aren't registered by colors.py. Try running colors.py again.")          
         
         # asset info specific to this model and texture, for inclusion in asset file:
         assetContents = {
