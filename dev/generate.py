@@ -372,7 +372,7 @@ DATA_PAGES = [
     ]),
     
   ],
-  [ # ----- Rock Brick (except for Gold) -----
+  [ # ----- Rock Brick (excluding Gold) -----
     ("PRIVATE_TYPE", "Rock"),
     ("TEXTURE_NAME_PREFIX", "Rock_"),
     ("FAMILY_LIST", ROCK_BRICK),
@@ -657,7 +657,7 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
         try:
           assetInfo["particle_color_as_tuple"] = colorsShelf[assetInfo["texture_file_name"]][PARTICLE_COLORATION]
         except KeyError:
-          raise KeyError("Some textures in your hytale assets folder aren't registered by colors.py. Try running colors.py again.")          
+          raise KeyError("Some textures in your hytale assets folder aren't registered by colors.py, or the shelf is malformed. Try running colors.py again.")          
         
         # asset info specific to this model and texture, for inclusion in asset file:
         assetContents = {
@@ -684,10 +684,6 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
         # language file stuff:
         modelNameForDecomposition = remove_prefix(modelNameWithoutDepth, 'Breeze_')
         decomposedModelName = parse_string_as_structure(modelNameForDecomposition, [GRID_PATTERN,CREATE_SIZE_DESCRIPTION_PATTERN(MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS), MULTI_SHAPE_NAME_PATTERN]).assert_complete_and_get_matched_data()
-        #print(f"{modelNameForDecomposition} becomes {decomposedModelName}")
-        # if isinstance(decomposedModelName, ParseFailure):
-        # else:
-          # assert isinstance(decomposedModelName, ParseSuccess)
         modelNameLayoutStr, modelNameSizeDescriptionStr, modelNameShapeNicknameStr = tuple(flatten_string_structure_and_join(item) for item in decomposedModelName)
         modelNameShapeNameStr = dictionary_translate_if_able(SHAPE_NICKNAMES_TO_NAMES, modelNameShapeNicknameStr)
         displayNameNative = f"{dictionary_translate_if_able(UNIFIED_DISPLAY_NAME_TRANSLATIONS, family)} Breeze Block (shape: {modelNameShapeNameStr}, layout: {modelNameLayoutStr}, thickness: {modelNameSizeDescriptionStr})"

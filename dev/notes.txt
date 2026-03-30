@@ -67,16 +67,16 @@ other notes:
 
 
 TODO:
-make ${set} regular
+make ${set} more regular
+don't use ${set} for families that shouldn't have a set.
 add a smooth stone brick texture simplifier.
-add sparks when landing on gold breeze block (to match solid gold block).
-add materials from Hytale update 4.
+add a front texture generator that uses the thumbnail mask to create shading.
 atlas.py interactive mode:
   Add keyboard shortcuts to link, unlink, and delete.
   Add command line arg for interactive mode.
   add keyboard shortcut in atlas.py to rename a tile, which can be hooked up to renamer.py.
 add rename detection to atlas.py.
-make string library, add length assertions back to remove_prefix etc.
+factor parsing out of generate.py
 make a model variants system.
   idea: follow the depth information (Db1000) with "_WoodOnly" or "_StoneOnly" so that suffix must be removed and then generate.py continues as normal.
 language:
@@ -85,9 +85,10 @@ language:
   synonym fuzzing - if any word in the pool can make a round-trip translation to any other word in the pool, use the foreign word that is the step between those two words.
 make option to rebuild destination mod.
 add a command to atlas.py to predict which tiles would be changed upon export or import, and optionally, to show the changes.
+add THIN cloth breeze blocks (basically lace/drapes with holes)
 add terracotta back:
   don't add clay until hytale's method of obtaining hardened clay is decided.
-  create JSON recipe input ItemID control.
+make string library, add length assertions back to remove_prefix etc.
 Make system for changing the depth of breeze blocks.
 add all models from designs canvas.
 improve texture shading on all models.
@@ -107,6 +108,7 @@ fix bug where things are held in the wrong position.
 shelved:
 add command line args to renamer.
 what is creative build light made out of?
+create JSON recipe input ItemID control.
 
 cancelled:
 pickling as a context manager. (this already exists: import shelve)
@@ -158,3 +160,6 @@ fixed all sides of G1x1T4pHead. coiuld be simplified.
 fixed all side uvs on G2x2F2pB4pL2pHead. could be simplified.
 fixed back UVs on G4x4T1pVoid
 fix all side texture directions on all models, except for those which remain sideways but still look correct.
+add sparks when landing on gold breeze block (to match solid gold block).
+add bronze, zinc, copper, and iron.
+add materials from Hytale update 4.
