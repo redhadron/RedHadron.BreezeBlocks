@@ -61,9 +61,9 @@ notes that are helpful for planning:
 
 
 TODO:
-add translation corrections.
-translate to every language in the hytale multi language bundle mod.
-make option to rebuild destination mod.
+fix top texture directions.
+what is creative build light made out of?
+add a smooth stone brick texture simplifier.
 add sparks when landing on gold breeze block (to match solid gold block).
 add materials from update 4.
 atlas.py interactive mode:
@@ -74,10 +74,11 @@ add rename detection to atlas.py.
 make string library, add length assertions back to remove_prefix etc.
 make a model variants system.
   idea: follow the depth information (Db1000) with "_WoodOnly" or "_StoneOnly" so that suffix must be removed and then generate.py continues as normal.
-fix top texture directions.
-add a smooth stone brick texture simplifier.
-fix texture errors on the back of G4x4T4pVoid.
-add command line args to renamer.
+language:
+  translate to every language in the hytale multi language bundle mod.
+  "cobogo"
+  synonym fuzzing - if any word in the pool can make a round-trip translation to any other word in the pool, use the foreign word that is the step between those two words.
+make option to rebuild destination mod.
 add a command to atlas.py to predict which tiles would be changed upon export or import, and optionally, to show the changes.
 Make system for changing the depth of breeze blocks.
 add all models from designs canvas.
@@ -93,6 +94,10 @@ patterns bigger than a single block.
 make a breeze mason's bench that can make weirder blocks with other depth modes.
 create ornate versions of some models.
 document what is a family, what is a family suffix, what is a family prefix, and reference assets from base game.
+fix bug where things are held in the wrong position.
+
+shelved:
+add command line args to renamer.
 
 cancelled:
 pickling as a context manager. (this already exists: import shelve)
@@ -134,3 +139,8 @@ rework atlas.py organize window so that it only returns when it meets an objecti
 libretranslate
 improve name translation by splitting, translating parts, and recombining.
 translate to more languages.
+add translation corrections.
+texture issues:
+  fix texture errors on the back of G4x4T4pVoid. - fixed
+  back of G2x2F2pB4pL2pHead. - overlap fixed, uv fixed
+  back of G2x2T2pHead. - fixed overlap, no uv issues.
