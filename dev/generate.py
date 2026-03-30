@@ -414,6 +414,11 @@ PROTOTYPE_DATA_PAGES = [
 
 SHAPE_NICKNAMES_TO_NAMES = {"Hair": "Crosshair", "Head": "Empty Crosshair", "SlowNeckNeckSlow": "Bottleneck Basketweave"}
 
+SHAPE_NAME_TRANSLATION_CORRECTIONS = {
+  "uk":{"Empty Crosshair":"порожнє перехрестя", "Crosshair":"перехрестя", "Dice":"грати в кості", "Nope":"Ні", "Bottleneck Basketweave":"схема плетіння Вузьке місце", "Void":"порожній"},
+  "ru":{"Dice":"Игральные кости", "Nope":"Вычеркнуто", "Bottleneck Basketweave":"Переплетение узких мест"}
+}
+
 def dictionary_translate_if_able(dictionary, key):
   return dictionary.get(key, key)
 
@@ -441,6 +446,10 @@ def rstrip_and_count(text, suffix):
 @functools.cache
 def cached_libretranslate_call(text, source, target):
   # functools cache here offers significant speedup even when caching is turned on for the libretranslate instance
+  if source == "en":
+    if target in SHAPE_NAME_TRANSLATION_CORRECTIONS:
+      if text in SHAPE_NAME_TRANSLATION_CORRECTIONS[target]:
+        return SHAPE_NAME_TRANSLATION_CORRECTIONS[target][text]
   return LIBRETRANSLATE_API.translate(text, source, target)
 
 def translate_with_flavor(text, source, target):

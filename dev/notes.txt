@@ -61,7 +61,8 @@ notes that are helpful for planning:
 
 
 TODO:
-translate to more languages.
+add translation corrections.
+translate to every language in the hytale multi language bundle mod.
 make option to rebuild destination mod.
 add sparks when landing on gold breeze block (to match solid gold block).
 add materials from update 4.
@@ -132,3 +133,4 @@ create mismatch.py
 rework atlas.py organize window so that it only returns when it meets an objective which can be specified as an argument.
 libretranslate
 improve name translation by splitting, translating parts, and recombining.
+translate to more languages.
