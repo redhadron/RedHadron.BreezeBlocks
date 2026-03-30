@@ -324,10 +324,11 @@ assert_equals(color_tuple_to_hytale_string((255, 254, 0)), "#fffe00")
 CLAY_COLORS = "Black Blue Cyan Green Grey Lime Orange Pink Purple Red White Yellow".split()
 
 # ROCK_BRICK_NO_TEXTURE_NAME_PROCESSING_REQUIRED = list("Basalt Quartzite Shale Stone Volcanic".split(" ")) # non-exhaustive # maybe add chalk
-ROCK_BRICK = "Aqua Basalt Calcite Chalk Gold Ledge Lime Marble Peach Quartzite Sandstone Sandstone_Red Sandstone_White Shale Stone Volcanic".split(" ")
+ROCK_BRICK = "Aqua Basalt Calcite Chalk Ledge Lime Marble Peach Quartzite Sandstone Sandstone_Red Sandstone_White Shale Stone Volcanic".split(" ")
 # in-game ID = Rock_(value)_Brick
 # in-game name = ROCK_BRICK_NAME_UPGRADES[value] + " Brick"
 ROCK_RUNIC_BRICK = "Runic_Blue Runic Runic_Teal Runic_Dark".split(" ") # the texture names on these are so bad that I am boycotting them.
+ROCK_BRICK_BUT_ACTUALLY_METAL = ["Gold"]
 
 ROCK_BRICK_TEXTURE_NAME_SUBSTRING_REPLACEMENTS = {"Ledge": "Ledgestone", "Lime":"Limestone", "Peach":"Peachstone"}
 ROCK_BRICK_TEXTURE_NAME_NO_ROCK_PREFIX_REQUIRED = ["Peachstone", "Calcite", "Runic_Brick_Dark", "Runic_Brick_Dark_Blue"]
@@ -357,6 +358,7 @@ DATA_PAGES = [
     ("TEXTURE_NAME_SUFFIX_LIST", ["_Planks"]),
     ("INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME", False),
     ("AUTOMATIC_JSON_ITEMS", [
+      ("JSON_CATEGORIES_LINE", r'"Blocks.Structural"'), # TODO check again later whether a wood category exists.
       ("JSON_RECIPE_INPUT_RESOURCETYPEID_STR", "Wood_${FAMILY}"),
       ("JSON_TAGS_TYPE_STR", "Wood"),
       ("JSON_TAGS_SUBTYPE", ",\n    \"SubType\": [\n      \"Planks\"\n    ]"),
@@ -375,6 +377,7 @@ DATA_PAGES = [
     ("TEXTURE_NAME_SUFFIX_LIST", ["_Brick"]),
     ("INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME", False),
     ("AUTOMATIC_JSON_ITEMS", [
+      ("JSON_CATEGORIES_LINE", r'"Blocks.Rocks", "Blocks.Structural"'),
       ("JSON_RECIPE_INPUT_RESOURCETYPEID_STR", "Rock_${FAMILY}_Brick"),
       ("JSON_TAGS_TYPE_STR", "Rock"),
       ("JSON_TAGS_SUBTYPE", ""),
@@ -384,6 +387,24 @@ DATA_PAGES = [
       ("JSON_FUEL_QUALITY_LINE", ""),
       ("JSON_BLOCKTYPE_BLOCKSOUNDSETID_STR", "Stone"),
       ("JSON_ITEMSOUNDSETID_STR", "ISS_Blocks_Stone"),
+    ]),
+  ],
+  [
+    ("TEXTURE_NAME_PREFIX", "Rock_"),
+    ("FAMILY_LIST", ROCK_BRICK_BUT_ACTUALLY_METAL),
+    ("TEXTURE_NAME_SUFFIX_LIST", ["_Brick"]),
+    ("INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME", False),
+    ("AUTOMATIC_JSON_ITEMS", [
+      ("JSON_CATEGORIES_LINE", r'"Blocks.Metal", "Blocks.Structural"'),
+      ("JSON_RECIPE_INPUT_RESOURCETYPEID_STR", "Rock_${FAMILY}_Brick"),
+      ("JSON_TAGS_TYPE_STR", "Rock"), # best option for gold as of update 4
+      ("JSON_TAGS_SUBTYPE", ""),
+      ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
+      ("JSON_BLOCKTYPE_GATHERING_BREAKING_GATHERTYPE_STR", "Rocks"), # best option for gold as of hytale update 4
+      ("JSON_BLOCKTYPE_BLOCKPARTICLESETID_STR", "Metal"),
+      ("JSON_FUEL_QUALITY_LINE", ""),
+      ("JSON_BLOCKTYPE_BLOCKSOUNDSETID_STR", "Metal"),
+      ("JSON_ITEMSOUNDSETID_STR", "ISS_Items_Metal"),
     ]),
   ],
 ]
