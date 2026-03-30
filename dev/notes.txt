@@ -55,7 +55,8 @@ notes that are helpful for planning:
 
 ==============================================================================
 
-
+notes on UVs:
+dice outside sides are sideways compared to others
 
 
 
@@ -144,3 +145,6 @@ texture issues:
   fix texture errors on the back of G4x4T4pVoid. - fixed
   back of G2x2F2pB4pL2pHead. - overlap fixed, uv fixed
   back of G2x2T2pHead. - fixed overlap, no uv issues.
+fixed back uv of dice
+fixed all sides of G1x1T4pHead. coiuld be simplified.
+fixed all side uvs on G2x2F2pB4pL2pHead. could be simplified.
