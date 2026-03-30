@@ -35,8 +35,7 @@ ICON_BACKGROUND_INVERSION_THRESHOLD = 0 # brightness at or below which the backg
 
 """
 todo:
-replace scandir with listdir
-replace readlines with read
+replace readline with read
 rename thumbnails to icons
 """
 
@@ -249,14 +248,6 @@ assert_equals(get_char_provision_strings("abc"), ["abc", "bc", "ac", "c", "ab", 
 CREATE_SIZE_DESCRIPTION_PATTERN = lambda maxIntegerLength: tuple(list(itertools.chain([char, CREATE_UNIVERSAL_NUMBER_PATTERN(maxIntegerLength)] for char in charProvisionsStr)) for charProvisionsStr in get_char_provision_strings("TFDBL"))
 MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS = 2
 
-# _a = CREATE_SIZE_DESCRIPTION_PATTERN(MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS)
-# print(_a)
-# print(parse_string_as_structure("T2p", _a))
-# _a = CREATE_UNIVERSAL_NUMBER_PATTERN(1)
-# print(_a)
-# print(parse_string_as_structure("2p", _a))
-# exit()
-# del _a
 
 
 
@@ -283,13 +274,12 @@ def select_best_texture_name_by_cost(required_substring, substring_costs):
 
 def select_best_texture_file_name(*, base_name):
   assert isinstance(base_name, str), type(base_name)
-  # assert ideal_name.endswith(".png")
   if base_name.startswith("Wood_"):
     return patch_wood_texture_name(base_name + ".png")
   elif base_name.startswith("Rock_"):
     assert base_name.endswith("_Brick") or base_name.endswith("_Brick_Smooth"), base_name
     for oldSubstr, newSubstr in ROCK_BRICK_TEXTURE_NAME_SUBSTRING_REPLACEMENTS.items():
-      # this must happen first because "peachstone" (And maybe similar things) are detected for the the Rock_ prefix removal logic
+      # this must happen first because "peachstone" (And maybe similar things) are detected for the the Rock_ prefix removal logic \/
       base_name = base_name.replace(f"_{oldSubstr}_", f"_{newSubstr}_")
     for rockType in ROCK_BRICK_TEXTURE_NAME_NO_ROCK_PREFIX_REQUIRED:
       if base_name.startswith(f"Rock_{rockType}_"):
@@ -338,9 +328,10 @@ PROTOTYPE_ROCK_BRICKS = "Concrete".split(" ")
 SOIL_BRICK = "Hive Hive_Corrupted Clay Clay_Ocean Snow"
 _SOIL_BRICK_DISPLAY_NAME_TRANSLATIONS = {"Hive_Corrupted": "Corrupted Hive", "Clay_Ocean": "Ocean Clay"}
 #  Aqua Calcite Gold Ledge Lime Marble # these are available as smooth bricks in-game but their textures have irregular names.
-# "Rock": {"LIST": ["Runic_Blue", "Runic_Dark", "Runic_Teal"], "SUFFIX": ""}, # irregular texture names
+
 
 UNIFIED_DISPLAY_NAME_TRANSLATIONS = dict(list(_ROCK_BRICK_DISPLAY_NAME_TRANSLATIONS.items()) + list(_SOIL_BRICK_DISPLAY_NAME_TRANSLATIONS.items()) + list(ROCK_BRICK_TEXTURE_NAME_SUBSTRING_REPLACEMENTS.items()))
+
 
 
 
@@ -436,6 +427,7 @@ DATA_PAGES = [
     ]),
   ],
 ]
+
 PROTOTYPE_DATA_PAGES = [
   [
     ("TEXTURE_NAME_PREFIX", ""),
@@ -456,6 +448,7 @@ PROTOTYPE_DATA_PAGES = [
     ]),
   ],
 ]
+
 
 
 
@@ -603,11 +596,11 @@ def clear_folder(folder_path, expected_extension):
   
 # ---------- MAIN PROCEDURE ----------
   
+  
 # Load template file \/
 
 templateFileLines = []
 with open(TEMPLATE_FILE_PATH, "r") as templateFile:
-  # print("opened template file.")
   currentLine = templateFile.readline()
   while len(currentLine) > 0:
     templateFileLines.append(currentLine)
@@ -615,6 +608,7 @@ with open(TEMPLATE_FILE_PATH, "r") as templateFile:
 if len(templateFileLines) == 0:
   raise ValueError("empty template file?? failed.")
   
+
 
 
 # clear destination folders and prepare destination mod \/
@@ -627,6 +621,7 @@ for langCode in BREEZE_BLOCKS_LANGUAGE_CODES:
   pathToRemove = GET_LANGUAGE_FILE_DESTINATION_PATH(langCode)
   if os.path.exists(pathToRemove):
     os.remove(pathToRemove)
+
 
 
 # generate assets \/  
@@ -659,12 +654,12 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
         except KeyError:
           raise KeyError("Some textures in your hytale assets folder aren't registered by colors.py, or the shelf is malformed. Try running colors.py again.")          
         
+        
         # asset info specific to this model and texture, for inclusion in asset file:
         assetContents = {
           "ICON_PATH_IN_MOD": "Icons/ItemsGenerated/" + assetInfo["icon_file_name"],
           "BLOCK_SET": assetInfo["unpatched_texture_base_name"],
           "TEXTURE_PATH_IN_MOD": f"BlockTextures/{assetInfo['texture_file_name']}",
-          # "RESOURCE_TYPE_ID_TO_CRAFT": f"{data_page_get_value(dataPage, ('AUTOMATIC_JSON_ITEMS', 'JSON_TAGS_TYPE_STR'))}_{family}",
           "PARTICLECOLOR_STR": color_tuple_to_hytale_string(assetInfo["particle_color_as_tuple"]),
         }
         

@@ -5,6 +5,7 @@ import json
 import ast
 import tkinter
 import time
+import itertools
 
 
 # pip
@@ -311,16 +312,21 @@ def join_surfaces_vertically(surfaces, background_color):
   assert y == newSurf.get_height()
   return newSurf
 
-_font = [] # a holder to cache the font
-def atlas_interactive_prompt(*, prompt_definition, atlas_image):
-  # prompt resources is a dictionary containing tile_image, tile_name
+def atlas_interactive_prompt(*, prompt_definition: dict, atlas_image: Image.Image, _font=[]) -> PromptResponseType:
+  # prompt_definition is a dictionary containing:
+  #   tile_preview_image: Image.Image,
+  #   tile_preview_top_text: str,
+  #   tile_preview_bottom_text: str
+  #   alt_instructions: str
+  #   acceptable_keys: dict[list[int]]
   # this method should never do anything except display a prompt and return the user's choice of action. It should not perform that action.
+  assert isinstance(prompt_definition["tile_preview_image"], Image.Image)
+  assert all(isinstance(item, int) for item in itertools.chain(*prompt_definition["acceptable_keys"].values()))
+  assert isinstance(atlas_image, Image.Image)
   pygame.init()
   if len(_font) == 0:
     _font.append(pygame.freetype.SysFont(pygame.freetype.get_default_font(), 18, bold=False))
   font = _font[0]
-  # assert isinstance(prompt_definition["tile_image"], Image.Image)
-  assert isinstance(atlas_image, Image.Image)
   
   screen = pygame.display.set_mode((600,400))
   atlasSurf = pil_image_to_surface(atlas_image)
@@ -337,6 +343,7 @@ def atlas_interactive_prompt(*, prompt_definition, atlas_image):
     tilePreviewBottomTextSurf = font.render(text=prompt_definition["tile_preview_bottom_text"], fgcolor=WINDOW_TEXT_COLOR)[0]
     labeledTilePreviewSurf = join_surfaces_vertically([tilePreviewTopTextSurf, tilePreviewSurf, tilePreviewBottomTextSurf], WINDOW_BACKGROUND_COLOR)
     screen.blit(labeledTilePreviewSurf, (atlasSurf.get_width()+10, 0))
+    font.render_to(screen, text=prompt_definition["static_instructions"], dest=(atlasSurf.get_width()+10, screen.get_height()-30), fgcolor=WINDOW_TEXT_COLOR)
     
     if hoveredTileCoord is not None:
       pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [get_intersection_coordinate((hoveredTileCoord[0]+a, hoveredTileCoord[1]+b)) for a, b in [(0,0), (1,0), (1,1), (0,1)]]) # TODO int vec math refactor
@@ -364,36 +371,41 @@ def atlas_interactive_prompt(*, prompt_definition, atlas_image):
         pygame.display.quit()
         return SubmitCoordinate(coordinate=hoveredTileCoord, event=event)
       elif event.type == pygame.KEYDOWN:
-        # don't check whether the hoveredTileCoord is None, because some keypresses (such as [s] for skip) are valid even without a valid coordinate.
+        # for keydown, don't check whether the hoveredTileCoord is None, because some keypresses (such as [s] for skip) are valid even without a valid coordinate.
+        
         if event.key in prompt_definition["acceptable_keys"]["no_requirements"]:
           pygame.display.quit()
-          return Submit(coordinate=hoveredTileCoord, event=event)
+          return SubmitCoordinate(coordinate=hoveredTileCoord, event=event)
         elif event.key in prompt_definition["acceptable_keys"]["coordinate_required"]:
           if hoveredTileCoord is None:
             continue
           pygame.display.quit()
-          return Submit(coordinate=hoveredTileCoord, event=event)
+          return SubmitCoordinate(coordinate=hoveredTileCoord, event=event)
         elif event.key in prompt_definition["acceptable_keys"]["link_required"]:
           if hoveredTileCoord is None:
             continue
           if hoveredTileCoord not in config_data["coordinates_to_names"]:
             continue
           pygame.display.quit()
-          return Submit(coordinate=hoveredTileCoord, event=event)
+          return SubmitCoordinate(coordinate=hoveredTileCoord, event=event)
         else:
           print(f"atlas_interactive_prompt: ignoring key {event.key!r} because it is not acceptable.")
 
 
-def prompt_user_for_a_free_coordinate(tile_image, tile_name, atlas_image):
+def prompt_user_for_a_free_coordinate(tile_image, tile_name, atlas_image) -> PromptResponseType:
   return atlas_interactive_prompt(prompt_definition={"tile_preview_image":tile_image, "tile_preview_top_text":"choose a coordinate for this new tile", "tile_preview_bottom_text":tile_name, "acceptable_keys":{"no_requirements":[],"coordinate_required":[],"link_required":[]}, "alt_instructions":"\n\n[left click] use this coordinate"}, atlas_image=atlas_image)
 
+def run_interactive_management_mode() -> None:
+  blankPreviewImage = Image.new("RGB", size=(64,1))
+  with Image.open(ATLAS_IMAGE_PATH) as atlasImage:
+    while True:
+      response = atlas_interactive_prompt(prompt_definition={"tile_preview_image":blankPreviewImage, "tile_preview_top_text": "Welcome to atlas.py!", "tile_preview_bottom_text": "Hover over a tile in the atlas for more options.", "acceptable_keys":{"no_requirements":[ord("q")],"coordinate_required":[],"link_required":[]}, "alt_instructions":"no alt instructions\nhave been provided", "static_instructions":"[q] quit"}, atlas_image=atlasImage)
+      raise NotImplementedError()
 
 
 
 
-
-
-def tile_image_is_blank(tile_image):
+def tile_image_is_blank(tile_image) -> bool:
   # assert tile_image.mode == "RGB", tile_image.mode
   assert tile_image.size == config_data["tile_size"]
   for pixelY in range(tile_image.size[1]):
@@ -408,7 +420,7 @@ def find_tile_names():
 def tile_name_to_path(tile_name):
   return TILE_FOLDER + SEP + tile_name
 
-def import_tile_with_name(tile_name, destination_atlas_pil_image):
+def import_tile_with_name(tile_name, destination_atlas_pil_image) -> None:
   assert isinstance(tile_name, str)
   assert isinstance(destination_atlas_pil_image, Image.Image)
   assert tile_name in config_data["coordinates_to_names"].inverse
@@ -420,7 +432,7 @@ def import_tile_with_name(tile_name, destination_atlas_pil_image):
     destination_atlas_pil_image.paste(tileImg, get_intersection_coordinate(config_data["coordinates_to_names"].inverse[tile_name]))
 
 
-def do_tile_transport(direction, discover=False, organize=False):
+def do_tile_transport(direction, discover=False, organize=False) -> None:
   assert not (discover and organize)
     
   with Image.open(ATLAS_IMAGE_PATH) as atlasImg:
@@ -485,7 +497,7 @@ def do_tile_transport(direction, discover=False, organize=False):
                 else:
                   raise ValueError("invalid event type")
               elif isinstance(promptResult, Skip):
-                raise NotImplementedError()
+                raise NotImplementedError("Skip is only meant to be used for tile name prompt")
               elif isinstance(promptResult, Exit):
                 exit(EXIT_CODES["PYGAME_QUIT"])
               else:
@@ -511,6 +523,7 @@ texture atlas editor commands:
   transport in [<--discover|--organize|--organize-all>]
   transport out [--discover]
   tiles delete [--confirm] //note: command must fail if confirm is provided when it is not necessary.
+  manage // the interactive mode with the keyboard shortcuts.
   // some way to regenerate or detect renamed tiles.
   // some way to swap tile positions, or copy tiles.
 """
@@ -528,6 +541,8 @@ transport_cmd_parser.add_argument("direction", help="in or out")
 transport_cmd_parser.add_argument("--discover", action="store_true", help="Discover new art and add it to the config")
 transport_cmd_parser.add_argument("--organize", action="store_true", help="Discover new art and add it to the config at user-specified locations")
 transport_cmd_parser.add_argument("--organize-all", action="store_true", help="The user specifies the location of every tile from scratch")
+
+manage_parser = subparser_manager.add_parser("manage", help="enter interactive mode")
 
 
 
@@ -570,6 +585,12 @@ elif args.subcommand == "transport":
     do_tile_transport(direction, discover=args.discover, organize=args.organize)
   if args.discover or args.organize or args.organize_all:
     save_config() # TODO move into transport
+  assert_config_is_saved_correctly()
+elif args.subcommand == "manage":
+  load_config()
+  assert_config_is_saved_correctly()
+  run_interactive_management_mode()
+  save_config()
   assert_config_is_saved_correctly()
 else:
   raise ValueError(args.subcommand)

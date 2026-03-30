@@ -67,14 +67,15 @@ other notes:
 
 
 TODO:
+atlas.py interactive mode:
+  make prompt_definition a class instead of a dict.
+  separate PromptResponseType into TilePromptResponse and AtlasPromptResponse.
+  Add keyboard shortcuts to link, unlink, and delete.
+  add keyboard shortcut to rename.
 make ${set} more regular
 don't use ${set} for families that shouldn't have a set.
 add a smooth stone brick texture simplifier.
 add a front texture generator that uses the thumbnail mask to create shading.
-atlas.py interactive mode:
-  Add keyboard shortcuts to link, unlink, and delete.
-  Add command line arg for interactive mode.
-  add keyboard shortcut in atlas.py to rename a tile, which can be hooked up to renamer.py.
 add rename detection to atlas.py.
 factor parsing out of generate.py
 make a model variants system.
@@ -163,3 +164,6 @@ fix all side texture directions on all models, except for those which remain sid
 add sparks when landing on gold breeze block (to match solid gold block).
 add bronze, zinc, copper, and iron.
 add materials from Hytale update 4.
+replace scandir with listdir
+atlas.py interactive mode:
+  Add command line arg for interactive mode.
