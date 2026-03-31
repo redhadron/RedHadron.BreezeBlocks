@@ -432,83 +432,93 @@ def import_tile_with_name(tile_name, destination_atlas_pil_image) -> None:
     destination_atlas_pil_image.paste(tileImg, get_intersection_coordinate(config_data["coordinates_to_names"].inverse[tile_name]))
 
 
+def do_tile_export(*, atlas_image, discover, organize):
+  if not os.path.exists(ATLAS_IMAGE_PATH):
+    raise FileNotFoundError("can't export when atlas image does not exist.")
+    
+  for y in range(config_data["atlas_size"][1]):
+    for x in range(config_data["atlas_size"][0]):
+      
+      locationInAtlasImage = (*get_intersection_coordinate((x,y)), *get_intersection_coordinate((x+1,y+1)))
+      tileImg = atlas_image.crop(locationInAtlasImage)
+      if (x,y) not in config_data["coordinates_to_names"]:
+        if discover and not tile_image_is_blank(tileImg):
+          response = prompt_user_for_tile_name(tileImg)
+          assert isinstance(response, PromptResponseType)
+          if isinstance(response, SubmitTileName):
+            newTileName = response.name
+          elif isinstance(response, Skip):
+            continue
+          elif isinstance(response, Exit):
+            exit(EXIT_CODES["EXIT_BUTTON"])
+          else:
+            raise ValueError(response)
+          config_data["coordinates_to_names"][(x,y)] = newTileName
+        else:
+          continue # don't attempt to export.
+      tileImgPath = tile_name_to_path(config_data["coordinates_to_names"][(x,y)])
+      
+      # \/ refuse to overwrite tile of wrong size
+      if os.path.exists(tileImgPath):
+        with Image.open(tileImgPath) as oldTileImg:
+          if oldTileImg.size != tileImg.size:
+            raise FileExistsError("the tile will not be overwritten because it is of a different size.")
+            
+      tileImg.save(tileImgPath)
+      
+def do_tile_import(*, atlas_image, discover, organize):
+  if not os.path.exists(ATLAS_IMAGE_PATH):
+    assert False, "why is this test here?" # TODO
+    
+  newlyDiscoveredNames = []
+  for tileName in find_tile_names():
+    if tileName in config_data["coordinates_to_names"].inverse:
+      import_tile_with_name(tileName, atlas_image)
+    else:
+      newlyDiscoveredNames.append(tileName)
+  atlas_image.save(ATLAS_IMAGE_PATH) # this is a good time to save progress. config has not changed and doesn't need to be saved.
+      
+  if discover or organize:
+    assert nand(discover, organize), "the following code is designed for either discover or organize to be true, but not both"
+    for tileName in newlyDiscoveredNames:
+      placementCoordinate = None # must not carry over from previous iteration
+      if discover:
+        placementCoordinate = get_a_free_coordinate()
+      elif organize:
+        with Image.open(tile_name_to_path(tileName)) as tileImgForPrompt:
+          promptResult = prompt_user_for_a_free_coordinate(tile_image=tileImgForPrompt, tile_name=tileName, atlas_image=atlas_image)
+          if isinstance(promptResult, SubmitCoordinate):
+            if promptResult.event.type == pygame.MOUSEBUTTONDOWN:
+              placementCoordinate = promptResult.coordinate
+            elif promptResult.event.type == pygame.KEYDOWN:
+              raise ValueError("no keys should be accepted here.")
+            else:
+              raise ValueError("invalid event type")
+          elif isinstance(promptResult, Skip):
+            raise NotImplementedError("Skip is only meant to be used for tile name prompt")
+          elif isinstance(promptResult, Exit):
+            exit(EXIT_CODES["PYGAME_QUIT"])
+          else:
+            raise ValueError(promptResult)
+      else:
+        assert False, "unreachable"
+      validate_int_pair_tuple(placementCoordinate)
+      config_data["coordinates_to_names"].inverse[tileName] = placementCoordinate
+      import_tile_with_name(tileName, atlasImg)
+    atlas_image.save(ATLAS_IMAGE_PATH)
+    # TODO put transport in charge of whether and when atlas config gets saved. Atlas config and atlas image should probably be saved at the same time.
+
 def do_tile_transport(direction, discover=False, organize=False) -> None:
   assert not (discover and organize)
     
   with Image.open(ATLAS_IMAGE_PATH) as atlasImg:
     if direction is TRANSPORT_DIRECTION.EXPORT:
-      if not os.path.exists(ATLAS_IMAGE_PATH):
-        raise FileNotFoundError("can't export when atlas image does not exist.")
-      for y in range(config_data["atlas_size"][1]):
-        for x in range(config_data["atlas_size"][0]):
-          
-          locationInAtlasImage = (*get_intersection_coordinate((x,y)), *get_intersection_coordinate((x+1,y+1)))
-          tileImg = atlasImg.crop(locationInAtlasImage)
-          if (x,y) not in config_data["coordinates_to_names"]:
-            if discover and not tile_image_is_blank(tileImg):
-              response = prompt_user_for_tile_name(tileImg)
-              assert isinstance(response, PromptResponseType)
-              if isinstance(response, SubmitTileName):
-                newTileName = response.name
-              elif isinstance(response, Skip):
-                continue
-              elif isinstance(response, Exit):
-                exit(EXIT_CODES["EXIT_BUTTON"])
-              else:
-                raise ValueError(response)
-              config_data["coordinates_to_names"][(x,y)] = newTileName
-            else:
-              continue # don't attempt to export.
-          tileImgPath = tile_name_to_path(config_data["coordinates_to_names"][(x,y)])
-          if os.path.exists(tileImgPath):
-            with Image.open(tileImgPath) as oldTileImg:
-              if oldTileImg.size != tileImg.size:
-                raise FileExistsError("the tile will not be overwritten because it is of a different size.")
-          tileImg.save(tileImgPath)
+      do_tile_export(atlas_image=atlasImg, discover=discover, organize=organize)
     elif direction is TRANSPORT_DIRECTION.IMPORT:
-      if not os.path.exists(ATLAS_IMAGE_PATH):
-        create_atlas_image()
-        
-      newlyDiscoveredNames = []
-      for tileName in find_tile_names():
-        if tileName in config_data["coordinates_to_names"].inverse:
-          import_tile_with_name(tileName, atlasImg)
-        else:
-          newlyDiscoveredNames.append(tileName)
-      atlasImg.save(ATLAS_IMAGE_PATH) # save progress.
-          
-      if discover or organize:
-        assert nand(discover, organize), "the following code is designed for either discover or organize to be true, but not both"
-        for tileName in newlyDiscoveredNames:
-          placementCoordinate = None # must not carry over from previous iteration
-          if discover:
-            placementCoordinate = get_a_free_coordinate()
-          elif organize:
-            with Image.open(tile_name_to_path(tileName)) as tileImgForPrompt:
-              promptResult = prompt_user_for_a_free_coordinate(tile_image=tileImgForPrompt, tile_name=tileName, atlas_image=atlasImg)
-              if isinstance(promptResult, SubmitCoordinate):
-                if promptResult.event.type == pygame.MOUSEBUTTONDOWN:
-                  placementCoordinate = promptResult.coordinate
-                  validate_int_pair_tuple(placementCoordinate)
-                  config_data["coordinates_to_names"].inverse[tileName] = placementCoordinate
-                  import_tile_with_name(tileName, atlasImg)
-                elif promptResult.event.type == pygame.KEYDOWN:
-                  raise ValueError("no keys should be accepted here.")
-                else:
-                  raise ValueError("invalid event type")
-              elif isinstance(promptResult, Skip):
-                raise NotImplementedError("Skip is only meant to be used for tile name prompt")
-              elif isinstance(promptResult, Exit):
-                exit(EXIT_CODES["PYGAME_QUIT"])
-              else:
-                raise ValueError(promptResult)
-          else:
-            assert False, "unreachable"
-
-          # TODO put transport in charge of whether and when atlas config gets saved. Atlas config and atlas image should probably be saved at the same time.
+      do_tile_import(atlas_image=atlasImg, discover=discover, organize=organize)
     else:
       raise ValueError(direction)
-    atlasImg.save(ATLAS_IMAGE_PATH)
+    # there is no need to save atlasImg now, it has been done.
 
 
 

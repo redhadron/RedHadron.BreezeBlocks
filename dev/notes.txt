@@ -68,16 +68,19 @@ other notes:
 
 TODO:
 atlas.py interactive mode:
+  FIRST make improvements to saving of atlas config and atlas image.
+  refactor do_tile_import to not fall out of such a big if.
   make prompt_definition a class instead of a dict.
   separate PromptResponseType into TilePromptResponse and AtlasPromptResponse.
   Add keyboard shortcuts to link, unlink, and delete.
   add keyboard shortcut to rename.
+factor parsing out of generate.py.
+use hytale stock translations of materials in translated names of breeze blocks.
 make ${set} more regular
 don't use ${set} for families that shouldn't have a set.
 add a smooth stone brick texture simplifier.
 add a front texture generator that uses the thumbnail mask to create shading.
 add rename detection to atlas.py.
-factor parsing out of generate.py
 make a model variants system.
   idea: follow the depth information (Db1000) with "_WoodOnly" or "_StoneOnly" so that suffix must be removed and then generate.py continues as normal.
 language:
