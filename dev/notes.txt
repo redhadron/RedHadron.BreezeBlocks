@@ -67,11 +67,16 @@ other notes:
 
 
 TODO:
-atlas.py interactive mode:
-  FIRST make improvements to saving of atlas config and atlas image.
-  refactor do_tile_import to not fall out of such a big if.
-  make prompt_definition a class instead of a dict.
+atlas.py health:
+  add detection for out-of-bounds coordinates while importing (Currently it just draws off the edge of the atlas with no error).
+  add warnings when importing and a tile in the config does not exist as a file.
   separate PromptResponseType into TilePromptResponse and AtlasPromptResponse.
+  make saving of config file wonderful.
+  make prompt_definition a class instead of a dict.
+  refactor do_tile_import to not fall out of such a big if.
+  replace discover and organize with values of a single enum, and rename them to something that makes more sense.
+  
+atlas.py interactive mode:
   Add keyboard shortcuts to link, unlink, and delete.
   add keyboard shortcut to rename.
 factor parsing out of generate.py.
@@ -84,7 +89,7 @@ add rename detection to atlas.py.
 make a model variants system.
   idea: follow the depth information (Db1000) with "_WoodOnly" or "_StoneOnly" so that suffix must be removed and then generate.py continues as normal.
 language:
-  translate to every language in the hytale multi language bundle mod.
+  translate to every language in the hytale multi-language bundle mod.
   "cobogo" in Portuguese.
   synonym fuzzing - if any word in the pool can make a round-trip translation to any other word in the pool, use the foreign word that is the step between those two words.
 make option to rebuild destination mod.

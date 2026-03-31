@@ -237,11 +237,12 @@ def prompt_user_for_tile_name(tile_image):
   topLabel.pack()
   
   tilePreviewImage = make_tile_preview_image(tile_image)
+  # previewSize = tilePreviewImage.size
   
-  canvas = tkinter.Canvas(window, width=previewSize[0], height=previewSize[1])
+  canvas = tkinter.Canvas(window, width=tilePreviewImage.size[0], height=tilePreviewImage.size[1])
   canvas.pack()
-  tkinterImage = ImageTk.PhotoImage(image=tilePreviewImage, size=previewSize)
-  tkinterImageSprite = canvas.create_image(previewSize[0]//2, previewSize[1]//2, image=tkinterImage)
+  tkinterImage = ImageTk.PhotoImage(image=tilePreviewImage, size=tilePreviewImage.size)
+  tkinterImageSprite = canvas.create_image(tilePreviewImage.size[0]//2, tilePreviewImage.size[1]//2, image=tkinterImage) # TODO int vec
   
   entryStringVar = tkinter.StringVar()
   entry = tkinter.Entry(window, textvariable=entryStringVar)
