@@ -438,8 +438,12 @@ def import_tile_with_name(tile_name, destination_atlas_pil_image) -> None:
   assert isinstance(tile_name, str)
   assert isinstance(destination_atlas_pil_image, Image.Image)
   assert tile_name in config_data["coordinates_to_names"].inverse
-  with Image.open(tile_name_to_path(tile_name)) as tileImg:
-    # TODO check whether coordinate is valid
+  tilePath = tile_name_to_path(tile_name)
+  if not os.path.exists(tilePath):
+    raise FileNotFoundError(f"Tile with path {tilePath} does not exist and cannot be imported at the configured location. import_tile_with_name should only be called for names that are known to exist as files.")
+  with Image.open(tilePath) as tileImg:
+    # TODO check whether coordinate is valid according to config atlas size.
+    # TODO check whether coordinate is valid according to actual size of atlas.
     if tileImg.size != config_data["tile_size"]:
       print(f"WARNING: Tile with name {tileName} will not be imported because it is the wrong size: {tileImg.size}")
       return
@@ -485,7 +489,11 @@ def do_tile_import(*, atlas_image, discover, organize):
     assert False, "why is this test here?" # TODO
     
   newlyDiscoveredNames = []
-  for tileName in find_tile_names():
+  availableFileTileNames = find_tile_names()
+  for registeredTileCoord, registeredTileName in config_data["coordinates_to_names"].items():
+    if registeredTileName not in availableFileTileNames:
+      print(f"warning: cannot import tile {registeredTileName!r} to cell {registeredTileCoord} because it does not exist as a file.")
+  for tileName in availableFileTileNames:
     if tileName in config_data["coordinates_to_names"].inverse:
       import_tile_with_name(tileName, atlas_image)
     else:

@@ -68,9 +68,10 @@ other notes:
 
 TODO:
 atlas.py health:
+  do the int vector refactor.
   add detection for out-of-bounds coordinates while importing (Currently it just draws off the edge of the atlas with no error).
-  add warnings when importing and a tile in the config does not exist as a file.
   make saving of config file better.
+    make config data a class.
   make prompt_definition a class instead of a dict.
   refactor do_tile_import to not fall out of such a big if.
   replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
@@ -80,6 +81,7 @@ atlas.py interactive mode:
   Add keyboard shortcuts to link, unlink, and delete.
   add keyboard shortcut to rename.
 factor parsing out of generate.py.
+factor language out of generate.py.
 use hytale stock translations of materials in translated names of breeze blocks.
 make ${set} more regular
 don't use ${set} for families that shouldn't have a set.
@@ -94,13 +96,13 @@ language:
   synonym fuzzing - if any word in the pool can make a round-trip translation to any other word in the pool, use the foreign word that is the step between those two words.
 make option to rebuild destination mod.
 add a command to atlas.py to predict which tiles would be changed upon export or import, and optionally, to show the changes.
-add THIN cloth breeze blocks (basically lace/drapes with holes)
 add terracotta back:
   don't add clay until hytale's method of obtaining hardened clay is decided.
 make string library, add length assertions back to remove_prefix etc.
-Make system for changing the depth of breeze blocks.
 add all models from designs canvas.
 improve texture shading on all models.
+add THIN cloth breeze blocks (basically lace/drapes with holes)
+Make system for changing the depth of breeze blocks.
 outer corner breeze blocks.
 inner corner breeze blocks (G2x2 and higher only).
 Add breeze blocks for wood types and stone types from other popular mods.
@@ -176,3 +178,6 @@ replace scandir with listdir
 atlas.py:
   Add command line arg for interactive mode.
   separate PromptResponseType into TilePromptResponse and AtlasPromptResponse.
+improve thumbnails
+atlas.py health:
+  add warnings when importing and a tile in the config does not exist as a file.
