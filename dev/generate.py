@@ -272,7 +272,7 @@ def select_best_texture_name_by_cost(required_substring, substring_costs):
     raise ValueError(f"search failed with {required_substring=}")
   return bestName
 
-def select_best_texture_file_name(*, base_name):
+def select_best_texture_file_name(hello, *, base_name):
   assert isinstance(base_name, str), type(base_name)
   if base_name.startswith("Wood_"):
     return patch_wood_texture_name(base_name + ".png")
@@ -635,6 +635,8 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
   modelNameWithDepth = remove_suffix(modelFileName, ".blockymodel")
   modelNameWithoutDepth = remove_suffix(modelNameWithDepth, "_Db1000")
   iconMaskFileName = modelNameWithoutDepth + ".png"
+  
+  
   
   for dataPage in DATA_PAGES:
     for family in data_page_get_value(dataPage, "FAMILY_LIST"):

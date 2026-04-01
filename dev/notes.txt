@@ -70,11 +70,11 @@ TODO:
 atlas.py health:
   add detection for out-of-bounds coordinates while importing (Currently it just draws off the edge of the atlas with no error).
   add warnings when importing and a tile in the config does not exist as a file.
-  separate PromptResponseType into TilePromptResponse and AtlasPromptResponse.
-  make saving of config file wonderful.
+  make saving of config file better.
   make prompt_definition a class instead of a dict.
   refactor do_tile_import to not fall out of such a big if.
-  replace discover and organize with values of a single enum, and rename them to something that makes more sense.
+  replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
+  add procedure tests.
   
 atlas.py interactive mode:
   Add keyboard shortcuts to link, unlink, and delete.
@@ -173,5 +173,6 @@ add sparks when landing on gold breeze block (to match solid gold block).
 add bronze, zinc, copper, and iron.
 add materials from Hytale update 4.
 replace scandir with listdir
-atlas.py interactive mode:
+atlas.py:
   Add command line arg for interactive mode.
+  separate PromptResponseType into TilePromptResponse and AtlasPromptResponse.

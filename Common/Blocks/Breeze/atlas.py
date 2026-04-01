@@ -214,22 +214,23 @@ def make_tile_preview_image(tile_image):
   return modifiedTileImage
 
 
-class PromptResponseType:
-  def __init__(self):
-    pass
-class SubmitTileName(PromptResponseType):
+class TilePromptResponse:
+  pass
+
+class TilePromptSubmission(TilePromptResponse):
   def __init__(self, name):
     self.name = name
-class SubmitCoordinate(PromptResponseType):
-  def __init__(self, coordinate, event):
-    self.coordinate, self.event = coordinate, event
-class Skip(PromptResponseType):
-  pass
-class Exit(PromptResponseType):
-  pass
+
+def TilePromptSkip(TilePromptResponse):
+  def __init__(self):
+    pass
+def TilePromptExit(TilePromptResponse):
+  def __init__(self):
+    pass
+
+
   
-  
-def prompt_user_for_tile_name(tile_image):
+def prompt_user_for_tile_name(tile_image) -> TilePromptResponse:
   assert isinstance(tile_image, Image.Image) # tile_image must be a PIL Image
   window = tkinter.Tk()
   window.configure(bg="#cccccc") # TODO
@@ -268,7 +269,7 @@ def prompt_user_for_tile_name(tile_image):
     if any(char in "\/\:*?\"<>|" for char in entryText):
       print("name contains invalid character")
       return
-    promptResultHolder.value = SubmitTileName(entryText)
+    promptResultHolder.value = TilePromptSubmission(entryText)
     window.destroy()
   entry.bind('<Return>', okayCallback)
   okayButton = tkinter.Button(text="OK", command=okayCallback)
@@ -276,7 +277,7 @@ def prompt_user_for_tile_name(tile_image):
   okayButton.pack()
   
   def skipCallback(*args, **kwargs):
-    promptResultHolder.vale = Skip()
+    promptResultHolder.vale = TilePromptSkip()
     window.destroy()
   skipButton = tkinter.Button(text="Skip", command=skipCallback)
   skipButton.bind('<Return>', skipCallback)
@@ -284,7 +285,7 @@ def prompt_user_for_tile_name(tile_image):
   
   def exitCallback(*args, **kwargs):
     print("Exit button pressed.")
-    promptResultHolder.value = Exit()
+    promptResultHolder.value = TilePromptExit()
     window.destroy()
   exitButton = tkinter.Button(text="Exit", command=exitCallback)
   exitButton.bind('<Return>', exitCallback)
@@ -312,8 +313,17 @@ def join_surfaces_vertically(surfaces, background_color):
     y += surf.get_height()
   assert y == newSurf.get_height()
   return newSurf
+  
+class AtlasPromptResponse:
+  pass
+class AtlasPromptSubmission(AtlasPromptResponse):
+  def __init__(self, *, coordinate, event):
+    self.coordinate, self.event = coordinate, event
+class AtlasPromptExit(AtlasPromptResponse):
+  def __init__(self):
+    pass
 
-def atlas_interactive_prompt(*, prompt_definition: dict, atlas_image: Image.Image, _font=[]) -> PromptResponseType:
+def atlas_interactive_prompt(*, prompt_definition: dict, atlas_image: Image.Image, _font=[]) -> AtlasPromptResponse:
   # prompt_definition is a dictionary containing:
   #   tile_preview_image: Image.Image,
   #   tile_preview_top_text: str,
@@ -365,36 +375,37 @@ def atlas_interactive_prompt(*, prompt_definition: dict, atlas_image: Image.Imag
       if event.type == pygame.QUIT:
         print("exiting from within pygame")
         pygame.display.quit()
-        return Exit()
+        return AtlasPromptExit()
       elif event.type == pygame.MOUSEBUTTONDOWN:
         if hoveredTileCoord is None:
           continue # invalid click, no data to submit, don't submit.
         pygame.display.quit()
-        return SubmitCoordinate(coordinate=hoveredTileCoord, event=event)
+        return AtlasPromptSubmission(coordinate=hoveredTileCoord, event=event)
       elif event.type == pygame.KEYDOWN:
         # for keydown, don't check whether the hoveredTileCoord is None, because some keypresses (such as [s] for skip) are valid even without a valid coordinate.
         
         if event.key in prompt_definition["acceptable_keys"]["no_requirements"]:
           pygame.display.quit()
-          return SubmitCoordinate(coordinate=hoveredTileCoord, event=event)
+          return AtlasPromptSubmission(coordinate=hoveredTileCoord, event=event)
         elif event.key in prompt_definition["acceptable_keys"]["coordinate_required"]:
           if hoveredTileCoord is None:
             continue
           pygame.display.quit()
-          return SubmitCoordinate(coordinate=hoveredTileCoord, event=event)
+          return AtlasPromptSubmission(coordinate=hoveredTileCoord, event=event)
         elif event.key in prompt_definition["acceptable_keys"]["link_required"]:
           if hoveredTileCoord is None:
             continue
           if hoveredTileCoord not in config_data["coordinates_to_names"]:
             continue
           pygame.display.quit()
-          return SubmitCoordinate(coordinate=hoveredTileCoord, event=event)
+          return AtlasPromptSubmission(coordinate=hoveredTileCoord, event=event)
         else:
           print(f"atlas_interactive_prompt: ignoring key {event.key!r} because it is not acceptable.")
 
 
-def prompt_user_for_a_free_coordinate(tile_image, tile_name, atlas_image) -> PromptResponseType:
+def prompt_user_for_a_free_coordinate(tile_image, tile_name, atlas_image) -> AtlasPromptResponse:
   return atlas_interactive_prompt(prompt_definition={"tile_preview_image":tile_image, "tile_preview_top_text":"choose a coordinate for this new tile", "tile_preview_bottom_text":tile_name, "acceptable_keys":{"no_requirements":[],"coordinate_required":[],"link_required":[]}, "alt_instructions":"\n\n[left click] use this coordinate"}, atlas_image=atlas_image)
+
 
 def run_interactive_management_mode() -> None:
   blankPreviewImage = Image.new("RGB", size=(64,1))
@@ -402,6 +413,8 @@ def run_interactive_management_mode() -> None:
     while True:
       response = atlas_interactive_prompt(prompt_definition={"tile_preview_image":blankPreviewImage, "tile_preview_top_text": "Welcome to atlas.py!", "tile_preview_bottom_text": "Hover over a tile in the atlas for more options.", "acceptable_keys":{"no_requirements":[ord("q")],"coordinate_required":[],"link_required":[]}, "alt_instructions":"no alt instructions\nhave been provided", "static_instructions":"[q] quit"}, atlas_image=atlasImage)
       raise NotImplementedError()
+
+
 
 
 
@@ -445,12 +458,12 @@ def do_tile_export(*, atlas_image, discover, organize):
       if (x,y) not in config_data["coordinates_to_names"]:
         if discover and not tile_image_is_blank(tileImg):
           response = prompt_user_for_tile_name(tileImg)
-          assert isinstance(response, PromptResponseType)
-          if isinstance(response, SubmitTileName):
+          assert isinstance(response, TilePromptResponse)
+          if isinstance(response, TilePromptSubmission):
             newTileName = response.name
-          elif isinstance(response, Skip):
+          elif isinstance(response, TilePromptSkip):
             continue
-          elif isinstance(response, Exit):
+          elif isinstance(response, TilePromptExit):
             exit(EXIT_CODES["EXIT_BUTTON"])
           else:
             raise ValueError(response)
@@ -488,16 +501,15 @@ def do_tile_import(*, atlas_image, discover, organize):
       elif organize:
         with Image.open(tile_name_to_path(tileName)) as tileImgForPrompt:
           promptResult = prompt_user_for_a_free_coordinate(tile_image=tileImgForPrompt, tile_name=tileName, atlas_image=atlas_image)
-          if isinstance(promptResult, SubmitCoordinate):
+          assert isinstance(promptResult, AtlasPromptResponse)
+          if isinstance(promptResult, AtlasPromptSubmission):
             if promptResult.event.type == pygame.MOUSEBUTTONDOWN:
               placementCoordinate = promptResult.coordinate
             elif promptResult.event.type == pygame.KEYDOWN:
               raise ValueError("no keys should be accepted here.")
             else:
               raise ValueError("invalid event type")
-          elif isinstance(promptResult, Skip):
-            raise NotImplementedError("Skip is only meant to be used for tile name prompt")
-          elif isinstance(promptResult, Exit):
+          elif isinstance(promptResult, AtlasPromptExit):
             exit(EXIT_CODES["PYGAME_QUIT"])
           else:
             raise ValueError(promptResult)
