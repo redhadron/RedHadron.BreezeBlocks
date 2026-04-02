@@ -89,6 +89,11 @@ def assert_isinstance(a, b):
 # def assert_is_empty(a):
   # assert len(a) == 0, a
   
+def int_divide_exact(a,b):
+  assert isinstance(a, int) and isinstance(b,int)
+  assert a%b == 0
+  return a // b
+  
   
 
 # ----- helpers for working with data pages -----
@@ -479,12 +484,12 @@ del _testTup
 def lstrip_and_count(text, prefix):
   assert len(prefix) > 0
   resultStr = text.lstrip(prefix)
-  return (resultStr, (len(text)-len(resultStr))//len(prefix)) # TODO int divide exact
+  return (resultStr, int_divide_exact(len(text)-len(resultStr)), len(prefix))
 
 def rstrip_and_count(text, suffix):
   assert len(suffix) > 0
   resultStr = text.rstrip(suffix)
-  return (resultStr, (len(text)-len(resultStr))//len(suffix)) # TODO int divide exact
+  return (resultStr, int_divide_exact(len(text)-len(resultStr)), len(suffix)))
 
 @functools.cache
 def cached_libretranslate_call(text, source, target):
@@ -710,8 +715,8 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
             outputLine = outputLine.replace("${FAMILY}", family)
             outputLine = outputLine.replace("${TEXTURE_NAME_SUFFIX}", textureNameSuffix)
             
-            assert "${" not in outputLine, outputLine
-            assert "__" not in outputLine, outputLine # because this should never happen and usually indicates a mistake in the template or data page.
+            assert "${" not in outputLine, f"a marker for data insertion into the JSON file was not used. The line is {outputLine!r}"
+            assert "__" not in outputLine, f"the output line {outputLine!r} contains \"__\". this usually indicates a mistake in the template or data page."
             outputFile.write(outputLine)
 
 for languageFile in languageFiles.values():

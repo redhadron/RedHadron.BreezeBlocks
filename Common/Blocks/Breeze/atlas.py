@@ -43,6 +43,7 @@ PREVIEW_GRID_LINE_COLOR = (127, 127, 127)
 HIGHLIGHT_COLOR = (255, 0, 0)
 WINDOW_BACKGROUND_COLOR = (31, 31, 31)
 WINDOW_TEXT_COLOR = (250, 250, 250)
+WINDOW_BG_STRING = "#cccccc"
 class TRANSPORT_DIRECTION(enum.Enum):
   IMPORT = enum.auto()
   EXPORT = enum.auto()
@@ -236,12 +237,11 @@ def TilePromptExit(TilePromptResponse):
 def prompt_user_for_tile_name(tile_image) -> TilePromptResponse:
   assert isinstance(tile_image, Image.Image) # tile_image must be a PIL Image
   window = tkinter.Tk()
-  window.configure(bg="#cccccc") # TODO
+  window.configure(bg=WINDOW_BG_STRING)
   topLabel = tkinter.Label(window, text="Give this tile a name")
   topLabel.pack()
   
   tilePreviewImage = make_tile_preview_image(tile_image)
-  # previewSize = tilePreviewImage.size
   
   canvas = tkinter.Canvas(window, width=tilePreviewImage.size[0], height=tilePreviewImage.size[1])
   canvas.pack()
