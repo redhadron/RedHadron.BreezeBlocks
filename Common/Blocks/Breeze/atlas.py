@@ -91,7 +91,20 @@ def nand(a, b):
   
 def at_most_one(input_list):
   return sum(bool(item) for item in input_list) in (0, 1)
-  
+
+
+int_vec_parallel_template = """
+def ${name}(a, b):
+  assert len(a) == len(b)
+  assert isinstance(a, tuple) and isinstance(b, tuple)
+  assert all(isinstance(val, int) for val in a)
+  assert all(isinstance(val, int) for val in b)
+  return ${process}(aVal ${operator_char} bVal for aVal,bVal in zip(a,b))
+"""
+exec(int_vec_parallel_template.replace("${name}","int_vec_add").replace("${operator_char}","+").replace("${process}","tuple"))
+exec(int_vec_parallel_template.replace("${name}","int_vec_parallel_multiply").replace("${operator_char}","*").replace("${process}","tuple"))
+exec(int_vec_parallel_template.replace("${name}","int_vec_parallel_compare_less").replace("${operator_char}","<").replace("${process}","all"))
+assert int_vec_parallel_multiply((2,3),(5,7)) == (10,21)
   
   
   

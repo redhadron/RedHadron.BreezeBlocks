@@ -47,6 +47,18 @@ Breeze G<1x1|2x2|1x2|2x1|2x4|4x2|4x4> T<8|16>th
 
 ----------------------------------------------------------------------------
 
+names:
+  coal / soot / lump / mote / mite
+  veer / wave / hook / loop / cane / wake / lake
+  span
+  sake
+  post / moat / root / tree
+  seer / wary (two eyes)
+  bean
+  rain
+  snow (4-pointed snowflake)
+  
+
 notes that are helpful for planning:
   resource types may be defined at the bottom of an asset json.
   the sound set for Rock is called "Stone"
