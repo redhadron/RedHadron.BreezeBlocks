@@ -6,6 +6,7 @@ import ast
 import tkinter
 import time
 import itertools
+import operator
 
 
 # pip
@@ -57,11 +58,6 @@ EXIT_CODES = {"GENERAL_SUCCESS":0, "EXIT_BUTTON": 2, "PYGAME_QUIT":3}
 def validate_int_pair_tuple(int_tuple):
   assert isinstance(int_tuple, tuple) and len(int_tuple) == 2 and all(isinstance(item, int) for item in int_tuple), int_tuple
 
-def tuple_to_pretty_coordinate(input_tuple):
-  validate_int_pair_tuple(input_tuple)
-  return f"row {input_tuple[1]} col {input_tuple[0]}"
-assert tuple_to_pretty_coordinate((5, 678)) == "row 678 col 5"
-  
 def remove_suffix(string, suffix):
   assert len(suffix) <= len(string)
   assert len(suffix) > 0
@@ -79,13 +75,6 @@ def bisect_at_infix(string, infix):
   a, b = string.split(infix)
   return (a, b)
 
-def pretty_coordinate_to_tuple(input_string):
-  y, x = (int(item) for item in bisect_at_infix(remove_prefix(input_string, "row "), " col "))
-  return (x, y)
-assert pretty_coordinate_to_tuple("row 12 col 34") == (34, 12)
-
-# TODO introduce pretty coordinates to actual atlas config file.
-  
 def nand(a, b):
   return not (a and b)
   
@@ -93,21 +82,25 @@ def at_most_one(input_list):
   return sum(bool(item) for item in input_list) in (0, 1)
 
 
-int_vec_parallel_template = """
-def ${name}(a, b):
+def int_vec_parallel_operation(a, b, operation, packager):
   assert len(a) == len(b)
   assert isinstance(a, tuple) and isinstance(b, tuple)
   assert all(isinstance(val, int) for val in a)
   assert all(isinstance(val, int) for val in b)
-  return ${process}(aVal ${operator_char} bVal for aVal,bVal in zip(a,b))
-"""
-exec(int_vec_parallel_template.replace("${name}","int_vec_add").replace("${operator_char}","+").replace("${process}","tuple"))
-exec(int_vec_parallel_template.replace("${name}","int_vec_parallel_multiply").replace("${operator_char}","*").replace("${process}","tuple"))
-exec(int_vec_parallel_template.replace("${name}","int_vec_parallel_compare_less").replace("${operator_char}","<").replace("${process}","all"))
+  return packager(operation(aVal, bVal) for aVal,bVal in zip(a,b))
+int_vec_add = lambda a, b: int_vec_parallel_operation(a, b, operator.add, tuple)
+int_vec_parallel_multiply = lambda a, b: int_vec_parallel_operation(a, b, operator.mul, tuple)
+# int_vec_parallel_compare_less = lambda a, b: int_vec_parallel_operation(a, b, operator.lt, tuple)
+int_vec_all_components_less = lambda a, b: int_vec_parallel_operation(a, b, operator.lt, all)
+# int_vec_parallel_compare_lessequal = lambda a, b: int_vec_parallel_operation(a, b, operator.le, tuple)
+int_vec_all_components_lessequal = lambda a, b: int_vec_parallel_operation(a, b, operator.le, all)
 assert int_vec_parallel_multiply((2,3),(5,7)) == (10,21)
   
-  
-  
+def int_vec_scale_by(vec, scale):
+  assert isinstance(vec, tuple)
+  assert all(isintance(component, int) for component in vec)
+  assert isinstance(scale, int)
+  return tuple(component*scale for component in vec)
   
 
 config_data = {
@@ -120,13 +113,10 @@ config_data = {
 
 
 def get_atlas_image_size():
-  return (config_data["tile_size"][0]*config_data["atlas_size"][0], 
-    config_data["tile_size"][1]*config_data["atlas_size"][1])
-  # TODO int vec
+  return int_vec_parallel_multiply(config_data["tile_size"], config_data["atlas_size"])
   
 def get_intersection_coordinate(intersection_address):
-  return (config_data["tile_size"][0]*intersection_address[0], config_data["tile_size"][1]*intersection_address[1])
-  # TODO int vec
+  return int_vec_parallel_multiply(config_data["tile_size"], intersection_address)
   
 def get_a_free_coordinate():
   for y in range(config_data["atlas_size"][1]):
@@ -217,7 +207,7 @@ def assert_config_is_saved_correctly():
 
 
 def make_tile_preview_image(tile_image):
-  previewSize = (config_data["tile_size"][0]*TILE_PREVIEW_SCALE, config_data["tile_size"][1]*TILE_PREVIEW_SCALE) # TODO int vec
+  previewSize = int_vec_scale_by(config_data["tile_size"], TILE_PREVIEW_SCALE)
   modifiedTileImage = tile_image.resize(size=previewSize, resample=Image.Resampling.NEAREST) # resizing makes a copy so we are not drawing on the original.
   imageDrawer = ImageDraw.Draw(modifiedTileImage) 
   for y in range(config_data["tile_size"][1]):
@@ -256,7 +246,7 @@ def prompt_user_for_tile_name(tile_image) -> TilePromptResponse:
   canvas = tkinter.Canvas(window, width=tilePreviewImage.size[0], height=tilePreviewImage.size[1])
   canvas.pack()
   tkinterImage = ImageTk.PhotoImage(image=tilePreviewImage, size=tilePreviewImage.size)
-  tkinterImageSprite = canvas.create_image(tilePreviewImage.size[0]//2, tilePreviewImage.size[1]//2, image=tkinterImage) # TODO int vec
+  tkinterImageSprite = canvas.create_image(tilePreviewImage.size[0]//2, tilePreviewImage.size[1]//2, image=tkinterImage) # it doesn't matter if the division is not exact, this is just for preview.
   
   entryStringVar = tkinter.StringVar()
   entry = tkinter.Entry(window, textvariable=entryStringVar)
@@ -337,12 +327,14 @@ class AtlasPromptExit(AtlasPromptResponse):
     pass
 
 def atlas_interactive_prompt(*, prompt_definition: dict, atlas_image: Image.Image, _font=[]) -> AtlasPromptResponse:
-  # prompt_definition is a dictionary containing:
-  #   tile_preview_image: Image.Image,
-  #   tile_preview_top_text: str,
-  #   tile_preview_bottom_text: str
-  #   alt_instructions: str
-  #   acceptable_keys: dict[list[int]]
+  """
+  prompt_definition is a dictionary containing:
+    tile_preview_image: Image.Image,
+    tile_preview_top_text: str,
+    tile_preview_bottom_text: str
+    alt_instructions: str
+  acceptable_keys: dict[list[int]]
+  """
   # this method should never do anything except display a prompt and return the user's choice of action. It should not perform that action.
   assert isinstance(prompt_definition["tile_preview_image"], Image.Image)
   assert all(isinstance(item, int) for item in itertools.chain(*prompt_definition["acceptable_keys"].values()))
@@ -370,7 +362,7 @@ def atlas_interactive_prompt(*, prompt_definition: dict, atlas_image: Image.Imag
     font.render_to(screen, text=prompt_definition["static_instructions"], dest=(atlasSurf.get_width()+10, screen.get_height()-30), fgcolor=WINDOW_TEXT_COLOR)
     
     if hoveredTileCoord is not None:
-      pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [get_intersection_coordinate((hoveredTileCoord[0]+a, hoveredTileCoord[1]+b)) for a, b in [(0,0), (1,0), (1,1), (0,1)]]) # TODO int vec math refactor
+      pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [get_intersection_coordinate(int_vec_add(hoveredTileCoord, offset)) for offset in [(0,0), (1,0), (1,1), (0,1)]])
       hoveredTileDisplayName = config_data["coordinates_to_names"].get(hoveredTileCoord, default="empty")
       tooltipText = f"{hoveredTileDisplayName}{prompt_definition['alt_instructions']}"
       tooltipLineSurfs = [font.render(text=tooltipTextLine, fgcolor=WINDOW_TEXT_COLOR, bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tooltipTextLine in tooltipText.split("\n")]
@@ -378,8 +370,8 @@ def atlas_interactive_prompt(*, prompt_definition: dict, atlas_image: Image.Imag
       
       # TODO break out
       tooltipSurfSize = tooltipSurf.get_size()
-      screen.fill(WINDOW_TEXT_COLOR, rect=(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1]+20, tooltipSurfSize[0]+4, tooltipSurfSize[1]+4)) # TODO int vec math
-      screen.blit(tooltipSurf, dest=(pygame.mouse.get_pos()[0]+2, pygame.mouse.get_pos()[1]+22)) # TODO int vec math
+      screen.fill(WINDOW_TEXT_COLOR, rect=(*int_vec_add(pygame.mouse.get_pos(), (0,20)), *int_vec_add(tooltipSurfSize, (4,4))))
+      screen.blit(tooltipSurf, dest=int_vec_add(pygame.mouse.get_pos(), (2, 22)))
       
     time.sleep(1.0/FPS) # the target FPS will never be hit this way but that's ok.
     pygame.display.flip()
