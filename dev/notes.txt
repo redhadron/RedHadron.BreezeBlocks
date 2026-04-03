@@ -82,6 +82,7 @@ TODO:
 atlas.py health:
   make saving of config file better.
     make config data a class.
+    split config into config settings and config mappings.
   make prompt_definition a namedtuple instead of a dict.
   refactor do_tile_import to not fall out of such a big if.
   replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.

@@ -104,64 +104,81 @@ def int_vec_scale_by(vec, scale):
   return tuple(component*scale for component in vec)
   
 
-config_data = {
-  "coordinates_to_names": bidict(),
-  "tile_size": (32, 32),
-  "atlas_size": (6, 12),
-}
-
 
 def config_file_to_string():
   with open(ATLAS_CONFIG_PATH, "r") as configFile:
     return configFile.read()
 
-def load_config():
-  configText = config_file_to_string()
-  configData = json.loads(configText)
-  assert len(config_data["coordinates_to_names"]) == 0, "config data should not be loaded twice!"
-  for keyString, value in configData["coordinates_to_names"].items():
-    key = ast.literal_eval(keyString)
-    validate_int_pair_tuple(key)
-    assert key not in config_data["coordinates_to_names"]
-    # only key duplicates are searched for here, because the bidict itself cathes value duplicates.
-    config_data["coordinates_to_names"][key] = value
-
-def config_data_to_string():
-  configData = dict()
-  for cfgKey in config_data.keys():
-    if cfgKey == "coordinates_to_names":
-      configData[cfgKey] = {str(coord): name for coord, name in config_data["coordinates_to_names"].items()}
-    else:
-      configData[cfgKey] = config_data[cfgKey]
-  return json.dumps(configData, sort_keys=ATLAS_CONFIG_SORT_KEYS, indent=ATLAS_CONFIG_INDENT)
-
-def save_config():
-  textToWrite = config_data_to_string()
-  with open(ATLAS_CONFIG_PATH, "w") as configFile:
-    configFile.write(textToWrite)
+class ConfigManager:
+  def __init__(self):
+    self.coordinates_to_names = None
+    self.tile_size = (32, 32)
+    self.atlas_size = (6, 12)
   
-def config_data_has_changed():
-  return config_data_to_string() != config_file_to_string()
+  def _config_data_to_dict(self):
+    return {"coordinates_to_names": self.coordinates_to_names, "tile_size":self.tile_size, "atlas_size":self.atlas_size}
+  
+  def load(self):
+    loadedText = config_file_to_string()
+    loadedData = json.loads(loadedText)
+    assert self.coordinates_to_names is None, "config data should not be loaded twice!"
+    self.coordinates_to_names = bidict()
+    for keyString, value in loadedData["coordinates_to_names"].items():
+      key = ast.literal_eval(keyString)
+      validate_int_pair_tuple(key)
+      assert key not in self.coordinates_to_names
+      # only key duplicates are searched for here, because the bidict itself catches value duplicates.
+      self.coordinates_to_names[key] = value
+    
+  def _config_data_to_string(self):
+    rawConfigData = self._config_data_to_dict()
+    serializableConfigData = dict()
+    for cfgKey in rawConfigData.keys():
+      if cfgKey == "coordinates_to_names":
+        serializableConfigData[cfgKey] = {str(coord): name for coord, name in rawConfigData["coordinates_to_names"].items()}
+      else:
+        serializableConfigData[cfgKey] = rawConfigData[cfgKey]
+    return json.dumps(serializableConfigData, sort_keys=ATLAS_CONFIG_SORT_KEYS, indent=ATLAS_CONFIG_INDENT)
 
+  def save(self):
+    textToWrite = self._config_data_to_string()
+    with open(ATLAS_CONFIG_PATH, "w") as configFile:
+      configFile.write(textToWrite)
+    
+  def has_changed(self):
+    return self._config_data_to_string() != config_file_to_string()
+    
+  def assert_is_saved_correctly(self):
+    if self.has_changed():
+      print("config data changed unexpectedly.")
+      print("config data:")
+      print(self._config_data_to_string())
+      print("config file:")
+      print(config_file_to_string())
+      print("the program will exit.")
+      assert False
+      
+CONFIG = ConfigManager()
 
 
 
 def get_atlas_image_size():
-  return int_vec_parallel_multiply(config_data["tile_size"], config_data["atlas_size"])
+  # TODO add builtin check that image is the same size as configured size?
+  return int_vec_parallel_multiply(CONFIG.tile_size, CONFIG.atlas_size)
   
 def intersection_coordinate_to_pixel_coordinate(intersection_address):
-  return int_vec_parallel_multiply(config_data["tile_size"], intersection_address)
+  return int_vec_parallel_multiply(CONFIG.tile_size, intersection_address)
   
 def get_a_free_coordinate():
-  for y in range(config_data["atlas_size"][1]):
-    for x in range(config_data["atlas_size"][0]):
-      if (x,y) not in config_data["coordinates_to_names"]:
+  for y in range(CONFIG.atlas_size[1]):
+    for x in range(CONFIG.atlas_size[0]):
+      if (x,y) not in CONFIG.coordinates_to_names:
         return (x,y)
   assert False, "out of room"
 
 def tile_coordinate_is_in_bounds(coordinate):
   validate_int_pair_tuple(coordinate)
-  return 0 <= coordinate[0] < config_data["atlas_size"][0] and 0 <= coordinate[1] < config_data["atlas_size"][1]
+  return 0 <= coordinate[0] < CONFIG.atlas_size[0] and 0 <= coordinate[1] < CONFIG.atlas_size[1]
 
 
 
@@ -191,15 +208,6 @@ def delete_atlas_config():
     raise FileNotFoundError()
   os.remove(ATLAS_CONFIG_PATH)
   
-def assert_config_is_saved_correctly():
-  if config_data_has_changed():
-    print("config data changed unexpectedly.")
-    print("config data:")
-    print(config_data_to_string())
-    print("config file:")
-    print(config_file_to_string())
-    print("the program will exit.")
-    assert False
 
 
 
@@ -208,12 +216,12 @@ def assert_config_is_saved_correctly():
 
 
 def make_tile_preview_image(tile_image):
-  previewSize = int_vec_scale_by(config_data["tile_size"], TILE_PREVIEW_SCALE)
+  previewSize = int_vec_scale_by(CONFIG.tile_size, TILE_PREVIEW_SCALE)
   modifiedTileImage = tile_image.resize(size=previewSize, resample=Image.Resampling.NEAREST) # resizing makes a copy so we are not drawing on the original.
   imageDrawer = ImageDraw.Draw(modifiedTileImage) 
-  for y in range(config_data["tile_size"][1]):
+  for y in range(CONFIG.tile_size[1]):
     imageDrawer.line((0,y*TILE_PREVIEW_SCALE,modifiedTileImage.size[0],y*TILE_PREVIEW_SCALE), PREVIEW_GRID_LINE_COLOR)
-  for x in range(config_data["tile_size"][0]):
+  for x in range(CONFIG.tile_size[0]):
     imageDrawer.line((x*TILE_PREVIEW_SCALE, 0, x*TILE_PREVIEW_SCALE, modifiedTileImage.size[1]), PREVIEW_GRID_LINE_COLOR)
   return modifiedTileImage
 
@@ -349,7 +357,7 @@ def atlas_interactive_prompt(*, prompt_definition: dict, atlas_image: Image.Imag
   tilePreviewSurf = pil_image_to_surface(prompt_definition["tile_preview_image"])
   
   while True:
-    hoveredTileCoord = tuple(pygame.mouse.get_pos()[i]//config_data["tile_size"][i] for i in (0,1))
+    hoveredTileCoord = tuple(pygame.mouse.get_pos()[i]//CONFIG.tile_size[i] for i in (0,1))
     if not tile_coordinate_is_in_bounds(hoveredTileCoord):
       hoveredTileCoord = None
     
@@ -363,7 +371,7 @@ def atlas_interactive_prompt(*, prompt_definition: dict, atlas_image: Image.Imag
     
     if hoveredTileCoord is not None:
       pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [intersection_coordinate_to_pixel_coordinate(int_vec_add(hoveredTileCoord, offset)) for offset in [(0,0), (1,0), (1,1), (0,1)]])
-      hoveredTileDisplayName = config_data["coordinates_to_names"].get(hoveredTileCoord, default="empty")
+      hoveredTileDisplayName = CONFIG.coordinates_to_names.get(hoveredTileCoord, default="empty")
       tooltipText = f"{hoveredTileDisplayName}{prompt_definition['alt_instructions']}"
       tooltipLineSurfs = [font.render(text=tooltipTextLine, fgcolor=WINDOW_TEXT_COLOR, bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tooltipTextLine in tooltipText.split("\n")]
       tooltipSurf = join_surfaces_vertically(tooltipLineSurfs, WINDOW_BACKGROUND_COLOR)
@@ -400,7 +408,7 @@ def atlas_interactive_prompt(*, prompt_definition: dict, atlas_image: Image.Imag
         elif event.key in prompt_definition["acceptable_keys"]["link_required"]:
           if hoveredTileCoord is None:
             continue
-          if hoveredTileCoord not in config_data["coordinates_to_names"]:
+          if hoveredTileCoord not in CONFIG.coordinates_to_names:
             continue
           pygame.display.quit()
           return AtlasPromptSubmission(coordinate=hoveredTileCoord, event=event)
@@ -426,7 +434,7 @@ def run_interactive_management_mode() -> None:
 
 def tile_image_is_blank(tile_image) -> bool:
   # assert tile_image.mode == "RGB", tile_image.mode
-  assert tile_image.size == config_data["tile_size"]
+  assert tile_image.size == CONFIG.tile_size
   for pixelY in range(tile_image.size[1]):
     for pixelX in range(tile_image.size[0]):
       if tile_image.getpixel((pixelX,pixelY)) != ATLAS_IMAGE_BLANK_COLOR:
@@ -442,18 +450,18 @@ def tile_name_to_path(tile_name):
 def import_tile_with_name(tile_name, destination_atlas_pil_image) -> None:
   assert isinstance(tile_name, str)
   assert isinstance(destination_atlas_pil_image, Image.Image)
-  assert tile_name in config_data["coordinates_to_names"].inverse
+  assert tile_name in CONFIG.coordinates_to_names.inverse
   tilePath = tile_name_to_path(tile_name)
   if not os.path.exists(tilePath):
     raise FileNotFoundError(f"Tile with path {tilePath} does not exist and cannot be imported at the configured location. import_tile_with_name should only be called for names that are known to exist as files.")
   with Image.open(tilePath) as tileImg:
     # TODO check whether coordinate is valid according to config atlas size.
     # TODO check whether coordinate is valid according to actual size of atlas.
-    if tileImg.size != config_data["tile_size"]:
+    if tileImg.size != CONFIG.tile_size:
       print(f"WARNING: Tile with name {tile_name} will not be imported because it is the wrong size: {tileImg.size}")
       return
-    destinationCellCoordinate = config_data["coordinates_to_names"].inverse[tile_name]
-    if not int_vec_all_components_are_less(destinationCellCoordinate, config_data["atlas_size"]):
+    destinationCellCoordinate = CONFIG.coordinates_to_names.inverse[tile_name]
+    if not int_vec_all_components_are_less(destinationCellCoordinate, CONFIG.atlas_size):
       print(f"WARNING: Tile with name {tile_name} will not be imported to the cell at {destinationCellCoordinate} because it is outside of the atlas according to the atlas config size of {config_data['atlas_size']}.")
       return
     if not int_vec_all_components_are_lessequal(intersection_coordinate_to_pixel_coordinate(int_vec_add(destinationCellCoordinate, (1,1))), destination_atlas_pil_image.size):
@@ -466,12 +474,12 @@ def do_tile_export(*, atlas_image, discover, organize):
   if not os.path.exists(ATLAS_IMAGE_PATH):
     raise FileNotFoundError("can't export when atlas image does not exist.")
     
-  for y in range(config_data["atlas_size"][1]):
-    for x in range(config_data["atlas_size"][0]):
+  for y in range(CONFIG.atlas_size[1]):
+    for x in range(CONFIG.atlas_size[0]):
       
       locationInAtlasImage = (*intersection_coordinate_to_pixel_coordinate((x,y)), *intersection_coordinate_to_pixel_coordinate((x+1,y+1)))
       tileImg = atlas_image.crop(locationInAtlasImage)
-      if (x,y) not in config_data["coordinates_to_names"]:
+      if (x,y) not in CONFIG.coordinates_to_names:
         if discover and not tile_image_is_blank(tileImg):
           response = prompt_user_for_tile_name(tileImg)
           assert isinstance(response, TilePromptResponse)
@@ -483,10 +491,10 @@ def do_tile_export(*, atlas_image, discover, organize):
             exit(EXIT_CODES["EXIT_BUTTON"])
           else:
             raise ValueError(response)
-          config_data["coordinates_to_names"][(x,y)] = newTileName
+          CONFIG.coordinates_to_names[(x,y)] = newTileName
         else:
           continue # don't attempt to export.
-      tileImgPath = tile_name_to_path(config_data["coordinates_to_names"][(x,y)])
+      tileImgPath = tile_name_to_path(CONFIG.coordinates_to_names[(x,y)])
       
       # \/ refuse to overwrite tile of wrong size
       if os.path.exists(tileImgPath):
@@ -502,11 +510,11 @@ def do_tile_import(*, atlas_image, discover, organize):
     
   newlyDiscoveredNames = []
   availableFileTileNames = find_tile_names()
-  for registeredTileCoord, registeredTileName in config_data["coordinates_to_names"].items():
+  for registeredTileCoord, registeredTileName in CONFIG.coordinates_to_names.items():
     if registeredTileName not in availableFileTileNames:
       print(f"warning: cannot import tile {registeredTileName!r} to cell {registeredTileCoord} because it does not exist as a file.")
   for tileName in availableFileTileNames:
-    if tileName in config_data["coordinates_to_names"].inverse:
+    if tileName in CONFIG.coordinates_to_names.inverse:
       import_tile_with_name(tileName, atlas_image)
     else:
       newlyDiscoveredNames.append(tileName)
@@ -536,7 +544,7 @@ def do_tile_import(*, atlas_image, discover, organize):
       else:
         assert False, "unreachable"
       validate_int_pair_tuple(placementCoordinate)
-      config_data["coordinates_to_names"].inverse[tileName] = placementCoordinate
+      CONFIG.coordinates_to_names.inverse[tileName] = placementCoordinate
       import_tile_with_name(tileName, atlasImg)
     atlas_image.save(ATLAS_IMAGE_PATH)
     # TODO put transport in charge of whether and when atlas config gets saved. Atlas config and atlas image should probably be saved at the same time.
@@ -614,8 +622,8 @@ elif args.subcommand == "atlas-config":
   else:
     raise ValueError(ars.subaction)
 elif args.subcommand == "transport":
-  load_config()
-  assert_config_is_saved_correctly()
+  CONFIG.load()
+  CONFIG.assert_is_saved_correctly()
   direction = PARSE_TRANSPORT_DIRECTION(args.direction)
   assert args.discover is True or args.discover is False
   assert at_most_one((args.discover, args.organize, args.organize_all))
@@ -627,14 +635,14 @@ elif args.subcommand == "transport":
       assert not args.organize_all
     do_tile_transport(direction, discover=args.discover, organize=args.organize)
   if args.discover or args.organize or args.organize_all:
-    save_config() # TODO move into transport
-  assert_config_is_saved_correctly()
+    CONFIG.save() # TODO move into transport
+  CONFIG.assert_is_saved_correctly()
 elif args.subcommand == "manage":
-  load_config()
-  assert_config_is_saved_correctly()
+  CONFIG.load()
+  CONFIG.assert_is_saved_correctly()
   run_interactive_management_mode()
-  save_config()
-  assert_config_is_saved_correctly()
+  CONFIG.save()
+  CONFIG.assert_is_saved_correctly()
 else:
   raise ValueError(args.subcommand)
   
