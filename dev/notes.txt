@@ -80,11 +80,9 @@ other notes:
 
 TODO:
 atlas.py health:
-  do the int vector refactor.
-  add detection for out-of-bounds coordinates while importing (Currently it just draws off the edge of the atlas with no error).
   make saving of config file better.
     make config data a class.
-  make prompt_definition a class instead of a dict.
+  make prompt_definition a namedtuple instead of a dict.
   refactor do_tile_import to not fall out of such a big if.
   replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
   add procedure tests.
@@ -92,6 +90,7 @@ atlas.py health:
 atlas.py interactive mode:
   Add keyboard shortcuts to link, unlink, and delete.
   add keyboard shortcut to rename.
+move color shelf into a data folder.
 factor parsing out of generate.py.
 factor language out of generate.py.
 use hytale stock translations of materials in translated names of breeze blocks.
@@ -193,3 +192,5 @@ atlas.py:
 improve thumbnails
 atlas.py health:
   add warnings when importing and a tile in the config does not exist as a file.
+  do the int vector refactor.
+  add detection for out-of-bounds coordinates while importing (Currently it just draws off the edge of the atlas with no error).

@@ -92,9 +92,9 @@ def int_vec_parallel_operation(a, b, operation, packager):
 int_vec_add = lambda a, b: int_vec_parallel_operation(a, b, operator.add, tuple)
 int_vec_parallel_multiply = lambda a, b: int_vec_parallel_operation(a, b, operator.mul, tuple)
 # int_vec_parallel_compare_less = lambda a, b: int_vec_parallel_operation(a, b, operator.lt, tuple)
-int_vec_all_components_less = lambda a, b: int_vec_parallel_operation(a, b, operator.lt, all)
+int_vec_all_components_are_less = lambda a, b: int_vec_parallel_operation(a, b, operator.lt, all)
 # int_vec_parallel_compare_lessequal = lambda a, b: int_vec_parallel_operation(a, b, operator.le, tuple)
-int_vec_all_components_lessequal = lambda a, b: int_vec_parallel_operation(a, b, operator.le, all)
+int_vec_all_components_are_lessequal = lambda a, b: int_vec_parallel_operation(a, b, operator.le, all)
 assert int_vec_parallel_multiply((2,3),(5,7)) == (10,21)
   
 def int_vec_scale_by(vec, scale):
@@ -109,26 +109,6 @@ config_data = {
   "tile_size": (32, 32),
   "atlas_size": (6, 12),
 }
-
-
-
-
-def get_atlas_image_size():
-  return int_vec_parallel_multiply(config_data["tile_size"], config_data["atlas_size"])
-  
-def get_intersection_coordinate(intersection_address):
-  return int_vec_parallel_multiply(config_data["tile_size"], intersection_address)
-  
-def get_a_free_coordinate():
-  for y in range(config_data["atlas_size"][1]):
-    for x in range(config_data["atlas_size"][0]):
-      if (x,y) not in config_data["coordinates_to_names"]:
-        return (x,y)
-  assert False, "out of room"
-
-def tile_coordinate_is_in_bounds(coordinate):
-  validate_int_pair_tuple(coordinate)
-  return 0 <= coordinate[0] < config_data["atlas_size"][0] and 0 <= coordinate[1] < config_data["atlas_size"][1]
 
 
 def config_file_to_string():
@@ -162,6 +142,26 @@ def save_config():
   
 def config_data_has_changed():
   return config_data_to_string() != config_file_to_string()
+
+
+
+
+def get_atlas_image_size():
+  return int_vec_parallel_multiply(config_data["tile_size"], config_data["atlas_size"])
+  
+def intersection_coordinate_to_pixel_coordinate(intersection_address):
+  return int_vec_parallel_multiply(config_data["tile_size"], intersection_address)
+  
+def get_a_free_coordinate():
+  for y in range(config_data["atlas_size"][1]):
+    for x in range(config_data["atlas_size"][0]):
+      if (x,y) not in config_data["coordinates_to_names"]:
+        return (x,y)
+  assert False, "out of room"
+
+def tile_coordinate_is_in_bounds(coordinate):
+  validate_int_pair_tuple(coordinate)
+  return 0 <= coordinate[0] < config_data["atlas_size"][0] and 0 <= coordinate[1] < config_data["atlas_size"][1]
 
 
 
@@ -362,7 +362,7 @@ def atlas_interactive_prompt(*, prompt_definition: dict, atlas_image: Image.Imag
     font.render_to(screen, text=prompt_definition["static_instructions"], dest=(atlasSurf.get_width()+10, screen.get_height()-30), fgcolor=WINDOW_TEXT_COLOR)
     
     if hoveredTileCoord is not None:
-      pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [get_intersection_coordinate(int_vec_add(hoveredTileCoord, offset)) for offset in [(0,0), (1,0), (1,1), (0,1)]])
+      pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [intersection_coordinate_to_pixel_coordinate(int_vec_add(hoveredTileCoord, offset)) for offset in [(0,0), (1,0), (1,1), (0,1)]])
       hoveredTileDisplayName = config_data["coordinates_to_names"].get(hoveredTileCoord, default="empty")
       tooltipText = f"{hoveredTileDisplayName}{prompt_definition['alt_instructions']}"
       tooltipLineSurfs = [font.render(text=tooltipTextLine, fgcolor=WINDOW_TEXT_COLOR, bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tooltipTextLine in tooltipText.split("\n")]
@@ -450,9 +450,16 @@ def import_tile_with_name(tile_name, destination_atlas_pil_image) -> None:
     # TODO check whether coordinate is valid according to config atlas size.
     # TODO check whether coordinate is valid according to actual size of atlas.
     if tileImg.size != config_data["tile_size"]:
-      print(f"WARNING: Tile with name {tileName} will not be imported because it is the wrong size: {tileImg.size}")
+      print(f"WARNING: Tile with name {tile_name} will not be imported because it is the wrong size: {tileImg.size}")
       return
-    destination_atlas_pil_image.paste(tileImg, get_intersection_coordinate(config_data["coordinates_to_names"].inverse[tile_name]))
+    destinationCellCoordinate = config_data["coordinates_to_names"].inverse[tile_name]
+    if not int_vec_all_components_are_less(destinationCellCoordinate, config_data["atlas_size"]):
+      print(f"WARNING: Tile with name {tile_name} will not be imported to the cell at {destinationCellCoordinate} because it is outside of the atlas according to the atlas config size of {config_data['atlas_size']}.")
+      return
+    if not int_vec_all_components_are_lessequal(intersection_coordinate_to_pixel_coordinate(int_vec_add(destinationCellCoordinate, (1,1))), destination_atlas_pil_image.size):
+      print(f"WARNING: Tile with name {tile_name} will not be imported to the cell at {destinationCellCoordinate} because it would start or extend outside of the atlas image.")
+      return
+    destination_atlas_pil_image.paste(tileImg, intersection_coordinate_to_pixel_coordinate(destinationCellCoordinate))
 
 
 def do_tile_export(*, atlas_image, discover, organize):
@@ -462,7 +469,7 @@ def do_tile_export(*, atlas_image, discover, organize):
   for y in range(config_data["atlas_size"][1]):
     for x in range(config_data["atlas_size"][0]):
       
-      locationInAtlasImage = (*get_intersection_coordinate((x,y)), *get_intersection_coordinate((x+1,y+1)))
+      locationInAtlasImage = (*intersection_coordinate_to_pixel_coordinate((x,y)), *intersection_coordinate_to_pixel_coordinate((x+1,y+1)))
       tileImg = atlas_image.crop(locationInAtlasImage)
       if (x,y) not in config_data["coordinates_to_names"]:
         if discover and not tile_image_is_blank(tileImg):
