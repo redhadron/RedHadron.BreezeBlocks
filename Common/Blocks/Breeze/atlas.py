@@ -335,60 +335,19 @@ class AtlasPromptExit(AtlasPromptResponse):
   def __init__(self):
     pass
 
-class PromptDefinition(pydantic.BaseModel):
-  
+class AtlasPromptDefinition(pydantic.BaseModel):
   tile_preview_image: Image.Image
   tile_preview_top_text: str
   tile_preview_bottom_text: str
   alt_instructions: str
   static_instructions: str
   acceptable_keys: dict[str, list[int]]
-  
-  # declaring pydantic config by creating a class in the namespace of the parent class is deprecated.
-  # class Config:
-    # arbitrary_types_allowed = True
-  # this is required by Pydantic to use PIL's Image.Image as a type hint
-  model_config = {"arbitrary_types_allowed": True}
+  model_config = {"arbitrary_types_allowed": True} # this is required by Pydantic to use PIL's Image.Image as a type hint
     
-"""
-this is not in use because it does not seem possible to allow arbitrary types for pydantic.validate_call
-class PromptDefinition:
-  # TODO make a save args to self decorator
-  @pydantic.validate_call
-  def __init__(self, tile_preview_image: Image.Image, tile_preview_top_text: str, tile_preview_bottom_text: str, alt_instructions: str, static_instructions: str, acceptable_keys: dict):
-    self.tile_preview_image =  tile_preview_image
-    self.tile_preview_top_text = tile_preview_top_text
-    self.tile_preview_bottom_text = tile_preview_bottom_text
-    self.alt_instructions = alt_instructions
-    self.static_instructions = static_instructions
-    self.acceptable_keys = acceptable_keys
-  class Config:
-    # this is required by Pydantic to use PIL's Image.Image as a type hint
-    arbitrary_types_allowed = True
-"""
-
-"""
-# currently not using TypedDict because TypedDict does not enforce types.
-class PromptDefinition(TypedDict, total=True, closed=True):
-  tile_preview_image: Image.Image
-  tile_preview_top_text: str
-  tile_preview_bottom_text: str
-  alt_instructions: str
-  static_instructions: str
-  acceptable_keys: dict[list[int]]
-"""
-def atlas_interactive_prompt(*, prompt_definition, atlas_image: Image.Image, _font=[]) -> AtlasPromptResponse:
-  """
-  prompt_definition is a dictionary containing:
-    tile_preview_image: Image.Image,
-    tile_preview_top_text: str,
-    tile_preview_bottom_text: str
-    alt_instructions: str
-  acceptable_keys: dict[list[int]]
-  """
+def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_image: Image.Image, _font=[]) -> AtlasPromptResponse:
   # this method should never do anything except display a prompt and return the user's choice of action. It should not perform that action.
-  assert isinstance(prompt_definition["tile_preview_image"], Image.Image)
-  assert all(isinstance(item, int) for item in itertools.chain(*prompt_definition["acceptable_keys"].values()))
+  assert isinstance(prompt_definition.tile_preview_image, Image.Image)
+  assert all(isinstance(item, int) for item in itertools.chain(*prompt_definition.acceptable_keys.values()))
   assert isinstance(atlas_image, Image.Image)
   pygame.init()
   if len(_font) == 0:
@@ -397,7 +356,7 @@ def atlas_interactive_prompt(*, prompt_definition, atlas_image: Image.Image, _fo
   
   screen = pygame.display.set_mode((600,400))
   atlasSurf = pil_image_to_surface(atlas_image)
-  tilePreviewSurf = pil_image_to_surface(prompt_definition["tile_preview_image"])
+  tilePreviewSurf = pil_image_to_surface(prompt_definition.tile_preview_image)
   
   while True:
     hoveredTileCoord = tuple(pygame.mouse.get_pos()[i]//CONFIG.tile_size[i] for i in (0,1)) # TODO int vec divide
@@ -406,16 +365,16 @@ def atlas_interactive_prompt(*, prompt_definition, atlas_image: Image.Image, _fo
     
     screen.fill(WINDOW_BACKGROUND_COLOR)
     screen.blit(atlasSurf, (0,0))
-    tilePreviewTopTextSurf = font.render(text=prompt_definition["tile_preview_top_text"], fgcolor=WINDOW_TEXT_COLOR)[0]
-    tilePreviewBottomTextSurf = font.render(text=prompt_definition["tile_preview_bottom_text"], fgcolor=WINDOW_TEXT_COLOR)[0]
+    tilePreviewTopTextSurf = font.render(text=prompt_definition.tile_preview_top_text, fgcolor=WINDOW_TEXT_COLOR)[0]
+    tilePreviewBottomTextSurf = font.render(text=prompt_definition.tile_preview_bottom_text, fgcolor=WINDOW_TEXT_COLOR)[0]
     labeledTilePreviewSurf = join_surfaces_vertically([tilePreviewTopTextSurf, tilePreviewSurf, tilePreviewBottomTextSurf], WINDOW_BACKGROUND_COLOR)
     screen.blit(labeledTilePreviewSurf, (atlasSurf.get_width()+10, 0))
-    font.render_to(screen, text=prompt_definition["static_instructions"], dest=(atlasSurf.get_width()+10, screen.get_height()-30), fgcolor=WINDOW_TEXT_COLOR)
+    font.render_to(screen, text=prompt_definition.static_instructions, dest=(atlasSurf.get_width()+10, screen.get_height()-30), fgcolor=WINDOW_TEXT_COLOR)
     
     if hoveredTileCoord is not None:
       pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [intersection_coordinate_to_pixel_coordinate(int_vec_add(hoveredTileCoord, offset)) for offset in [(0,0), (1,0), (1,1), (0,1)]])
       hoveredTileDisplayName = CONFIG.coordinates_to_names.get(hoveredTileCoord, default="empty")
-      tooltipText = f"{hoveredTileDisplayName}{prompt_definition['alt_instructions']}"
+      tooltipText = f"{hoveredTileDisplayName}{prompt_definition.alt_instructions}"
       tooltipLineSurfs = [font.render(text=tooltipTextLine, fgcolor=WINDOW_TEXT_COLOR, bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tooltipTextLine in tooltipText.split("\n")]
       tooltipSurf = join_surfaces_vertically(tooltipLineSurfs, WINDOW_BACKGROUND_COLOR)
       
@@ -440,15 +399,15 @@ def atlas_interactive_prompt(*, prompt_definition, atlas_image: Image.Image, _fo
       elif event.type == pygame.KEYDOWN:
         # for keydown, don't check whether the hoveredTileCoord is None, because some keypresses (such as [s] for skip) are valid even without a valid coordinate.
         
-        if event.key in prompt_definition["acceptable_keys"]["no_requirements"]:
+        if event.key in prompt_definition.acceptable_keys["no_requirements"]:
           pygame.display.quit()
           return AtlasPromptSubmission(coordinate=hoveredTileCoord, event=event)
-        elif event.key in prompt_definition["acceptable_keys"]["coordinate_required"]:
+        elif event.key in prompt_definition.acceptable_keys["coordinate_required"]:
           if hoveredTileCoord is None:
             continue
           pygame.display.quit()
           return AtlasPromptSubmission(coordinate=hoveredTileCoord, event=event)
-        elif event.key in prompt_definition["acceptable_keys"]["link_required"]:
+        elif event.key in prompt_definition.acceptable_keys["link_required"]:
           if hoveredTileCoord is None:
             continue
           if hoveredTileCoord not in CONFIG.coordinates_to_names:
@@ -460,14 +419,14 @@ def atlas_interactive_prompt(*, prompt_definition, atlas_image: Image.Image, _fo
 
 
 def prompt_user_for_a_free_coordinate(tile_image, tile_name, atlas_image) -> AtlasPromptResponse:
-  return atlas_interactive_prompt(prompt_definition={"tile_preview_image":tile_image, "tile_preview_top_text":"choose a coordinate for this new tile", "tile_preview_bottom_text":tile_name, "acceptable_keys":{"no_requirements":[],"coordinate_required":[],"link_required":[]}, "alt_instructions":"\n\n[left click] use this coordinate"}, atlas_image=atlas_image)
+  return atlas_interactive_prompt(prompt_definition=AtlasPromptDefinition(**{"tile_preview_image":tile_image, "tile_preview_top_text":"choose a coordinate for this new tile", "tile_preview_bottom_text":tile_name, "acceptable_keys":{"no_requirements":[],"coordinate_required":[],"link_required":[]}, "alt_instructions":"\n\n[left click] use this coordinate"}), atlas_image=atlas_image)
 
 
 def run_interactive_management_mode() -> None:
   blankPreviewImage = Image.new("RGB", size=(64,1))
   with Image.open(ATLAS_IMAGE_PATH) as atlasImage:
     while True:
-      response = atlas_interactive_prompt(prompt_definition={"tile_preview_image":blankPreviewImage, "tile_preview_top_text": "Welcome to atlas.py!", "tile_preview_bottom_text": "Hover over a tile in the atlas for more options.", "acceptable_keys":{"no_requirements":[ord("q")],"coordinate_required":[],"link_required":[]}, "alt_instructions":"no alt instructions\nhave been provided", "static_instructions":"[q] quit"}, atlas_image=atlasImage)
+      response = atlas_interactive_prompt(prompt_definition=AtlasPromptDefinition(**{"tile_preview_image":blankPreviewImage, "tile_preview_top_text": "Welcome to atlas.py!", "tile_preview_bottom_text": "Hover over a tile in the atlas for more options.", "acceptable_keys":{"no_requirements":[ord("q")],"coordinate_required":[],"link_required":[]}, "alt_instructions":"no alt instructions\nhave been provided", "static_instructions":"[q] quit"}), atlas_image=atlasImage)
       raise NotImplementedError()
 
 
