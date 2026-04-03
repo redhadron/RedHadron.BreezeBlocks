@@ -81,7 +81,6 @@ other notes:
 TODO:
 atlas.py health:
   make saving of config file better.
-    make config data a class.
     split config into config settings and config mappings.
   make prompt_definition a namedtuple instead of a dict.
   refactor do_tile_import to not fall out of such a big if.
@@ -195,3 +194,5 @@ atlas.py health:
   add warnings when importing and a tile in the config does not exist as a file.
   do the int vector refactor.
   add detection for out-of-bounds coordinates while importing (Currently it just draws off the edge of the atlas with no error).
+  make config saving better.
+    make config data a class.

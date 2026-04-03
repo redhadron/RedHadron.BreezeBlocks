@@ -15,6 +15,7 @@ from PIL import Image, ImageTk, ImageDraw # the k in ImageTk is lowercase.
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "True"
 import pygame
 import argparse
+import pydantic
 
 
 """
@@ -334,7 +335,49 @@ class AtlasPromptExit(AtlasPromptResponse):
   def __init__(self):
     pass
 
-def atlas_interactive_prompt(*, prompt_definition: dict, atlas_image: Image.Image, _font=[]) -> AtlasPromptResponse:
+class PromptDefinition(pydantic.BaseModel):
+  
+  tile_preview_image: Image.Image
+  tile_preview_top_text: str
+  tile_preview_bottom_text: str
+  alt_instructions: str
+  static_instructions: str
+  acceptable_keys: dict[str, list[int]]
+  
+  # declaring pydantic config by creating a class in the namespace of the parent class is deprecated.
+  # class Config:
+    # arbitrary_types_allowed = True
+  # this is required by Pydantic to use PIL's Image.Image as a type hint
+  model_config = {"arbitrary_types_allowed": True}
+    
+"""
+this is not in use because it does not seem possible to allow arbitrary types for pydantic.validate_call
+class PromptDefinition:
+  # TODO make a save args to self decorator
+  @pydantic.validate_call
+  def __init__(self, tile_preview_image: Image.Image, tile_preview_top_text: str, tile_preview_bottom_text: str, alt_instructions: str, static_instructions: str, acceptable_keys: dict):
+    self.tile_preview_image =  tile_preview_image
+    self.tile_preview_top_text = tile_preview_top_text
+    self.tile_preview_bottom_text = tile_preview_bottom_text
+    self.alt_instructions = alt_instructions
+    self.static_instructions = static_instructions
+    self.acceptable_keys = acceptable_keys
+  class Config:
+    # this is required by Pydantic to use PIL's Image.Image as a type hint
+    arbitrary_types_allowed = True
+"""
+
+"""
+# currently not using TypedDict because TypedDict does not enforce types.
+class PromptDefinition(TypedDict, total=True, closed=True):
+  tile_preview_image: Image.Image
+  tile_preview_top_text: str
+  tile_preview_bottom_text: str
+  alt_instructions: str
+  static_instructions: str
+  acceptable_keys: dict[list[int]]
+"""
+def atlas_interactive_prompt(*, prompt_definition, atlas_image: Image.Image, _font=[]) -> AtlasPromptResponse:
   """
   prompt_definition is a dictionary containing:
     tile_preview_image: Image.Image,
@@ -357,7 +400,7 @@ def atlas_interactive_prompt(*, prompt_definition: dict, atlas_image: Image.Imag
   tilePreviewSurf = pil_image_to_surface(prompt_definition["tile_preview_image"])
   
   while True:
-    hoveredTileCoord = tuple(pygame.mouse.get_pos()[i]//CONFIG.tile_size[i] for i in (0,1))
+    hoveredTileCoord = tuple(pygame.mouse.get_pos()[i]//CONFIG.tile_size[i] for i in (0,1)) # TODO int vec divide
     if not tile_coordinate_is_in_bounds(hoveredTileCoord):
       hoveredTileCoord = None
     
@@ -643,6 +686,8 @@ elif args.subcommand == "manage":
   run_interactive_management_mode()
   CONFIG.save()
   CONFIG.assert_is_saved_correctly()
+elif args.subcommand is None:
+  print("a subcommand must be used. Use the --help option for information on subcommands.")
 else:
   raise ValueError(args.subcommand)
   
