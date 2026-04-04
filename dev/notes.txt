@@ -83,8 +83,9 @@ atlas.py: atlas interactive prompt:
     [del] delete //deletes the tile file. does NOT remove the link.
     [s] show //show the tile file
   while hovering over cell with or without link:
-    [e] export now / [i] import now //if there is no link, prompt whether user really wants to create one, then prompt for file name.
+    [e] export now / [i] import now // TODO: if there is no link, prompt whether user really wants to create one, then prompt for file name.
     [backspace] wipe // delete the contents of this cell.
+    [m] move //moves cell contents and link if present. cannot move to cell that already has a link.
   while hovering over cell without link:
     [l] link //uses a new menu that allows user to see which tile files are part of links and click an unlinked file.
   at any time:
@@ -93,8 +94,16 @@ atlas.py: atlas interactive prompt:
 
 
 TODO:
-
-fix tile_name_to_path only being used in some places.
+PNG optimization
+  async
+atlas.py health:
+  make saving of config file better.
+    split config into config settings and config mappings.
+  refactor do_tile_import to not fall out of such a big if.
+  replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
+  add procedure tests.
+  replace tkinter with pygame everywhere.
+  fix tile_name_to_path only being used in some places.
 atlas.py:
   interactive mode:
     make tooltip adapt to which keys are valid by looking up key descriptions.
@@ -108,14 +117,6 @@ atlas.py:
 move color shelf into a data folder.
 factor parsing out of generate.py.
 factor language out of generate.py.
-rename "view" to "show" in atlas commands.
-atlas.py health:
-  make saving of config file better.
-    split config into config settings and config mappings.
-  refactor do_tile_import to not fall out of such a big if.
-  replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
-  add procedure tests.
-  replace tkinter with pygame everywhere.
   
 use hytale stock translations of materials in translated names of breeze blocks.
 make ${set} more regular
@@ -223,3 +224,5 @@ atlas.py health:
 make prompt_definition a data class of some kind instead of a dict.
 atlas.py interactive mode:
   minimum window height.
+
+rename "view" to "show" in atlas commands.

@@ -3,6 +3,7 @@ Common/Icons/ItemsGenerated
 Server/Item/Items
 *.shelf.*
 *.idea
+*.pyc
 
 
 

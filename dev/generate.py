@@ -3,12 +3,16 @@ import os
 import shutil
 import itertools
 import pathlib
-import codecs # for portuguese
+import codecs # for portuguese file encoding
 import re
 import functools
+import urllib # for libretranslate error handling
+import subprocess # for png crushing
 
 # project
 from HYTALE import HYTALE_ASSETS_PATH, SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
+
+BAD_EXIT_CODE = 1
 
 # pip
 from PIL import Image, ImageChops
@@ -16,7 +20,11 @@ from tibs import Tibs
 import shelve
 from libretranslatepy import LibreTranslateAPI
 LIBRETRANSLATE_API = LibreTranslateAPI("http://127.0.0.1:5000") # recommended args for libretranslate: --disable-web-ui --translation-cache all
-LIBRETRANSLATE_SUPPORTED_LANGUAGE_CODES = [item["code"] for item in LIBRETRANSLATE_API.languages()]
+try:
+  LIBRETRANSLATE_SUPPORTED_LANGUAGE_CODES = [item["code"] for item in LIBRETRANSLATE_API.languages()]
+except urllib.error.URLError:
+  print("failed to communicate with libretranslate. Are you running a libretranslate server on the default port? https://docs.libretranslate.com/")
+  exit(BAD_EXIT_CODE)
 HYTALE_STOCK_LANGUAGE_CODES = ["en-US", "pt-BR", "ru-RU", "uk-UA"]
 BREEZE_BLOCKS_NATIVE_LANGUAGE_CODE = "en-US"
 BREEZE_BLOCKS_LANGUAGE_CODES = HYTALE_STOCK_LANGUAGE_CODES
@@ -484,12 +492,12 @@ del _testTup
 def lstrip_and_count(text, prefix):
   assert len(prefix) > 0
   resultStr = text.lstrip(prefix)
-  return (resultStr, int_divide_exact(len(text)-len(resultStr)), len(prefix))
+  return (resultStr, int_divide_exact(len(text)-len(resultStr), len(prefix)))
 
 def rstrip_and_count(text, suffix):
   assert len(suffix) > 0
   resultStr = text.rstrip(suffix)
-  return (resultStr, int_divide_exact(len(text)-len(resultStr)), len(suffix)))
+  return (resultStr, int_divide_exact(len(text)-len(resultStr), len(suffix)))
 
 @functools.cache
 def cached_libretranslate_call(text, source, target):
@@ -591,7 +599,13 @@ def clear_folder(folder_path, expected_extension):
   
   
   
-  
+def optimize_png_in_place(path):
+  try:
+    completedProcess = subprocess.run(f"optipng -o7 \"{path}\"") # don't use repr for path because windows does not treat backslash as an escape character in paths.
+  except FileNotFoundError:
+    print("the PNG file could not be found OR the executable could not be found.")
+    exit(BAD_EXIT_CODE)
+  print(completedProcess.stdout)
   
   
   
@@ -681,6 +695,7 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
             else:
               thumbnailResultImage = thumbnailResultImageNoBG
             thumbnailResultImage.save(assetInfo["icon_file_path"])
+            optimize_png_in_place(assetInfo["icon_file_path"])
         
         
         # language file stuff:
