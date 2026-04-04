@@ -247,7 +247,7 @@ def TilePromptExit(TilePromptResponse):
 
 
   
-def prompt_user_for_tile_name(tile_image) -> TilePromptResponse:
+def prompt_user_for_tile_name(tile_image, enable_skip_button=True) -> TilePromptResponse:
   assert isinstance(tile_image, Image.Image) # tile_image must be a PIL Image
   window = tkinter.Tk()
   window.configure(bg=WINDOW_BG_STRING)
@@ -283,7 +283,7 @@ def prompt_user_for_tile_name(tile_image) -> TilePromptResponse:
       print("name must not match the name of the atlas image")
       return
     if any(char in "\/\:*?\"<>|" for char in entryText):
-      print("name contains invalid character")
+      print("name contains invalid character(s)")
       return
     promptResultHolder.value = TilePromptSubmission(entryText)
     window.destroy()
@@ -292,12 +292,13 @@ def prompt_user_for_tile_name(tile_image) -> TilePromptResponse:
   okayButton.bind('<Return>', okayCallback)
   okayButton.pack()
   
-  def skipCallback(*args, **kwargs):
-    promptResultHolder.vale = TilePromptSkip()
-    window.destroy()
-  skipButton = tkinter.Button(text="Skip", command=skipCallback)
-  skipButton.bind('<Return>', skipCallback)
-  skipButton.pack()
+  if enable_skip_button:
+    def skipCallback(*args, **kwargs):
+      promptResultHolder.vale = TilePromptSkip()
+      window.destroy()
+    skipButton = tkinter.Button(text="Skip", command=skipCallback)
+    skipButton.bind('<Return>', skipCallback)
+    skipButton.pack()
   
   def exitCallback(*args, **kwargs):
     print("Exit button pressed.")
@@ -442,13 +443,14 @@ def run_interactive_management_mode() -> None:
         tile_preview_image=blankPreviewImage,
         tile_preview_top_text="Welcome to atlas.py!",
         tile_preview_bottom_text="Hover over a tile in the atlas for more options.",
-        acceptable_keys={"no_requirements":[ord("q"), pygame.K_RETURN],"coordinate_required":[ord("s")],"link_required":[ord("u"), pygame.K_DELETE]},
+        acceptable_keys={"no_requirements":[ord("q"), pygame.K_RETURN],"coordinate_required":[ord("s")],"link_required":[ord("u"), pygame.K_DELETE, ord("r")]},
         clicks_are_acceptable=False,
-        alt_instructions="\n\n[s] show\n[u] unlink\n[del] delete tile file",
+        alt_instructions="\n\n[s] show\n[r] rename\n[u] unlink\n[del] delete tile file",
         static_instructions="[enter] save and exit\n[q] quit without saving"
       ), atlas_image=atlasImage)
       assert isinstance(response, AtlasPromptResponse)
       if isinstance(response, AtlasPromptSubmission):
+        tilePreviewPilImage = None if response.coordinate is None else make_tile_preview_image(atlasImage.crop(cell_coordinate_to_pillow_rect(response.coordinate))) # used by multiple cases
         if response.event.type == pygame.KEYDOWN:
           if response.event.key == ord("u"):
             print(f"removing link from {response.coordinate} to {CONFIG.coordinates_to_names[response.coordinate]!r}")
@@ -460,13 +462,32 @@ def run_interactive_management_mode() -> None:
               os.remove(pathToRemove)
             else:
               print(f"cannot remove tile file {pathToRemove} because it does not exist")
+          elif response.event.key == ord("r"):
+            pathToRename = TILE_FOLDER + SEP + CONFIG.coordinates_to_names[response.coordinate]
+            tilePromptResponse = prompt_user_for_tile_name(tilePreviewPilImage, enable_skip_button=False)
+            assert isinstance(tilePromptResponse, TilePromptResponse)
+            newName = None # absolutely must not carry from previous iteration
+            if isinstance(tilePromptResponse, TilePromptSubmission):
+              newName = tilePromptResponse.name
+            elif isinstance(tilePromptResponse, TilePromptExit):
+              print("exiting because of tile prompt choice to exit")
+              exit(EXIT_CODES["TILE_PROMPT_EXIT_CHOICE"])
+            else:
+              raise ValueError(tilePromptResponse)
+            newPath = TILE_FOLDER + SEP + newName
+            assert newName not in CONFIG.coordinates_to_names.values()
+            assert not os.path.exists(newPath)
+            if os.path.exists(pathToRename):
+              os.rename(pathToRename, newPath)
+            del CONFIG.coordinates_to_names[response.coordinate]
+            CONFIG.coordinates_to_names[response.coordinate] = newName
           elif response.event.key == ord("s"):
             screen = pygame.display.get_surface()
             for y in range(screen.get_size()[1]):
               for x in range(screen.get_size()[0]):
                 if (x+y)%2:
                   screen.set_at((x,y), WINDOW_HAZE_COLOR)
-            tilePreviewSurf = pil_image_to_surface(make_tile_preview_image(atlasImage.crop(cell_coordinate_to_pillow_rect(response.coordinate))))
+            tilePreviewSurf = pil_image_to_surface(tilePreviewPilImage)
             screen.blit(tilePreviewSurf, dest=(0, 0))
             pygame.display.flip()
             _runEventLoop = True

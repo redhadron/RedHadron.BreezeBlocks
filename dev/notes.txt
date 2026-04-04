@@ -98,6 +98,7 @@ atlas.py interactive mode:
   make tooltip adapt to which keys are valid by looking up key descriptions.
   Add keyboard shortcuts from above design.
   make newline acceptable in any text.
+make rules for whether or not a tile name will be accepted injectable.
 move color shelf into a data folder.
 factor parsing out of generate.py.
 factor language out of generate.py.
