@@ -20,7 +20,8 @@
         "(1, 9)": "Breeze_G4x4T2pVoid.png",
         "(2, 0)": "Breeze_G1x1T16pVoid.png",
         "(3, 0)": "Breeze_G2x2T4pVoid.png",
-        "(4, 0)": "Breeze_G2x2T8pVoid.png"
+        "(4, 0)": "Breeze_G2x2T8pVoid.png",
+        "(5, 0)": "aquestionmark.png"
     },
     "tile_size": [
         32,

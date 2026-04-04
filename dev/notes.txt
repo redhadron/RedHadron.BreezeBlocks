@@ -95,7 +95,6 @@ atlas.py: atlas interactive prompt:
 TODO:
 
 atlas.py interactive mode:
-  minimum window height.
   make tooltip adapt to which keys are valid by looking up key descriptions.
   Add keyboard shortcuts from above design.
   make newline acceptable in any text.
@@ -214,3 +213,5 @@ atlas.py health:
   make config saving better.
     make config data a class.
 make prompt_definition a data class of some kind instead of a dict.
+atlas.py interactive mode:
+  minimum window height.

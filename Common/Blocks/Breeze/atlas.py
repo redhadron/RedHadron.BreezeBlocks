@@ -442,9 +442,9 @@ def run_interactive_management_mode() -> None:
         tile_preview_image=blankPreviewImage,
         tile_preview_top_text="Welcome to atlas.py!",
         tile_preview_bottom_text="Hover over a tile in the atlas for more options.",
-        acceptable_keys={"no_requirements":[ord("q"), pygame.K_RETURN],"coordinate_required":[ord("s")],"link_required":[ord("u")]},
+        acceptable_keys={"no_requirements":[ord("q"), pygame.K_RETURN],"coordinate_required":[ord("s")],"link_required":[ord("u"), pygame.K_DELETE]},
         clicks_are_acceptable=False,
-        alt_instructions="\n\n[s] show\n[u] unlink",
+        alt_instructions="\n\n[s] show\n[u] unlink\n[del] delete tile file",
         static_instructions="[enter] save and exit\n[q] quit without saving"
       ), atlas_image=atlasImage)
       assert isinstance(response, AtlasPromptResponse)
@@ -453,6 +453,13 @@ def run_interactive_management_mode() -> None:
           if response.event.key == ord("u"):
             print(f"removing link from {response.coordinate} to {CONFIG.coordinates_to_names[response.coordinate]!r}")
             del CONFIG.coordinates_to_names[response.coordinate]
+          elif response.event.key == pygame.K_DELETE:
+            pathToRemove = TILE_FOLDER + SEP + CONFIG.coordinates_to_names[response.coordinate]
+            if os.path.exists(pathToRemove):
+              print(f"deleting tile file {pathToRemove}")
+              os.remove(pathToRemove)
+            else:
+              print(f"cannot remove tile file {pathToRemove} because it does not exist")
           elif response.event.key == ord("s"):
             screen = pygame.display.get_surface()
             for y in range(screen.get_size()[1]):
@@ -473,7 +480,6 @@ def run_interactive_management_mode() -> None:
                   exit(EXIT_CODES["PYGAME_QUIT"])
                 if event.type == pygame.MOUSEBUTTONDOWN:
                   _runEventLoop = False
-            continue
           elif response.event.key == pygame.K_RETURN:
             print("finished with interactive management mode")
             pygame.display.quit()
@@ -490,7 +496,6 @@ def run_interactive_management_mode() -> None:
         exit(EXIT_CODES["PYGAME_QUIT"])
       else:
         raise ValueError(response)
-      assert False, "unreachable statement"
 
 
 
