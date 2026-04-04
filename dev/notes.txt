@@ -76,23 +76,38 @@ other notes:
   hytale update 4 added new state data to smooth stone brick slabs to make a double slab drop 2 slabs when broken.
   why is bronze in the basalt family?
 
+atlas.py: atlas interactive prompt:
+  while hovering over cell with link:
+    [u] unlink
+    [r] rename //renames the tile file and updates the link.
+    [del] delete //deletes the tile file. does NOT remove the link.
+    [s] show //show the tile file
+  while hovering over cell with or without link:
+    [e] export now / [i] import now //if there is no link, prompt whether user really wants to create one, then prompt for file name.
+    [backspace] wipe // delete the contents of this cell.
+  while hovering over cell without link:
+    [l] link
+  at any time:
+    [q] quit without saving
+    [enter] save and exit
 
 
 TODO:
-atlas.py health:
-  make saving of config file better.
-    split config into config settings and config mappings.
-  make prompt_definition a namedtuple instead of a dict.
-  refactor do_tile_import to not fall out of such a big if.
-  replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
-  add procedure tests.
-  
+
 atlas.py interactive mode:
   Add keyboard shortcuts to link, unlink, and delete.
   add keyboard shortcut to rename.
 move color shelf into a data folder.
 factor parsing out of generate.py.
 factor language out of generate.py.
+rename view to show in atlas commands.
+atlas.py health:
+  make saving of config file better.
+    split config into config settings and config mappings.
+  refactor do_tile_import to not fall out of such a big if.
+  replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
+  add procedure tests.
+  
 use hytale stock translations of materials in translated names of breeze blocks.
 make ${set} more regular
 don't use ${set} for families that shouldn't have a set.
@@ -196,3 +211,4 @@ atlas.py health:
   add detection for out-of-bounds coordinates while importing (Currently it just draws off the edge of the atlas with no error).
   make config saving better.
     make config data a class.
+make prompt_definition a data class of some kind instead of a dict.

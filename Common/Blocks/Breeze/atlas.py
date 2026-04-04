@@ -50,7 +50,7 @@ class TRANSPORT_DIRECTION(enum.Enum):
   EXPORT = enum.auto()
 def PARSE_TRANSPORT_DIRECTION(string):
   return {"in": TRANSPORT_DIRECTION.IMPORT, "out": TRANSPORT_DIRECTION.EXPORT}[string]
-EXIT_CODES = {"GENERAL_SUCCESS":0, "EXIT_BUTTON": 2, "PYGAME_QUIT":3}
+EXIT_CODES = {"GENERAL_SUCCESS":0, "TILE_PROMPT_EXIT_CHOICE": 2, "PYGAME_QUIT":3, "ATLAS_PROMPT_QUIT_CHOICE":4}
 
 
 
@@ -342,7 +342,7 @@ class AtlasPromptDefinition(pydantic.BaseModel):
   alt_instructions: str
   static_instructions: str
   acceptable_keys: dict[str, list[int]]
-  model_config = {"arbitrary_types_allowed": True} # this is required by Pydantic to use PIL's Image.Image as a type hint
+  model_config = {"arbitrary_types_allowed": True} # this is required by Pydantic to use arbitrary types such as PIL's Image.Image as a type hint
     
 def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_image: Image.Image, _font=[]) -> AtlasPromptResponse:
   # this method should never do anything except display a prompt and return the user's choice of action. It should not perform that action.
@@ -372,12 +372,14 @@ def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_
     font.render_to(screen, text=prompt_definition.static_instructions, dest=(atlasSurf.get_width()+10, screen.get_height()-30), fgcolor=WINDOW_TEXT_COLOR)
     
     if hoveredTileCoord is not None:
+      # highlight the cell:
       pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [intersection_coordinate_to_pixel_coordinate(int_vec_add(hoveredTileCoord, offset)) for offset in [(0,0), (1,0), (1,1), (0,1)]])
+      # generate the tooltip:
       hoveredTileDisplayName = CONFIG.coordinates_to_names.get(hoveredTileCoord, default="empty")
       tooltipText = f"{hoveredTileDisplayName}{prompt_definition.alt_instructions}"
       tooltipLineSurfs = [font.render(text=tooltipTextLine, fgcolor=WINDOW_TEXT_COLOR, bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tooltipTextLine in tooltipText.split("\n")]
       tooltipSurf = join_surfaces_vertically(tooltipLineSurfs, WINDOW_BACKGROUND_COLOR)
-      
+      # blit the tooltip a bit below the pointer:
       # TODO break out
       tooltipSurfSize = tooltipSurf.get_size()
       screen.fill(WINDOW_TEXT_COLOR, rect=(*int_vec_add(pygame.mouse.get_pos(), (0,20)), *int_vec_add(tooltipSurfSize, (4,4))))
@@ -426,8 +428,35 @@ def run_interactive_management_mode() -> None:
   blankPreviewImage = Image.new("RGB", size=(64,1))
   with Image.open(ATLAS_IMAGE_PATH) as atlasImage:
     while True:
-      response = atlas_interactive_prompt(prompt_definition=AtlasPromptDefinition(**{"tile_preview_image":blankPreviewImage, "tile_preview_top_text": "Welcome to atlas.py!", "tile_preview_bottom_text": "Hover over a tile in the atlas for more options.", "acceptable_keys":{"no_requirements":[ord("q")],"coordinate_required":[],"link_required":[]}, "alt_instructions":"no alt instructions\nhave been provided", "static_instructions":"[q] quit"}), atlas_image=atlasImage)
-      raise NotImplementedError()
+      response = atlas_interactive_prompt(prompt_definition=AtlasPromptDefinition(
+        tile_preview_image=blankPreviewImage,
+        tile_preview_top_text="Welcome to atlas.py!",
+        tile_preview_bottom_text="Hover over a tile in the atlas for more options.",
+        acceptable_keys={"no_requirements":[ord("q"), pygame.K_RETURN],"coordinate_required":[],"link_required":[ord("u")]},
+        alt_instructions="\n\n[u] unlink",
+        static_instructions="[enter] save and exit\n[q] quit without saving"
+      ), atlas_image=atlasImage)
+      assert isinstance(response, AtlasPromptResponse)
+      if isinstance(response, AtlasPromptSubmission):
+        if response.event.type == pygame.KEYDOWN:
+          if response.event.key == ord("u"):
+            print(f"removing link from {response.coordinate} to {CONFIG.coordinates_to_names[response.coordinate]!r}")
+            del CONFIG.coordinates_to_names[response.coordinate]
+          elif response.event.key == pygame.K_RETURN:
+            print("finished with interactive management mode")
+            return
+          elif response.event.key == ord("q"):
+            print("exiting because of atlas prompt quit choice")
+            exit(EXIT_CODES["ATLAS_PROMPT_QUIT_CHOICE"])
+          else:
+            raise ValueError(f"unknown key code {response.event.key}")
+        else:
+          raise ValueError(f"unknown pygame event type {response.event.type}")
+      elif isinstance(response, AtlasPromptExit):
+        print("exiting because of atlas prompt exit (a pygame exit)")
+        exit(EXIT_CODES["PYGAME_QUIT"])
+      else:
+        raise ValueError(response)
 
 
 
@@ -490,7 +519,7 @@ def do_tile_export(*, atlas_image, discover, organize):
           elif isinstance(response, TilePromptSkip):
             continue
           elif isinstance(response, TilePromptExit):
-            exit(EXIT_CODES["EXIT_BUTTON"])
+            exit(EXIT_CODES["TILE_PROMPT_EXIT_CHOICE"])
           else:
             raise ValueError(response)
           CONFIG.coordinates_to_names[(x,y)] = newTileName
