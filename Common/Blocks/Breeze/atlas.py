@@ -45,6 +45,7 @@ HIGHLIGHT_COLOR = (255, 0, 0)
 WINDOW_BACKGROUND_COLOR = (31, 31, 31)
 WINDOW_TEXT_COLOR = (250, 250, 250)
 WINDOW_BG_STRING = "#cccccc"
+WINDOW_HAZE_COLOR = (64, 64, 64)
 class TRANSPORT_DIRECTION(enum.Enum):
   IMPORT = enum.auto()
   EXPORT = enum.auto()
@@ -100,7 +101,7 @@ assert int_vec_parallel_multiply((2,3),(5,7)) == (10,21)
   
 def int_vec_scale_by(vec, scale):
   assert isinstance(vec, tuple)
-  assert all(isintance(component, int) for component in vec)
+  assert all(isinstance(component, int) for component in vec)
   assert isinstance(scale, int)
   return tuple(component*scale for component in vec)
   
@@ -181,7 +182,10 @@ def tile_coordinate_is_in_bounds(coordinate):
   validate_int_pair_tuple(coordinate)
   return 0 <= coordinate[0] < CONFIG.atlas_size[0] and 0 <= coordinate[1] < CONFIG.atlas_size[1]
 
-
+def cell_coordinate_to_pillow_rect(coordinate):
+  validate_int_pair_tuple(coordinate)
+  x, y = coordinate
+  return (*intersection_coordinate_to_pixel_coordinate((x,y)), *intersection_coordinate_to_pixel_coordinate((x+1,y+1)))
 
 
 
@@ -306,8 +310,13 @@ def prompt_user_for_tile_name(tile_image) -> TilePromptResponse:
   window.mainloop()
   
   return promptResultHolder.value
-  
-  
+
+
+
+
+
+
+
   
 def pil_image_to_surface(pil_image):
   assert isinstance(pil_image, Image.Image)
@@ -342,6 +351,7 @@ class AtlasPromptDefinition(pydantic.BaseModel):
   alt_instructions: str
   static_instructions: str
   acceptable_keys: dict[str, list[int]]
+  clicks_are_acceptable: bool
   model_config = {"arbitrary_types_allowed": True} # this is required by Pydantic to use arbitrary types such as PIL's Image.Image as a type hint
     
 def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_image: Image.Image, _font=[]) -> AtlasPromptResponse:
@@ -354,8 +364,9 @@ def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_
     _font.append(pygame.freetype.SysFont(pygame.freetype.get_default_font(), 18, bold=False))
   font = _font[0]
   
-  screen = pygame.display.set_mode((600,400))
   atlasSurf = pil_image_to_surface(atlas_image)
+  screen = pygame.display.set_mode((max(600,atlasSurf.get_width()+400), max(400, atlasSurf.get_height())))
+  pygame.display.set_caption("atlas.py interactive mode")
   tilePreviewSurf = pil_image_to_surface(prompt_definition.tile_preview_image)
   
   while True:
@@ -391,37 +402,36 @@ def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_
       
       if event.type == pygame.QUIT:
         print("exiting from within pygame")
-        pygame.display.quit()
         return AtlasPromptExit()
       elif event.type == pygame.MOUSEBUTTONDOWN:
         if hoveredTileCoord is None:
           continue # invalid click, no data to submit, don't submit.
-        pygame.display.quit()
+        if not prompt_definition.clicks_are_acceptable:
+          continue
         return AtlasPromptSubmission(coordinate=hoveredTileCoord, event=event)
       elif event.type == pygame.KEYDOWN:
         # for keydown, don't check whether the hoveredTileCoord is None, because some keypresses (such as [s] for skip) are valid even without a valid coordinate.
         
         if event.key in prompt_definition.acceptable_keys["no_requirements"]:
-          pygame.display.quit()
           return AtlasPromptSubmission(coordinate=hoveredTileCoord, event=event)
         elif event.key in prompt_definition.acceptable_keys["coordinate_required"]:
           if hoveredTileCoord is None:
             continue
-          pygame.display.quit()
           return AtlasPromptSubmission(coordinate=hoveredTileCoord, event=event)
         elif event.key in prompt_definition.acceptable_keys["link_required"]:
           if hoveredTileCoord is None:
             continue
           if hoveredTileCoord not in CONFIG.coordinates_to_names:
             continue
-          pygame.display.quit()
           return AtlasPromptSubmission(coordinate=hoveredTileCoord, event=event)
         else:
           print(f"atlas_interactive_prompt: ignoring key {event.key!r} because it is not acceptable.")
 
 
 def prompt_user_for_a_free_coordinate(tile_image, tile_name, atlas_image) -> AtlasPromptResponse:
-  return atlas_interactive_prompt(prompt_definition=AtlasPromptDefinition(**{"tile_preview_image":tile_image, "tile_preview_top_text":"choose a coordinate for this new tile", "tile_preview_bottom_text":tile_name, "acceptable_keys":{"no_requirements":[],"coordinate_required":[],"link_required":[]}, "alt_instructions":"\n\n[left click] use this coordinate"}), atlas_image=atlas_image)
+  result = atlas_interactive_prompt(prompt_definition=AtlasPromptDefinition(**{"tile_preview_image":tile_image, "tile_preview_top_text":"choose a coordinate for this new tile", "tile_preview_bottom_text":tile_name, "acceptable_keys":{"no_requirements":[],"coordinate_required":[],"link_required":[]}, "alt_instructions":"\n\n[left click] use this coordinate", "clicks_are_acceptable":True}), atlas_image=atlas_image)
+  pygame.display.quit()
+  return result
 
 
 def run_interactive_management_mode() -> None:
@@ -432,8 +442,9 @@ def run_interactive_management_mode() -> None:
         tile_preview_image=blankPreviewImage,
         tile_preview_top_text="Welcome to atlas.py!",
         tile_preview_bottom_text="Hover over a tile in the atlas for more options.",
-        acceptable_keys={"no_requirements":[ord("q"), pygame.K_RETURN],"coordinate_required":[],"link_required":[ord("u")]},
-        alt_instructions="\n\n[u] unlink",
+        acceptable_keys={"no_requirements":[ord("q"), pygame.K_RETURN],"coordinate_required":[ord("s")],"link_required":[ord("u")]},
+        clicks_are_acceptable=False,
+        alt_instructions="\n\n[s] show\n[u] unlink",
         static_instructions="[enter] save and exit\n[q] quit without saving"
       ), atlas_image=atlasImage)
       assert isinstance(response, AtlasPromptResponse)
@@ -442,8 +453,30 @@ def run_interactive_management_mode() -> None:
           if response.event.key == ord("u"):
             print(f"removing link from {response.coordinate} to {CONFIG.coordinates_to_names[response.coordinate]!r}")
             del CONFIG.coordinates_to_names[response.coordinate]
+          elif response.event.key == ord("s"):
+            screen = pygame.display.get_surface()
+            for y in range(screen.get_size()[1]):
+              for x in range(screen.get_size()[0]):
+                if (x+y)%2:
+                  screen.set_at((x,y), WINDOW_HAZE_COLOR)
+            tilePreviewSurf = pil_image_to_surface(make_tile_preview_image(atlasImage.crop(cell_coordinate_to_pillow_rect(response.coordinate))))
+            screen.blit(tilePreviewSurf, dest=(0, 0))
+            pygame.display.flip()
+            _runEventLoop = True
+            while _runEventLoop:
+              time.sleep(1.0/FPS)
+              for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                  _runEventLoop = False
+                if event.type == pygame.QUIT:
+                  print("exiting from pygame quit")
+                  exit(EXIT_CODES["PYGAME_QUIT"])
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                  _runEventLoop = False
+            continue
           elif response.event.key == pygame.K_RETURN:
             print("finished with interactive management mode")
+            pygame.display.quit()
             return
           elif response.event.key == ord("q"):
             print("exiting because of atlas prompt quit choice")
@@ -457,7 +490,7 @@ def run_interactive_management_mode() -> None:
         exit(EXIT_CODES["PYGAME_QUIT"])
       else:
         raise ValueError(response)
-
+      assert False, "unreachable statement"
 
 
 
@@ -508,7 +541,7 @@ def do_tile_export(*, atlas_image, discover, organize):
   for y in range(CONFIG.atlas_size[1]):
     for x in range(CONFIG.atlas_size[0]):
       
-      locationInAtlasImage = (*intersection_coordinate_to_pixel_coordinate((x,y)), *intersection_coordinate_to_pixel_coordinate((x+1,y+1)))
+      locationInAtlasImage = cell_coordinate_to_pillow_rect((x,y))
       tileImg = atlas_image.crop(locationInAtlasImage)
       if (x,y) not in CONFIG.coordinates_to_names:
         if discover and not tile_image_is_blank(tileImg):
@@ -613,10 +646,10 @@ parser = argparse.ArgumentParser()
 subparser_manager = parser.add_subparsers(dest="subcommand")
 
 atlas_image_cmd_parser = subparser_manager.add_parser("atlas-image", help="Command for handling the single atlas image for the project")
-atlas_image_cmd_parser.add_argument("subaction", help="May be any of: create, delete, view")
+atlas_image_cmd_parser.add_argument("subaction", help="May be any of: create, delete, show")
 
 atlas_config_cmd_parser = subparser_manager.add_parser("atlas-config", help="Command for handling the single atlas config file for the project")
-atlas_config_cmd_parser.add_argument("subaction", help="May be any of: create, delete, view")
+atlas_config_cmd_parser.add_argument("subaction", help="May be any of: create, delete, show")
 
 transport_cmd_parser = subparser_manager.add_parser("transport", help="Command for transporting artwork into or out of the atlas image")
 transport_cmd_parser.add_argument("direction", help="in or out")
@@ -635,7 +668,7 @@ if args.subcommand == "atlas-image":
     create_atlas_image()
   elif args.subaction == "delete":
     delete_atlas_image()
-  elif args.subaction == "view":
+  elif args.subaction == "show":
     assert os.path.exists(ATLAS_IMAGE_PATH) and ATLAS_IMAGE_PATH.endswith(".png")
     os.startfile(ATLAS_IMAGE_PATH)
   else:
@@ -646,7 +679,7 @@ elif args.subcommand == "atlas-config":
     create_atlas_config()
   elif args.subaction == "delete":
     delete_atlas_config()
-  elif args.subaction == "view":
+  elif args.subaction == "show":
     assert os.path.exists(ATLAS_CONFIG_PATH)
     with open(ATLAS_CONFIG_PATH, "r") as configFile:
       print(configFile.read())

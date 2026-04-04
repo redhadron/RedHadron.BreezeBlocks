@@ -95,12 +95,14 @@ atlas.py: atlas interactive prompt:
 TODO:
 
 atlas.py interactive mode:
-  Add keyboard shortcuts to link, unlink, and delete.
-  add keyboard shortcut to rename.
+  minimum window height.
+  make tooltip adapt to which keys are valid by looking up key descriptions.
+  Add keyboard shortcuts from above design.
+  make newline acceptable in any text.
 move color shelf into a data folder.
 factor parsing out of generate.py.
 factor language out of generate.py.
-rename view to show in atlas commands.
+rename "view" to "show" in atlas commands.
 atlas.py health:
   make saving of config file better.
     split config into config settings and config mappings.
