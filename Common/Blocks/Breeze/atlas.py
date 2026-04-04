@@ -434,21 +434,41 @@ def prompt_user_for_a_free_coordinate(tile_image, tile_name, atlas_image) -> Atl
   pygame.display.quit()
   return result
 
+def apply_haze(surface: pygame.Surface) -> None:  
+  for y in range(surface.get_size()[1]):
+    for x in range(surface.get_size()[0]):
+      if (x+y)%2:
+        surface.set_at((x,y), WINDOW_HAZE_COLOR)
+
+def pygame_wait_for_any_key():
+  runEventLoop = True
+  while runEventLoop:
+    time.sleep(1.0/FPS)
+    for event in pygame.event.get():
+      if event.type == pygame.QUIT:
+        print("exiting from pygame quit")
+        exit(EXIT_CODES["PYGAME_QUIT"])
+      if event.type == pygame.KEYDOWN:
+        runEventLoop = False
+      if event.type == pygame.MOUSEBUTTONDOWN:
+        runEventLoop = False
 
 def run_interactive_management_mode() -> None:
   blankPreviewImage = Image.new("RGB", size=(64,1))
   with Image.open(ATLAS_IMAGE_PATH) as atlasImage:
     while True:
+      
       response = atlas_interactive_prompt(prompt_definition=AtlasPromptDefinition(
         tile_preview_image=blankPreviewImage,
         tile_preview_top_text="Welcome to atlas.py!",
         tile_preview_bottom_text="Hover over a tile in the atlas for more options.",
-        acceptable_keys={"no_requirements":[ord("q"), pygame.K_RETURN],"coordinate_required":[ord("s")],"link_required":[ord("u"), pygame.K_DELETE, ord("r")]},
+        acceptable_keys={"no_requirements":[ord("q"), pygame.K_RETURN],"coordinate_required":[ord("s")],"link_required":[ord("u"), pygame.K_DELETE, ord("r"), ord("i"), ord("e")]},
         clicks_are_acceptable=False,
-        alt_instructions="\n\n[s] show\n[r] rename\n[u] unlink\n[del] delete tile file",
+        alt_instructions="\n\n[s] show\n[i] import\n[e] export\n[r] rename\n[u] unlink\n[del] delete tile file",
         static_instructions="[enter] save and exit\n[q] quit without saving"
       ), atlas_image=atlasImage)
       assert isinstance(response, AtlasPromptResponse)
+      
       if isinstance(response, AtlasPromptSubmission):
         tilePreviewPilImage = None if response.coordinate is None else make_tile_preview_image(atlasImage.crop(cell_coordinate_to_pillow_rect(response.coordinate))) # used by multiple cases
         if response.event.type == pygame.KEYDOWN:
@@ -482,25 +502,17 @@ def run_interactive_management_mode() -> None:
             del CONFIG.coordinates_to_names[response.coordinate]
             CONFIG.coordinates_to_names[response.coordinate] = newName
           elif response.event.key == ord("s"):
+            
             screen = pygame.display.get_surface()
-            for y in range(screen.get_size()[1]):
-              for x in range(screen.get_size()[0]):
-                if (x+y)%2:
-                  screen.set_at((x,y), WINDOW_HAZE_COLOR)
+            apply_haze(screen)      
             tilePreviewSurf = pil_image_to_surface(tilePreviewPilImage)
             screen.blit(tilePreviewSurf, dest=(0, 0))
             pygame.display.flip()
-            _runEventLoop = True
-            while _runEventLoop:
-              time.sleep(1.0/FPS)
-              for event in pygame.event.get():
-                if event.type == pygame.KEYDOWN:
-                  _runEventLoop = False
-                if event.type == pygame.QUIT:
-                  print("exiting from pygame quit")
-                  exit(EXIT_CODES["PYGAME_QUIT"])
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                  _runEventLoop = False
+            pygame_wait_for_any_key()
+          elif response.event.key == ord("i"):
+            import_tile_with_coordinate(response.coordinate, atlasImage)
+          elif response.event.key == ord("e"):
+            export_tile_with_coordinate(response.coordinate, atlas_image=atlasImage)
           elif response.event.key == pygame.K_RETURN:
             print("finished with interactive management mode")
             pygame.display.quit()
@@ -536,6 +548,9 @@ def find_tile_names():
 
 def tile_name_to_path(tile_name):
   return TILE_FOLDER + SEP + tile_name
+  
+def import_tile_with_coordinate(cell_coordinate, destination_atlas_pil_image) -> None:
+  return import_tile_with_name(CONFIG.coordinates_to_names[cell_coordinate], destination_atlas_pil_image)
 
 def import_tile_with_name(tile_name, destination_atlas_pil_image) -> None:
   assert isinstance(tile_name, str)
@@ -545,8 +560,6 @@ def import_tile_with_name(tile_name, destination_atlas_pil_image) -> None:
   if not os.path.exists(tilePath):
     raise FileNotFoundError(f"Tile with path {tilePath} does not exist and cannot be imported at the configured location. import_tile_with_name should only be called for names that are known to exist as files.")
   with Image.open(tilePath) as tileImg:
-    # TODO check whether coordinate is valid according to config atlas size.
-    # TODO check whether coordinate is valid according to actual size of atlas.
     if tileImg.size != CONFIG.tile_size:
       print(f"WARNING: Tile with name {tile_name} will not be imported because it is the wrong size: {tileImg.size}")
       return
@@ -558,17 +571,33 @@ def import_tile_with_name(tile_name, destination_atlas_pil_image) -> None:
       print(f"WARNING: Tile with name {tile_name} will not be imported to the cell at {destinationCellCoordinate} because it would start or extend outside of the atlas image.")
       return
     destination_atlas_pil_image.paste(tileImg, intersection_coordinate_to_pixel_coordinate(destinationCellCoordinate))
+    
+def crop_atlas_image_to_tile_image(atlas_image: Image.Image, coordinate) -> Image.Image:
+  locationInAtlasImage = cell_coordinate_to_pillow_rect(coordinate)
+  tileImg = atlas_image.crop(locationInAtlasImage)
+  return tileImg
 
+def export_tile_with_coordinate(coordinate, *, atlas_image: Image.Image):
+  validate_int_pair_tuple(coordinate)
+  tileImgPath = tile_name_to_path(CONFIG.coordinates_to_names[coordinate])
+  tileImg = crop_atlas_image_to_tile_image(atlas_image, coordinate)
+      
+  # \/ refuse to overwrite tile of wrong size
+  if os.path.exists(tileImgPath):
+    with Image.open(tileImgPath) as oldTileImg:
+      if oldTileImg.size != tileImg.size:
+        raise FileExistsError("the tile will not be overwritten because it is of a different size.")
+        
+  tileImg.save(tileImgPath)
 
-def do_tile_export(*, atlas_image, discover, organize):
+def do_tile_export(*, atlas_image: Image.Image, discover: bool, organize: bool):
   if not os.path.exists(ATLAS_IMAGE_PATH):
     raise FileNotFoundError("can't export when atlas image does not exist.")
     
   for y in range(CONFIG.atlas_size[1]):
     for x in range(CONFIG.atlas_size[0]):
       
-      locationInAtlasImage = cell_coordinate_to_pillow_rect((x,y))
-      tileImg = atlas_image.crop(locationInAtlasImage)
+      tileImg = crop_atlas_image_to_tile_image()
       if (x,y) not in CONFIG.coordinates_to_names:
         if discover and not tile_image_is_blank(tileImg):
           response = prompt_user_for_tile_name(tileImg)
@@ -584,17 +613,10 @@ def do_tile_export(*, atlas_image, discover, organize):
           CONFIG.coordinates_to_names[(x,y)] = newTileName
         else:
           continue # don't attempt to export.
-      tileImgPath = tile_name_to_path(CONFIG.coordinates_to_names[(x,y)])
+      assert (x,y) in CONFIG.coordinates_to_names
+      export_tile_with_coordinate((x,y), atlas_image=atlas_image)
       
-      # \/ refuse to overwrite tile of wrong size
-      if os.path.exists(tileImgPath):
-        with Image.open(tileImgPath) as oldTileImg:
-          if oldTileImg.size != tileImg.size:
-            raise FileExistsError("the tile will not be overwritten because it is of a different size.")
-            
-      tileImg.save(tileImgPath)
-      
-def do_tile_import(*, atlas_image, discover, organize):
+def do_tile_import(*, atlas_image: Image.Image, discover: bool, organize: bool):
   if not os.path.exists(ATLAS_IMAGE_PATH):
     assert False, "why is this test here?" # TODO
     
