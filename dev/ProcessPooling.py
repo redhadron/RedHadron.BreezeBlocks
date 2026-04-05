@@ -1,6 +1,10 @@
 import asyncio
 
 
+def LOG(*args, **kwargs):
+  print(*args, **kwargs)
+
+
 class WorkOrder:
   def __init__(self, main_function, args, kwargs):
     assert hasattr(main_function, "__call__")
@@ -10,6 +14,7 @@ class WorkOrder:
     self.kwargs = kwargs
     self.has_been_run = False
   def run(self):
+    LOG("a work order is running")
     assert not self.has_been_run
     result = self.main_function(*self.args, **self.kwargs)
     self.has_been_run = True
@@ -17,18 +22,19 @@ class WorkOrder:
 
 class Pooler:
   def __init__(self, pool_size):
+    assert pool_size > 1
     self.pool_size = pool_size
     self.inbox = []
     self.running_tasks = []
     self._working = False
     
   def __repr__(self):
-    return f"Pooler(inbox: {len(self.inbox)}, tasks: {len(self.running_tasks)}, working: {self.is_working()})"
+    return f"Pooler(inbox: {len(self.inbox)}, tasks: {len(self.running_tasks)}, pool size: {self.pool_size}, working: {self.is_working()})"
   
   def put(self, work_order):
     assert isinstance(work_order, WorkOrder)
     assert not work_order.has_been_run
-    print(f"putting a job. I am {self!r}")
+    LOG(f"putting a job. I am {self!r}")
     self.inbox.append(work_order)
 
   def is_working(self):
@@ -36,13 +42,14 @@ class Pooler:
 
   async def work(self):
     assert not self._working
-    print("work is starting")
+    LOG("work is starting")
     self._working = True
     # assert len(se)
-    print("waiting until coroutines are available...")
+    LOG("waiting until work orders are available...")
     while len(self.inbox) == 0:
+      LOG("no work orders are available.")
       await asyncio.sleep(0.05)
-    print("coroutines are available now!")
+    LOG("work orders are available now!")
     while True:
       while len(self.running_tasks) < self.pool_size and len(self.inbox) > 0:
         newestTask = asyncio.create_task(self.inbox[0].run())
@@ -57,7 +64,7 @@ class Pooler:
       else:
         break
     assert self._working
-    print("work is ending")
+    LOG("work is ending")
     self._working = False
     return
     
@@ -69,18 +76,20 @@ if __name__ == "__main__": # if this file is not being imported as a module righ
   import itertools
   
   async def waiting_function(seconds):
-    print(f"starting to wait {seconds:.3f} seconds")
+    LOG(f"starting to wait {seconds:.3f} seconds")
     await asyncio.sleep(seconds)
-    print(f"done waiting {seconds:.3f} seconds")
+    LOG(f"done waiting {seconds:.3f} seconds")
 
   async def testPooler():
     delay = 5.0
     pooler = Pooler(3)
     poolerWorkTask = asyncio.create_task(pooler.work())
-    print("done creating pooler work task")
+    LOG("done creating pooler work task")
     for i in itertools.count():
       await asyncio.sleep(0.25)
+      # time.sleep(0.5)
       delay += 0.01
       pooler.put(WorkOrder(waiting_function, [delay], dict()))
 
   asyncio.run(testPooler())
+  # testPooler()

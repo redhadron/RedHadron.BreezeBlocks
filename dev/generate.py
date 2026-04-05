@@ -10,9 +10,12 @@ import re
 import functools
 import urllib # for libretranslate error handling
 import subprocess # for png crushing
+import asyncio
+import sys # to use sys.exit inside async
 
 # project
 from HYTALE import HYTALE_ASSETS_PATH, SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
+import ProcessPooling
 
 BAD_EXIT_CODE = 1
 
@@ -29,9 +32,10 @@ except urllib.error.URLError:
   exit(BAD_EXIT_CODE)
 import psutil
 
+# PNG_OPTIMIZATION_DO_POOLING = True
 USE_HYPERTHREADING = False
-PNG_OPTIMIZATION_SIMULTANEOUS_PROCESSES = psutil.cpu_count(logical=USE_HYPERTHREADING)
-
+PNG_OPTIMIZATION_SIMULTANEOUS_PROCESSES = 2 # psutil.cpu_count(logical=USE_HYPERTHREADING)
+PNG_OPTIMIZATION_PROCESS_POOLER = ProcessPooling.Pooler(PNG_OPTIMIZATION_SIMULTANEOUS_PROCESSES)
 
 
   
@@ -609,12 +613,19 @@ def clear_folder(folder_path, expected_extension):
   
   
   
-def optimize_png_in_place(path):
+async def optimize_png_in_place(path):
+  command = f"optipng -o7 \"{path}\""  # don't use repr for path because windows does not treat backslash as an escape character in paths.
+  print(f"running command {command}")
   try:
-    completedProcess = subprocess.run(f"optipng -o2 \"{path}\"", capture_output=True) # don't use repr for path because windows does not treat backslash as an escape character in paths.
-  except FileNotFoundError:
+    subrocess = await asyncio.create_subprocess_shell(command, stderr=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE)
+    stdout, stderr = await subprocess.communicate()
+    print(f"{subprocess.returncode=}, {stdout=}, {stderr=}")
+  except FileNotFoundError: # TODO test whether this is still effective after async change
     print("the PNG file could not be found OR the executable could not be found.")
-    exit(BAD_EXIT_CODE)
+    sys.exit(BAD_EXIT_CODE)
+  except:
+    print("something else went wrong.")
+    sys.exit(BAD_EXIT_CODE)
   print(completedProcess.stdout)
   
   
@@ -653,7 +664,12 @@ for langCode in BREEZE_BLOCKS_LANGUAGE_CODES:
 
 
 
-# generate assets \/  
+# build mod \/
+  
+#async def generate_assets():
+  
+  # poolerWorkTask = asyncio.create_task(PNG_OPTIMIZATION_PROCESS_POOLER.work())
+  # await asyncio.sleep(10)
 
 codecStrings = {"en-US": "utf-8", "pt-BR": "utf-8-sig", "uk-UA": "utf-8", "ru-RU": "utf-8"}
 languageFiles = {langCode: codecs.open(GET_LANGUAGE_FILE_DESTINATION_PATH(langCode), "w", codecStrings[langCode]) for langCode in BREEZE_BLOCKS_LANGUAGE_CODES}
@@ -705,7 +721,7 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
             else:
               thumbnailResultImage = thumbnailResultImageNoBG
             thumbnailResultImage.save(assetInfo["icon_file_path"])
-            optimize_png_in_place(assetInfo["icon_file_path"])
+            # PNG_OPTIMIZATION_PROCESS_POOLER.put(ProcessPooling.WorkOrder(optimize_png_in_place, [assetInfo["icon_file_path"]], dict()))
         
         
         # language file stuff:
@@ -748,5 +764,6 @@ for languageFile in languageFiles.values():
   languageFile.close()
 colorsShelf.close()
 
+#asyncio.run(generate_assets())
 
 print(f"execution took {time.monotonic()-START_TIME:.3f} seconds")
