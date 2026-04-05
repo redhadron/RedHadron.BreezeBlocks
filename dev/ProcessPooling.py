@@ -37,80 +37,35 @@ class Pooler:
     self.pool_size = pool_size
     self.inbox = []
     self.running_tasks = []
-    self._working = False
     
   def __repr__(self):
-    return f"Pooler(inbox: {len(self.inbox)}, tasks: {len(self.running_tasks)}, pool size: {self.pool_size}, working: {self.is_working()})"
+    return f"Pooler(inbox: {len(self.inbox)}, tasks: {len(self.running_tasks)}, pool size: {self.pool_size})"
   
   def put(self, work_order):
     assert isinstance(work_order, WorkOrder)
     assert not work_order.has_been_run
     print(f"putting a job. I am {self!r}")
     self.inbox.append(work_order)
-
-  def is_working(self):
-    return self._working
     
   async def do_some_work(self):
     if len(self.running_tasks) == 0:
-      if len(self.inbox) > 0:
-        print("there are no running tasks, but there are some in the inbox. pulling now...")
-        self.pull_from_inbox()
-      else:
-        print("do_some_work: there's no work to do, even in the inbox! returning...")
+      if len(self.inbox) == 0:
+        print("there's no work available, even in the inbox. returning...")
         return
-    print(f"it's time to wait for a task to finish. The tasks are {self.running_tasks}")
-    copyOfRunningTasks = tuple(self.running_tasks)
-    print(f"copyOfRunningTasks is {copyOfRunningTasks}")
-    done, pending = await asyncio.wait(self.running_tasks, return_when=asyncio.FIRST_COMPLETED)
-    print(f"{done=} {pending=}")
-    print("done waiting for a task to finish.")
-    for item in done:
-      delete_object_from_list(self.running_tasks, item)
-      """
-      oldLen = len(self.running_tasks)
-      try:
-        self.running_tasks.remove(item)
-      except ValueError:
-        print(f"value error, could not remove {item} from {self.running_tasks}")
-        sys.exit()
-      assert len(self.running_tasks) < oldLen
-    """
-      assert item in copyOfRunningTasks
-      assert item not in self.running_tasks
-    print("done with assertions.")
-    
-  def pull_from_inbox(self):
-    print("creating a new task")
-    newestTask = asyncio.create_task(self.inbox[0].run())
-    del self.inbox[0]
-    self.running_tasks.append(newestTask)
-    print(f"after adding it to running_tasks, now I am {self!r}")
-
-  async def work(self):
-    assert not self._working
-    print("work is starting")
-    self._working = True
-    # assert len(se)
-    print("waiting until work orders are available...")
-    while len(self.inbox) == 0: # and len(self.running_tasks) == 0:
-      print(f"inbox is empty. I am {self!r}")
-      await asyncio.sleep(0.25)
-    print("work orders are available now!")
-    while True:
-      while len(self.running_tasks) < self.pool_size and len(self.inbox) > 0:
-        self.pull_from_inbox()
-      if len(self.running_tasks) > 0:
-        print("time to call do_some_work.")
-        await self.do_some_work()
-        print("done calling doing_some_work.")
       else:
-        break
-    assert self._working
-    print("work is ending")
-    self._working = False
-    return
-    
+        while len(self.inbox) > 0 and len(self.running_tasks) < self.pool_size:
+          newThing = asyncio.create_task(self.inbox[0].run())
+          self.running_tasks.append(newThing)
+          del self.inbox[0]
+        assert len(self.running_tasks) > 0
+    assert len(self.running_tasks) > 0
+    print(f"do_some_work: running task info: {[item.done() for item in self.running_tasks]}")
+    done, pending = await asyncio.wait(self.running_tasks,  return_when=asyncio.FIRST_COMPLETED)
+    # print(f"do_some_work: done types: {[type(item) for item in done]}, pending types: {[type(item) for item in pending]}")
+    oldLen = len(self.running_tasks)
+    self.running_tasks = list(item for item in self.running_tasks if not item.done())
+    print(f"running tasks list len decreased by {oldLen - len(self.running_tasks)}")
+    print("do_some_work: finished.")
 
 
 
@@ -126,15 +81,13 @@ if __name__ == "__main__": # if this file is not being imported as a module righ
   async def testPooler():
     delay = 2.0
     pooler = Pooler(3)
-    poolerWorkTask = asyncio.create_task(pooler.work())
-    print("done creating pooler work task")
-    for i in range(8):
-      # await asyncio.sleep(0.25)
-      time.sleep(0.5) # I need to come up with a design that works despite having non-async workload in this main loop
+    for i in range(24):
       delay += 0.01
       pooler.put(WorkOrder(waiting_function, [delay], dict()))
-    for i in range(8):
+    print("="*60)
+    for i in range(24):
       await pooler.do_some_work()
+      print("pooler is done doing some work.")
     print("done with testPooler, except for final sleep.")
     await asyncio.sleep(20)
     print("done sleeping. done with testPooler.")
