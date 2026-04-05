@@ -28,13 +28,13 @@ LIBRETRANSLATE_API = LibreTranslateAPI("http://127.0.0.1:5000") # recommended ar
 try:
   LIBRETRANSLATE_SUPPORTED_LANGUAGE_CODES = [item["code"] for item in LIBRETRANSLATE_API.languages()]
 except urllib.error.URLError:
-  print("failed to communicate with libretranslate. Are you running a libretranslate server on the default port? https://docs.libretranslate.com/")
+  print("failed to communicate with libretranslate. Are you running a libretranslate server on the default port? https://docs.libretranslate.com/ recommended command \"libretranslate --translation-cache all --disable-web-ui\"")
   exit(BAD_EXIT_CODE)
 import psutil
 
 # PNG_OPTIMIZATION_DO_POOLING = True
 USE_HYPERTHREADING = False
-PNG_OPTIMIZATION_SIMULTANEOUS_PROCESSES = 2 # psutil.cpu_count(logical=USE_HYPERTHREADING)
+PNG_OPTIMIZATION_SIMULTANEOUS_PROCESSES = psutil.cpu_count(logical=USE_HYPERTHREADING)
 PNG_OPTIMIZATION_PROCESS_POOLER = ProcessPooling.Pooler(PNG_OPTIMIZATION_SIMULTANEOUS_PROCESSES)
 
 
@@ -617,16 +617,16 @@ async def optimize_png_in_place(path):
   command = f"optipng -o7 \"{path}\""  # don't use repr for path because windows does not treat backslash as an escape character in paths.
   print(f"running command {command}")
   try:
-    subrocess = await asyncio.create_subprocess_shell(command, stderr=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE)
-    stdout, stderr = await subprocess.communicate()
-    print(f"{subprocess.returncode=}, {stdout=}, {stderr=}")
+    proc = await asyncio.create_subprocess_shell(command, stderr=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE)
+    stdout, stderr = await proc.communicate()
+    print(f"{proc.returncode=}") # , {stdout=}, {stderr=}")
   except FileNotFoundError: # TODO test whether this is still effective after async change
     print("the PNG file could not be found OR the executable could not be found.")
     sys.exit(BAD_EXIT_CODE)
-  except:
-    print("something else went wrong.")
+  except Exception as e:
+    print(f"something else went wrong: {e}")
     sys.exit(BAD_EXIT_CODE)
-  print(completedProcess.stdout)
+  # print(proc.stdout)
   
   
   
@@ -666,104 +666,104 @@ for langCode in BREEZE_BLOCKS_LANGUAGE_CODES:
 
 # build mod \/
   
-#async def generate_assets():
-  
-  # poolerWorkTask = asyncio.create_task(PNG_OPTIMIZATION_PROCESS_POOLER.work())
-  # await asyncio.sleep(10)
+async def generate_assets():
 
-codecStrings = {"en-US": "utf-8", "pt-BR": "utf-8-sig", "uk-UA": "utf-8", "ru-RU": "utf-8"}
-languageFiles = {langCode: codecs.open(GET_LANGUAGE_FILE_DESTINATION_PATH(langCode), "w", codecStrings[langCode]) for langCode in BREEZE_BLOCKS_LANGUAGE_CODES}
-colorsShelf = shelve.open("colors.shelf")
+  codecStrings = {"en-US": "utf-8", "pt-BR": "utf-8-sig", "uk-UA": "utf-8", "ru-RU": "utf-8"}
+  languageFiles = {langCode: codecs.open(GET_LANGUAGE_FILE_DESTINATION_PATH(langCode), "w", codecStrings[langCode]) for langCode in BREEZE_BLOCKS_LANGUAGE_CODES}
+  colorsShelf = shelve.open("colors.shelf")
 
-for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if name.endswith(".blockymodel")):
-  shutil.copy(MODEL_FOLDER_SOURCE_PATH+SEP+modelFileName, MODEL_FOLDER_DESTINATION_PATH+SEP+modelFileName)
-  modelNameWithDepth = remove_suffix(modelFileName, ".blockymodel")
-  modelNameWithoutDepth = remove_suffix(modelNameWithDepth, "_Db1000")
-  iconMaskFileName = modelNameWithoutDepth + ".png"
-  
-  
-  
-  for dataPage in DATA_PAGES:
-    for family in data_page_get_value(dataPage, "FAMILY_LIST"):
-      for textureNameSuffix in data_page_get_value(dataPage, "TEXTURE_NAME_SUFFIX_LIST"):
-        
-        
-        # asset info specific to this model and texture:
-        assetInfo = dict()
-        assetInfo["unpatched_texture_base_name"] = f"{data_page_get_value(dataPage, 'TEXTURE_NAME_PREFIX')}{family}{textureNameSuffix}" # this is also used as the block set later
-        assetInfo["texture_file_name"] = select_best_texture_file_name(base_name=assetInfo["unpatched_texture_base_name"])
-        assetInfo["full_name"] = data_page_get_value(dataPage, "PRIVATE_TYPE") + "_" + family + (textureNameSuffix if data_page_get_value(dataPage, "INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME") else "") + "_" + modelNameWithoutDepth
-        assetInfo["output_file_path"] = ASSET_FOLDER_DESTINATION_PATH + SEP + assetInfo["full_name"] + ".json"
-        assetInfo["icon_file_name"] = assetInfo["full_name"] + ".png"
-        assetInfo["icon_file_path"] = ICON_FOLDER_DESTINATION_PATH + SEP + assetInfo["icon_file_name"]
-        try:
-          assetInfo["particle_color_as_tuple"] = colorsShelf[assetInfo["texture_file_name"]][PARTICLE_COLORATION]
-        except KeyError:
-          raise KeyError("Some textures in your hytale assets folder aren't registered by colors.py, or the shelf is malformed. Try running colors.py again.")          
-        
-        
-        # asset info specific to this model and texture, for inclusion in asset file:
-        assetContents = {
-          "ICON_PATH_IN_MOD": "Icons/ItemsGenerated/" + assetInfo["icon_file_name"],
-          "BLOCK_SET": assetInfo["unpatched_texture_base_name"],
-          "TEXTURE_PATH_IN_MOD": f"BlockTextures/{assetInfo['texture_file_name']}",
-          "PARTICLECOLOR_STR": color_tuple_to_hytale_string(assetInfo["particle_color_as_tuple"]),
-        }
-        
-        
-        # icon generation:
-        with Image.open(MODEL_FOLDER_SOURCE_PATH + SEP + iconMaskFileName) as thumbnailMaskImage:
-          with Image.open(HYTALE_BLOCKTEXTURES_PATH + SEP + assetInfo["texture_file_name"]) as thumbnailTextureImage:
-            assert thumbnailMaskImage.size == thumbnailTextureImage.size
-            thumbnailResultImageNoBG = ImageChops.multiply(thumbnailMaskImage.convert("RGB"), thumbnailTextureImage.convert("RGB"))
-            if sum(assetInfo["particle_color_as_tuple"]) <= ICON_BACKGROUND_INVERSION_THRESHOLD:
-              thumbnailResultImage = ImageChops.add(thumbnailResultImageNoBG, ImageChops.invert(thumbnailMaskImage).convert("RGB"))
-            else:
-              thumbnailResultImage = thumbnailResultImageNoBG
-            thumbnailResultImage.save(assetInfo["icon_file_path"])
-            # PNG_OPTIMIZATION_PROCESS_POOLER.put(ProcessPooling.WorkOrder(optimize_png_in_place, [assetInfo["icon_file_path"]], dict()))
-        
-        
-        # language file stuff:
-        modelNameForDecomposition = remove_prefix(modelNameWithoutDepth, 'Breeze_')
-        decomposedModelName = parse_string_as_structure(modelNameForDecomposition, [GRID_PATTERN,CREATE_SIZE_DESCRIPTION_PATTERN(MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS), MULTI_SHAPE_NAME_PATTERN]).assert_complete_and_get_matched_data()
-        modelNameLayoutStr, modelNameSizeDescriptionStr, modelNameShapeNicknameStr = tuple(flatten_string_structure_and_join(item) for item in decomposedModelName)
-        modelNameShapeNameStr = dictionary_translate_if_able(SHAPE_NICKNAMES_TO_NAMES, modelNameShapeNicknameStr)
-        displayNameNative = f"{dictionary_translate_if_able(UNIFIED_DISPLAY_NAME_TRANSLATIONS, family)} Breeze Block (shape: {modelNameShapeNameStr}, layout: {modelNameLayoutStr}, thickness: {modelNameSizeDescriptionStr})"
-        
-        for langCode, langFile in languageFiles.items():
-          displayNameTranslated = translate_string_piecewise(displayNameNative, source=BREEZE_BLOCKS_NATIVE_LANGUAGE_CODE, target=langCode, delimeters=("(", ")", ":", ","))
-          langFile.write(f"{assetInfo['full_name']}.name = {displayNameTranslated}\n")
-        
-        
-        # main procedure:
-        if os.path.exists(assetInfo["output_file_path"]):
-          os.remove(assetInfo["output_file_path"])
-        with open(assetInfo["output_file_path"], "w") as outputFile:
-          for currentLine in templateFileLines:
-            outputLine = currentLine.replace("${FULL_NAME}", assetInfo["full_name"]
-              ).replace("${MODEL_BASE_NAME}", modelNameWithDepth
-              ).replace("${ICON_PATH_IN_MOD}", assetContents["ICON_PATH_IN_MOD"]
-              ).replace("${SET}", assetContents["BLOCK_SET"]
-              ).replace("${TEXTURE_PATH_IN_MOD}", assetContents["TEXTURE_PATH_IN_MOD"]
-              ).replace("${PARTICLECOLOR_STR}", assetContents["PARTICLECOLOR_STR"]
-              )
-            
-            for jsonOld, jsonNew in data_page_get_value(dataPage, "AUTOMATIC_JSON_ITEMS"):
-              outputLine = outputLine.replace("${" + jsonOld + "}", jsonNew)
+  for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if name.endswith(".blockymodel")):
+    shutil.copy(MODEL_FOLDER_SOURCE_PATH+SEP+modelFileName, MODEL_FOLDER_DESTINATION_PATH+SEP+modelFileName)
+    modelNameWithDepth = remove_suffix(modelFileName, ".blockymodel")
+    modelNameWithoutDepth = remove_suffix(modelNameWithDepth, "_Db1000")
+    iconMaskFileName = modelNameWithoutDepth + ".png"
+    
+    
+    
+    for dataPage in DATA_PAGES:
+      for family in data_page_get_value(dataPage, "FAMILY_LIST"):
+        for textureNameSuffix in data_page_get_value(dataPage, "TEXTURE_NAME_SUFFIX_LIST"):
+          
+          
+          # asset info specific to this model and texture:
+          assetInfo = dict()
+          assetInfo["unpatched_texture_base_name"] = f"{data_page_get_value(dataPage, 'TEXTURE_NAME_PREFIX')}{family}{textureNameSuffix}" # this is also used as the block set later
+          assetInfo["texture_file_name"] = select_best_texture_file_name(base_name=assetInfo["unpatched_texture_base_name"])
+          assetInfo["full_name"] = data_page_get_value(dataPage, "PRIVATE_TYPE") + "_" + family + (textureNameSuffix if data_page_get_value(dataPage, "INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME") else "") + "_" + modelNameWithoutDepth
+          assetInfo["output_file_path"] = ASSET_FOLDER_DESTINATION_PATH + SEP + assetInfo["full_name"] + ".json"
+          assetInfo["icon_file_name"] = assetInfo["full_name"] + ".png"
+          assetInfo["icon_file_path"] = ICON_FOLDER_DESTINATION_PATH + SEP + assetInfo["icon_file_name"]
+          try:
+            assetInfo["particle_color_as_tuple"] = colorsShelf[assetInfo["texture_file_name"]][PARTICLE_COLORATION]
+          except KeyError:
+            raise KeyError("Some textures in your hytale assets folder aren't registered by colors.py, or the shelf is malformed. Try running colors.py again.")          
+          
+          
+          # asset info specific to this model and texture, for inclusion in asset file:
+          assetContents = {
+            "ICON_PATH_IN_MOD": "Icons/ItemsGenerated/" + assetInfo["icon_file_name"],
+            "BLOCK_SET": assetInfo["unpatched_texture_base_name"],
+            "TEXTURE_PATH_IN_MOD": f"BlockTextures/{assetInfo['texture_file_name']}",
+            "PARTICLECOLOR_STR": color_tuple_to_hytale_string(assetInfo["particle_color_as_tuple"]),
+          }
+          
+          
+          # icon generation:
+          with Image.open(MODEL_FOLDER_SOURCE_PATH + SEP + iconMaskFileName) as thumbnailMaskImage:
+            with Image.open(HYTALE_BLOCKTEXTURES_PATH + SEP + assetInfo["texture_file_name"]) as thumbnailTextureImage:
+              assert thumbnailMaskImage.size == thumbnailTextureImage.size
+              thumbnailResultImageNoBG = ImageChops.multiply(thumbnailMaskImage.convert("RGB"), thumbnailTextureImage.convert("RGB"))
+              if sum(assetInfo["particle_color_as_tuple"]) <= ICON_BACKGROUND_INVERSION_THRESHOLD:
+                thumbnailResultImage = ImageChops.add(thumbnailResultImageNoBG, ImageChops.invert(thumbnailMaskImage).convert("RGB"))
+              else:
+                thumbnailResultImage = thumbnailResultImageNoBG
+              thumbnailResultImage.save(assetInfo["icon_file_path"])
+              PNG_OPTIMIZATION_PROCESS_POOLER.put(ProcessPooling.WorkOrder(optimize_png_in_place, [assetInfo["icon_file_path"]], dict()))
+          
+          
+          # language file stuff:
+          modelNameForDecomposition = remove_prefix(modelNameWithoutDepth, 'Breeze_')
+          decomposedModelName = parse_string_as_structure(modelNameForDecomposition, [GRID_PATTERN,CREATE_SIZE_DESCRIPTION_PATTERN(MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS), MULTI_SHAPE_NAME_PATTERN]).assert_complete_and_get_matched_data()
+          modelNameLayoutStr, modelNameSizeDescriptionStr, modelNameShapeNicknameStr = tuple(flatten_string_structure_and_join(item) for item in decomposedModelName)
+          modelNameShapeNameStr = dictionary_translate_if_able(SHAPE_NICKNAMES_TO_NAMES, modelNameShapeNicknameStr)
+          displayNameNative = f"{dictionary_translate_if_able(UNIFIED_DISPLAY_NAME_TRANSLATIONS, family)} Breeze Block (shape: {modelNameShapeNameStr}, layout: {modelNameLayoutStr}, thickness: {modelNameSizeDescriptionStr})"
+          
+          for langCode, langFile in languageFiles.items():
+            displayNameTranslated = translate_string_piecewise(displayNameNative, source=BREEZE_BLOCKS_NATIVE_LANGUAGE_CODE, target=langCode, delimeters=("(", ")", ":", ","))
+            langFile.write(f"{assetInfo['full_name']}.name = {displayNameTranslated}\n")
+          
+          
+          # main procedure:
+          if os.path.exists(assetInfo["output_file_path"]):
+            os.remove(assetInfo["output_file_path"])
+          with open(assetInfo["output_file_path"], "w") as outputFile:
+            for currentLine in templateFileLines:
+              outputLine = currentLine.replace("${FULL_NAME}", assetInfo["full_name"]
+                ).replace("${MODEL_BASE_NAME}", modelNameWithDepth
+                ).replace("${ICON_PATH_IN_MOD}", assetContents["ICON_PATH_IN_MOD"]
+                ).replace("${SET}", assetContents["BLOCK_SET"]
+                ).replace("${TEXTURE_PATH_IN_MOD}", assetContents["TEXTURE_PATH_IN_MOD"]
+                ).replace("${PARTICLECOLOR_STR}", assetContents["PARTICLECOLOR_STR"]
+                )
               
-            # the following must happen after automatic json items because they are used inside those items:
-            outputLine = outputLine.replace("${FAMILY}", family)
-            outputLine = outputLine.replace("${TEXTURE_NAME_SUFFIX}", textureNameSuffix)
-            
-            assert "${" not in outputLine, f"a marker for data insertion into the JSON file was not used. The line is {outputLine!r}"
-            assert "__" not in outputLine, f"the output line {outputLine!r} contains \"__\". this usually indicates a mistake in the template or data page."
-            outputFile.write(outputLine)
+              for jsonOld, jsonNew in data_page_get_value(dataPage, "AUTOMATIC_JSON_ITEMS"):
+                outputLine = outputLine.replace("${" + jsonOld + "}", jsonNew)
+                
+              # the following must happen after automatic json items because they are used inside those items:
+              outputLine = outputLine.replace("${FAMILY}", family)
+              outputLine = outputLine.replace("${TEXTURE_NAME_SUFFIX}", textureNameSuffix)
+              
+              assert "${" not in outputLine, f"a marker for data insertion into the JSON file was not used. The line is {outputLine!r}"
+              assert "__" not in outputLine, f"the output line {outputLine!r} contains \"__\". this usually indicates a mistake in the template or data page."
+              outputFile.write(outputLine)
 
-for languageFile in languageFiles.values():
-  languageFile.close()
-colorsShelf.close()
+  for languageFile in languageFiles.values():
+    languageFile.close()
+  colorsShelf.close()
+  
+  while PNG_OPTIMIZATION_PROCESS_POOLER.has_work():
+    await PNG_OPTIMIZATION_PROCESS_POOLER.do_some_work()
 
-#asyncio.run(generate_assets())
+asyncio.run(generate_assets())
 
 print(f"execution took {time.monotonic()-START_TIME:.3f} seconds")
