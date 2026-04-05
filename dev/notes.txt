@@ -96,6 +96,25 @@ atlas.py: atlas interactive prompt:
 TODO:
 
 move color shelf into a data folder.
+
+atlas.py:
+  allow target directory to be specified by an argument.
+  import utilities.
+  interactive mode:
+    Add keyboard shortcuts from above design.
+    make newline acceptable in any text.
+    add info to tile show feature.
+  in tile name prompt, make rules for whether or not a tile name will be accepted injectable.
+  give tile name prompt a prompt_definition makeover.
+  padding around text.
+  
+use hytale stock translations of materials in translated names of breeze blocks.
+make ${set} more regular
+don't use ${set} for families that shouldn't have a set.
+texture generation:
+  add a smooth stone brick texture simplifier.
+  add a front texture generator that uses the thumbnail mask to create shading.
+
 factor language out of generate.py.
 
 atlas.py health:
@@ -106,22 +125,7 @@ atlas.py health:
   add procedure tests.
   replace tkinter with pygame everywhere.
   fix tile_name_to_path only being used in some places.
-atlas.py:
-  interactive mode:
-    make tooltip adapt to which keys are valid by looking up key descriptions.
-    Add keyboard shortcuts from above design.
-    make newline acceptable in any text.
-    add info to tile show feature.
-  in tile name prompt, make rules for whether or not a tile name will be accepted injectable.
-  give tile name prompt a prompt_definition makeover.
-  padding around text.
   
-  
-use hytale stock translations of materials in translated names of breeze blocks.
-make ${set} more regular
-don't use ${set} for families that shouldn't have a set.
-add a smooth stone brick texture simplifier.
-add a front texture generator that uses the thumbnail mask to create shading.
 add rename detection to atlas.py.
 make a model variants system.
   idea: follow the depth information (Db1000) with "_WoodOnly" or "_StoneOnly" so that suffix must be removed and then generate.py continues as normal.
@@ -231,5 +235,6 @@ atlas.py interactive mode:
 rename "view" to "show" in atlas commands.
 png optimization:
   async up to 6 subprocess.
-  
 factor parsing out of generate.py.
+atlas.py interactive mode:
+  make tooltip adapt to which keys are valid by looking up key descriptions.
