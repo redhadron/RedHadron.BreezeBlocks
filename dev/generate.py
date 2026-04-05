@@ -1,4 +1,6 @@
 # builtin
+import time
+START_TIME = time.monotonic()
 import os
 import shutil
 import itertools
@@ -25,6 +27,14 @@ try:
 except urllib.error.URLError:
   print("failed to communicate with libretranslate. Are you running a libretranslate server on the default port? https://docs.libretranslate.com/")
   exit(BAD_EXIT_CODE)
+import psutil
+
+USE_HYPERTHREADING = False
+PNG_OPTIMIZATION_SIMULTANEOUS_PROCESSES = psutil.cpu_count(logical=USE_HYPERTHREADING)
+
+
+
+  
 HYTALE_STOCK_LANGUAGE_CODES = ["en-US", "pt-BR", "ru-RU", "uk-UA"]
 BREEZE_BLOCKS_NATIVE_LANGUAGE_CODE = "en-US"
 BREEZE_BLOCKS_LANGUAGE_CODES = HYTALE_STOCK_LANGUAGE_CODES
@@ -601,7 +611,7 @@ def clear_folder(folder_path, expected_extension):
   
 def optimize_png_in_place(path):
   try:
-    completedProcess = subprocess.run(f"optipng -o7 \"{path}\"") # don't use repr for path because windows does not treat backslash as an escape character in paths.
+    completedProcess = subprocess.run(f"optipng -o2 \"{path}\"", capture_output=True) # don't use repr for path because windows does not treat backslash as an escape character in paths.
   except FileNotFoundError:
     print("the PNG file could not be found OR the executable could not be found.")
     exit(BAD_EXIT_CODE)
@@ -737,3 +747,6 @@ for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if n
 for languageFile in languageFiles.values():
   languageFile.close()
 colorsShelf.close()
+
+
+print(f"execution took {time.monotonic()-START_TIME:.3f} seconds")

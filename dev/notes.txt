@@ -95,7 +95,8 @@ atlas.py: atlas interactive prompt:
 
 TODO:
 PNG optimization
-  async
+  async up to 6 subprocess.
+  pngrewrite before pngout (requires test to see if it's any smaller when used with pngout).
 atlas.py health:
   make saving of config file better.
     split config into config settings and config mappings.
