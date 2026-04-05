@@ -16,6 +16,8 @@ import sys # to use sys.exit inside async, although this does not work.
 # project
 from Hytale import HYTALE_ASSETS_PATH, SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
 import ProcessPooling
+from Utilities import remove_suffix, remove_prefix, shorten_suffix, assert_equals, int_divide_exact
+import Parsing
 
 BAD_EXIT_CODE = 1
 
@@ -63,63 +65,8 @@ rename thumbnails to icons
 
 
 
-
-
-
-
-# ----- assertion helpers -----
-  
-def remove_suffix(string, suffix):
-  assert len(suffix) <= len(string)
-  # assert len(suffix) > 0
-  assert string.endswith(suffix), string + " does not end with " + suffix
-  return string[:-len(suffix)]
-  
-def remove_prefix(string, prefix):
-  assert len(prefix) <= len(string)
-  # assert len(prefix) > 0
-  assert string.startswith(prefix), string + " does not start with " + prefix
-  return string[len(prefix):]
-
-def shorten_suffix(string, suffix, new_suffix):
-  assert suffix.startswith(new_suffix), "the suffixes do not have a matching beginning"
-  assert len(new_suffix) < len(suffix)
-  return remove_suffix(string, suffix) + new_suffix
-
-def assert_equals(a, b):
-  if a == b:
-    return
-  hints = [f"{a} does not equal {b}."]
-  if type(a) != type(b):
-    hints.append(f"they are different types ({type(a)} vs {type(b)}).")
-  if hasattr(a, "__len__") and hasattr(b, "__len__"):
-    if len(a) != len(b):
-      hints.append(f"they are different in length ({len(a)} vs {len(b)}).")
-    else:
-      hints.append("while comparing items:")
-      try:
-        for i, aItem, bItem in zip(itertools.count(), a, b):
-          assert_equals(aItem, bItem)
-      except AssertionError as ae:
-        hints.append(f"at index {i}:")
-        hints.append(repr(ae))
-  raise AssertionError("\n".join(hints))
-  
-def assert_isinstance(a, b):
-  assert isinstance(a, b), (a, b)
-  
-# def assert_is_empty(a):
-  # assert len(a) == 0, a
-  
-def int_divide_exact(a,b):
-  assert isinstance(a, int) and isinstance(b,int)
-  assert a%b == 0
-  return a // b
-  
-  
-
 # ----- helpers for working with data pages -----
-# data pages are lists of tuples. They are used instead of dictionaries to preserve order and to allow duplicate entries.
+""" data pages are lists of tuples. They are used instead of dictionaries to preserve order and to allow duplicate entries. """
 
 _unspecified_default = object()
 def data_page_get_value(data_page, key, default=_unspecified_default):
@@ -152,98 +99,8 @@ def data_page_has_key(data_page, key):
 
 
 
-# ----- helpers for name parsing -----
-class ParseResult:
-  pass
-  
-class ParseSuccess(ParseResult):
-  def __init__(self, matched_data, remaining_text):
-    self.matched_data, self.remaining_text = matched_data, remaining_text
-  def __repr__(self):
-    assert type(self) is ParseSuccess, "__repr__ is not available for subclasses yet"
-    return f"ParseSuccess(matched_data={self.matched_data}, remaining_text={self.remaining_text!r})"
-  def assert_complete_and_get_matched_data(self):
-    assert len(self.remaining_text) == 0, self.remaining_text
-    return self.matched_data
-    
-class ParseFailure(ParseResult):
-  def __init__(self, message):
-    self.message = message
-    
-  def __repr__(self):
-    assert type(self) is ParseFailure, "__repr__ is not available for subclasses yet"
-    return f"ParseFailure(message={self.message})"
 
-class ParseError(Exception):
-  """ this is not used for control flow, only for gathering more information during an actual error """
-  pass
-
-def parse_string_as_structure(input_string, structure):
-  # this method contains reassignment to input_string # TODO
-  if len(input_string) == 0:
-    return ParseFailure("Parsing an empty input string is bad.") # this is a ParseFailure and not an exception because it needs to be recognized as a non-crash failure in whatever method called it recursively, such as in the case where you are trying to parse (#p#n #p) from string "#p" - #p#n must fail safely for #p to later succeed.
-  if isinstance(structure, str):
-    if input_string.startswith(structure):
-      return ParseSuccess(structure, remove_prefix(input_string, structure))
-    return ParseFailure("failure while parsing with string structure.")
-  elif isinstance(structure, tuple):
-    for item in structure:
-      result = parse_string_as_structure(input_string, item)
-      if isinstance(result, ParseSuccess):
-        return ParseSuccess((result.matched_data,), result.remaining_text)
-      else:
-        assert isinstance(result, ParseFailure)
-    return ParseFailure(f"parsing tuple failed: could not parse any option provided by the tuple {structure} with the input {input_string}.")
-  else:
-    assert isinstance(structure, list)
-    listResult = list()
-    for item in structure:
-      try:
-        itemResult = parse_string_as_structure(input_string, item)
-      except Exception as e:
-        raise ParseError(f"could not parse the string {input_string} with the structure {structure}, while attempting to parse with sub-structure {item} the following exception occurred:\n {e}")
-      if isinstance(itemResult, ParseFailure):
-        return ParseFailure("failure while parsing with list structure: " + itemResult.message)
-      else:
-        assert isinstance(itemResult, ParseSuccess)
-        listResult.append(itemResult.matched_data)
-        input_string = itemResult.remaining_text
-        # if len(input_string) == 0:
-          # break
-        continue
-    assert len(listResult) > 0, "what?"
-    return ParseSuccess(listResult, input_string)
-  assert False
-assert_equals(parse_string_as_structure("abc", ["a","b","c"]).matched_data, ["a","b","c"])
-assert_equals(parse_string_as_structure("adc", ["a",("b","d"),"c"]).matched_data, ["a",("d",),"c"])
-assert_equals(parse_string_as_structure("amnz", ["a",["m","n"],"z"]).matched_data, ["a",["m","n"],"z"])
-assert_equals(parse_string_as_structure("amnz", ["a",["m",("l","m","n","o","p")],"z"]).matched_data, ["a",["m",("n",)],"z"])
-assert_equals(parse_string_as_structure("anz", ["a",(("l","m"),("n","o")),"z"]).matched_data, ["a",(("n",),),"z"])
-assert_equals(parse_string_as_structure("abc", ["a","b","","c"]).matched_data, ["a","b","","c"])
-# match leftmost possible match first:
-assert_equals(parse_string_as_structure("amnz", ["a",(["m","n","o"],["m","n"]),"z"]).matched_data, ["a",(["m","n"],),"z"])
-assert_equals(parse_string_as_structure("amnz", ["a",(["m","n"],["m","n","z"]),"z"]).matched_data, ["a",(["m","n"],),"z"])
-
-def flatten_string_structure(input_structure):
-  if isinstance(input_structure, str):
-    return input_structure
-  else:
-    assert_isinstance(input_structure, (list, tuple))
-    result = []
-    for item in input_structure:
-      itemResult = flatten_string_structure(item)
-      if isinstance(itemResult, str):
-        result.append(itemResult)
-      else:
-        assert_isinstance(itemResult, (list,tuple))
-        result.extend(itemResult)
-    return result
-assert_equals(flatten_string_structure(["a",("b",),["c"],["d","e"],("f","g"),[("h","i"),"j",("k","l"),["m"]]]), "a b c d e f g h i j k l m".split(" "))
-
-def flatten_string_structure_and_join(input_structure):
-  return "".join(flatten_string_structure(input_structure))
-
-# ----- mod-specific patterns -----
+# ----- mod-specific parsing patterns for use with Parsing.py -----
 
 ALPHABET_LOWERCASE_PATTERN = tuple([*"abcdefghijklmnopqrstuvwxyz"])
 ALPHABET_UPPERCASE_PATTERN = tuple(char.upper() for char in ALPHABET_LOWERCASE_PATTERN)
@@ -723,8 +580,8 @@ async def generate_assets():
           
           # language file stuff:
           modelNameForDecomposition = remove_prefix(modelNameWithoutDepth, 'Breeze_')
-          decomposedModelName = parse_string_as_structure(modelNameForDecomposition, [GRID_PATTERN,CREATE_SIZE_DESCRIPTION_PATTERN(MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS), MULTI_SHAPE_NAME_PATTERN]).assert_complete_and_get_matched_data()
-          modelNameLayoutStr, modelNameSizeDescriptionStr, modelNameShapeNicknameStr = tuple(flatten_string_structure_and_join(item) for item in decomposedModelName)
+          decomposedModelName = Parsing.parse_string_as_structure(modelNameForDecomposition, [GRID_PATTERN,CREATE_SIZE_DESCRIPTION_PATTERN(MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS), MULTI_SHAPE_NAME_PATTERN]).assert_complete_and_get_matched_data()
+          modelNameLayoutStr, modelNameSizeDescriptionStr, modelNameShapeNicknameStr = tuple(Parsing.flatten_string_structure_and_join(item) for item in decomposedModelName)
           modelNameShapeNameStr = dictionary_translate_if_able(SHAPE_NICKNAMES_TO_NAMES, modelNameShapeNicknameStr)
           displayNameNative = f"{dictionary_translate_if_able(UNIFIED_DISPLAY_NAME_TRANSLATIONS, family)} Breeze Block (shape: {modelNameShapeNameStr}, layout: {modelNameLayoutStr}, thickness: {modelNameSizeDescriptionStr})"
           

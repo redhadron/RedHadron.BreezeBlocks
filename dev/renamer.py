@@ -1,9 +1,14 @@
+
+
+# builtin:
 import os
 import sys
 import subprocess
 
+# project:
+from Utilities import bisect_at_infix
 
-# PyPI
+# third party:
 import directory_tree
 
 
@@ -59,10 +64,6 @@ if regenerateAssets:
   
   
 
-def bisect_at_infix(string, infix):
-  assert string.count(infix) == 1
-  a, b = string.split(infix)
-  return (a, b)
   
   
 successfulChanges = []

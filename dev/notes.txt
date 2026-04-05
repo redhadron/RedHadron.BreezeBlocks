@@ -94,6 +94,10 @@ atlas.py: atlas interactive prompt:
 
 
 TODO:
+
+move color shelf into a data folder.
+factor language out of generate.py.
+
 atlas.py health:
   make saving of config file better.
     split config into config settings and config mappings.
@@ -112,9 +116,6 @@ atlas.py:
   give tile name prompt a prompt_definition makeover.
   padding around text.
   
-move color shelf into a data folder.
-factor parsing out of generate.py.
-factor language out of generate.py.
   
 use hytale stock translations of materials in translated names of breeze blocks.
 make ${set} more regular
@@ -230,3 +231,5 @@ atlas.py interactive mode:
 rename "view" to "show" in atlas commands.
 png optimization:
   async up to 6 subprocess.
+  
+factor parsing out of generate.py.
