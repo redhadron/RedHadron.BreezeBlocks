@@ -1,2 +1,0 @@
-a1000.png is a pretty picture.
-b1001.wrongextension is not a picture at all.

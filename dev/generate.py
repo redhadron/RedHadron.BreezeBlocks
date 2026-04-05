@@ -11,10 +11,10 @@ import functools
 import urllib # for libretranslate error handling
 import subprocess # for png crushing
 import asyncio
-import sys # to use sys.exit inside async
+import sys # to use sys.exit inside async, although this does not work.
 
 # project
-from HYTALE import HYTALE_ASSETS_PATH, SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
+from Hytale import HYTALE_ASSETS_PATH, SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
 import ProcessPooling
 
 BAD_EXIT_CODE = 1
@@ -552,7 +552,7 @@ def translate_string_piecewise(text, source, target, delimeters):
 
 def is_a_valid_mod(modPath):
   assert os.path.exists(modPath)
-  return all(item in os.listdir(modPath) for item in ["Common", "Server"])
+  return all(item in os.listdir(modPath) for item in ["Common"])
   
 # TODO Manifest.json copying
 
@@ -614,19 +614,19 @@ def clear_folder(folder_path, expected_extension):
   
   
 async def optimize_png_in_place(path):
-  command = f"optipng -o7 \"{path}\""  # don't use repr for path because windows does not treat backslash as an escape character in paths.
-  print(f"running command {command}")
+  command = f"optipng -o9 \"{path}\""  # don't use repr for path because windows does not treat backslash as an escape character in paths.
+  # print(f"running command {command}")
   try:
     proc = await asyncio.create_subprocess_shell(command, stderr=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE)
     stdout, stderr = await proc.communicate()
-    print(f"{proc.returncode=}") # , {stdout=}, {stderr=}")
+    if proc.returncode != 0:
+      print(f"{proc.returncode=}") # , {stdout=}, {stderr=}")
   except FileNotFoundError: # TODO test whether this is still effective after async change
     print("the PNG file could not be found OR the executable could not be found.")
     sys.exit(BAD_EXIT_CODE)
   except Exception as e:
     print(f"something else went wrong: {e}")
     sys.exit(BAD_EXIT_CODE)
-  # print(proc.stdout)
   
   
   

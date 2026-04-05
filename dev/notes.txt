@@ -94,9 +94,6 @@ atlas.py: atlas interactive prompt:
 
 
 TODO:
-PNG optimization
-  async up to 6 subprocess.
-  pngrewrite before pngout (requires test to see if it's any smaller when used with pngout).
 atlas.py health:
   make saving of config file better.
     split config into config settings and config mappings.
@@ -152,14 +149,19 @@ make a breeze mason's bench that can make weirder blocks with other depth modes.
 create ornate versions of some models.
 document what is a family, what is a family suffix, what is a family prefix, and reference assets from base game.
 fix bug where things are held in the wrong position.
+PNG optimization
+  pngrewrite before pngout (requires test to see if it's any smaller when used with pngout).
+  
 
 shelved:
 add command line args to renamer.
 what is creative build light made out of?
 create JSON recipe input ItemID control.
 
+
 cancelled:
 pickling as a context manager. (this already exists: import shelve)
+
 
 done:
 upgrade renamer.py to optionally edit the content of asset definition files (or any other files in a second directory) too.
@@ -225,5 +227,6 @@ atlas.py health:
 make prompt_definition a data class of some kind instead of a dict.
 atlas.py interactive mode:
   minimum window height.
-
 rename "view" to "show" in atlas commands.
+png optimization:
+  async up to 6 subprocess.
