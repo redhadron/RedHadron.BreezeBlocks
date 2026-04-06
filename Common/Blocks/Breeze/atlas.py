@@ -500,7 +500,7 @@ def run_interactive_management_mode() -> None:
         tile_preview_image=blankPreviewImage,
         tile_preview_top_text="Welcome to atlas.py!",
         tile_preview_bottom_text="Hover over a tile in the atlas for more options.",
-        acceptable_keys={"no_requirements":[ord("q"), pygame.K_RETURN],"coordinate_required":[ord("s")],"link_required":[ord("u"), ord("r"), ord("i"), ord("e"), pygame.K_DELETE]},
+        acceptable_keys={"no_requirements":[ord("q"), pygame.K_RETURN],"coordinate_required":[ord("s"), pygame.K_BACKSPACE],"link_required":[ord("u"), ord("r"), ord("i"), ord("e"), pygame.K_DELETE]},
         clicks_are_acceptable=False,
         # alt_instructions="\n\n[s] show\n[i] import\n[e] export\n[r] rename\n[u] unlink\n[del] delete tile file",
         key_descriptions={
@@ -509,6 +509,7 @@ def run_interactive_management_mode() -> None:
           ord("e"): "[e] export",
           ord("r"): "[r] rename",
           ord("u"): "[u] unlink",
+          pygame.K_BACKSPACE: "[backspace] clear cell",
           pygame.K_DELETE: "[delete] delete tile file",
           pygame.K_RETURN: "[enter] save and quit",
           ord("q"):"[q] quit without saving",
@@ -530,6 +531,12 @@ def run_interactive_management_mode() -> None:
               os.remove(pathToRemove)
             else:
               print(f"cannot remove tile file {pathToRemove} because it does not exist")
+          elif response.event.key == pygame.K_BACKSPACE:
+            startX, startY, stopX, stopY = cell_coordinate_to_pillow_rect(response.coordinate)
+            for y in range(startY, stopY):
+              for x in range(startX, stopX):
+                # assert ATLAS_IMAGE_CREATION_FILL_COLOR == ATLAS_IMAGE_BLANK_COLOR, "update for checkerboard??"
+                atlasImage.putpixel((x,y), ATLAS_IMAGE_CREATION_FILL_COLOR)
           elif response.event.key == ord("r"):
             pathToRename = TILE_FOLDER + SEP + CONFIG.coordinates_to_names[response.coordinate]
             tilePromptResponse = prompt_user_for_tile_name(tilePreviewPilImage, enable_skip_button=False)
@@ -560,7 +567,7 @@ def run_interactive_management_mode() -> None:
           elif response.event.key == ord("i"):
             import_tile_with_coordinate(response.coordinate, atlasImage)
           elif response.event.key == ord("e"):
-            export_tile_with_coordinate(response.coordinate, atlas_image=atlasImage)
+            export_tile_with_coordinate(response.coordinate, atlasImage)
           elif response.event.key == pygame.K_RETURN:
             print("finished with interactive management mode")
             pygame.display.quit()
