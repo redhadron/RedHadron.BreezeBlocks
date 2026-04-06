@@ -27,8 +27,8 @@ todo:
   -search "TODO" and "NotImplementedError" in this file.
 """
 
-TILE_FOLDER_PATH = "."
 SEP = os.sep
+TILE_FOLDER_PATH = SEP.join([".","..","Common","Blocks","Breeze"])
 FPS = 30.0
 ATLAS_IMAGE_NAME = "atlas_image.png"
 ATLAS_IMAGE_PATH = TILE_FOLDER_PATH + SEP + ATLAS_IMAGE_NAME
