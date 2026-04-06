@@ -1,4 +1,5 @@
 
+# builtin:
 import enum
 import os
 import json
@@ -9,7 +10,7 @@ import itertools
 import operator
 
 
-# pip
+# pip:
 from bidict import bidict
 from PIL import Image, ImageTk, ImageDraw # the k in ImageTk is lowercase.
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "True"
@@ -17,6 +18,11 @@ import pygame
 import argparse
 import pydantic
 
+# project:
+from Affixes import remove_suffix, remove_prefix, bisect_at_infix
+from Utilities import validate_int_pair_tuple, nand, at_most_one
+from Vectors import int_vec_add, int_vec_parallel_multiply, int_vec_all_components_are_less, int_vec_all_components_are_lessequal, int_vec_scale_by
+from Graphics import pil_image_to_surface, PaddingDescription, join_surfaces_vertically, make_externally_outlined_copy
 
 """
 todo:
@@ -28,6 +34,7 @@ todo:
 """
 
 SEP = os.sep
+NEWLINE = "\n" # because you can't use a backslash inside the expression of an f-string.
 TILE_FOLDER_PATH = SEP.join([".","..","Common","Blocks","Breeze"])
 FPS = 30.0
 ATLAS_IMAGE_NAME = "atlas_image.png"
@@ -48,7 +55,6 @@ WINDOW_BACKGROUND_COLOR = (31, 31, 31)
 WINDOW_TEXT_COLOR = (250, 250, 250)
 WINDOW_FAINT_TEXT_COLOR = (127, 127, 127)
 WINDOW_BG_STRING = "#cccccc"
-WINDOW_HAZE_COLOR = (63, 63, 63)
 class TRANSPORT_DIRECTION(enum.Enum):
   IMPORT = enum.auto()
   EXPORT = enum.auto()
@@ -61,52 +67,7 @@ EXIT_CODES = {"GENERAL_SUCCESS":0, "TILE_PROMPT_EXIT_CHOICE": 2, "PYGAME_QUIT":3
 
 
 
-def validate_int_pair_tuple(int_tuple):
-  assert isinstance(int_tuple, tuple) and len(int_tuple) == 2 and all(isinstance(item, int) for item in int_tuple), int_tuple
 
-def remove_suffix(string, suffix):
-  assert len(suffix) <= len(string)
-  assert len(suffix) > 0
-  assert string.endswith(suffix)
-  return string[:-len(suffix)]
-  
-def remove_prefix(string, prefix):
-  assert len(prefix) <= len(string)
-  assert len(prefix) > 0
-  assert string.startswith(prefix)
-  return string[len(prefix):]
-  
-def bisect_at_infix(string, infix):
-  assert string.count(infix) == 1
-  a, b = string.split(infix)
-  return (a, b)
-
-def nand(a, b):
-  return not (a and b)
-  
-def at_most_one(input_list):
-  return sum(bool(item) for item in input_list) in (0, 1)
-
-
-def int_vec_parallel_operation(a, b, operation, packager):
-  assert len(a) == len(b)
-  assert isinstance(a, tuple) and isinstance(b, tuple)
-  assert all(isinstance(val, int) for val in a)
-  assert all(isinstance(val, int) for val in b)
-  return packager(operation(aVal, bVal) for aVal,bVal in zip(a,b))
-int_vec_add = lambda a, b: int_vec_parallel_operation(a, b, operator.add, tuple)
-int_vec_parallel_multiply = lambda a, b: int_vec_parallel_operation(a, b, operator.mul, tuple)
-# int_vec_parallel_compare_less = lambda a, b: int_vec_parallel_operation(a, b, operator.lt, tuple)
-int_vec_all_components_are_less = lambda a, b: int_vec_parallel_operation(a, b, operator.lt, all)
-# int_vec_parallel_compare_lessequal = lambda a, b: int_vec_parallel_operation(a, b, operator.le, tuple)
-int_vec_all_components_are_lessequal = lambda a, b: int_vec_parallel_operation(a, b, operator.le, all)
-assert int_vec_parallel_multiply((2,3),(5,7)) == (10,21)
-  
-def int_vec_scale_by(vec, scale):
-  assert isinstance(vec, tuple)
-  assert all(isinstance(component, int) for component in vec)
-  assert isinstance(scale, int)
-  return tuple(component*scale for component in vec)
   
 
 
@@ -181,7 +142,7 @@ def get_a_free_coordinate():
         return (x,y)
   assert False, "out of room"
 
-def tile_coordinate_is_in_bounds(coordinate):
+def cell_coordinate_is_in_bounds(coordinate):
   validate_int_pair_tuple(coordinate)
   return 0 <= coordinate[0] < CONFIG.atlas_size[0] and 0 <= coordinate[1] < CONFIG.atlas_size[1]
 
@@ -236,20 +197,15 @@ def make_tile_preview_image(tile_image):
 
 class TilePromptResponse:
   pass
-
 class TilePromptSubmission(TilePromptResponse):
   def __init__(self, name):
     self.name = name
-
 def TilePromptSkip(TilePromptResponse):
   def __init__(self):
     pass
 def TilePromptExit(TilePromptResponse):
   def __init__(self):
     pass
-
-
-  
 def prompt_user_for_tile_name(tile_image, enable_skip_button=True) -> TilePromptResponse:
   assert isinstance(tile_image, Image.Image) # tile_image must be a PIL Image
   window = tkinter.Tk()
@@ -319,61 +275,16 @@ def prompt_user_for_tile_name(tile_image, enable_skip_button=True) -> TilePrompt
 
 
 
-"""
-class KeyboardKey:
-  def __init__(self, display_name, key_codes):
-    self.display_name = display_name
-    self.key_codes = key_codes
-ALPHABET_LOWER = "abcdefghijklmnopqrstuvwxyz"
-ALPHABET_UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-def letter_to_keyboard_key(input_char: str):
-  assert isinstance(input_char, str) and len(input_char) == 1
-  assert input_char.lower() in ALPHABET_LOWER
-  return KeyboardKey(display_name=input_char, key_codes=(ord(input_char.lower()), ord(input_char.upper())))
-KEYBOARD_KEYS = {letter:letter_to_keyboard_key(letter) for letter in ALPHABET_LOWER}
-KEYBOARD_KEYS.update({"backspace":KeyboardKey("backspace", (pygame.K_BACKSPACE,)), "delete":KeyboardKey("delete", (pygame.K_DELETE,))})
-"""
 
-def pil_image_to_surface(pil_image):
-  assert isinstance(pil_image, Image.Image)
-  return pygame.image.fromstring(pil_image.tobytes(), pil_image.size, pil_image.mode)
-
-class PaddingDescription:
-  def __init__(self, *, top, right, bottom, left):
-    assert all(isinstance(item, int) and item >= 0 for item in (top, right, bottom, left))
-    self.top, self.right, self.bottom, self.left = top, right, bottom, left
-
-def join_surfaces_vertically(surfaces, background_color, padding=PaddingDescription(top=0,right=0,bottom=0,left=0)):
-  
-  assert all(isinstance(item, pygame.Surface) for item in surfaces), surfaces
-  width = max(surf.get_width() for surf in surfaces) + padding.left + padding.right
-  height = sum(surf.get_height() for surf in surfaces) + padding.top + padding.bottom
-  newSurf = pygame.Surface((width, height))
-  newSurf.fill(background_color)
-  y = padding.top
-  for surf in surfaces:
-    newSurf.blit(surf, (padding.left, y))
-    y += surf.get_height()
-  assert y + padding.bottom == newSurf.get_height()
-  return newSurf
 
 pygame.init() # TODO 
 FONT = pygame.freetype.SysFont(pygame.freetype.get_default_font(), 18, bold=False)
 
-def make_externally_outlined_copy(input_surface: pygame.Surface, thickness: int, color: tuple[int]):
-  # TODO use this in tooltip generation for interactive atlas prompt
-  assert isinstance(input_surface, pygame.Surface), input_surface
-  assert isinstance(thickness, int)
-  outputSurface = pygame.Surface(int_vec_add(input_surface.get_size(), (thickness*2,)*2))
-  outputSurface.fill(color)
-  outputSurface.blit(input_surface, (thickness,)*2)
-  return outputSurface
-
-def scrolling_surface_list_selection_prompt(surfaces: list[pygame.Surface], display_at_once: int = 5) -> int|None:
+def scrolling_surface_list_selection_prompt(surfaces: list[pygame.Surface], display_at_once: int = 9) -> int|None:
   assert display_at_once%2 == 1
   assert all(isinstance(item, pygame.Surface) for item in surfaces)
   head = 0
-  screen = pygame.display.set_mode((300, 300))
+  screen = pygame.display.set_mode((500, 300))
   while True:
     screen.fill(WINDOW_BACKGROUND_COLOR)
     for event in pygame.event.get():
@@ -384,6 +295,8 @@ def scrolling_surface_list_selection_prompt(surfaces: list[pygame.Surface], disp
           head -= 1
         if event.key == pygame.K_RETURN:
           return head
+        if event.key in (pygame.K_ESCAPE, ord("q")):
+          return None
     head %= len(surfaces)
     
     topToDisplay = head - (display_at_once//2)
@@ -404,9 +317,11 @@ def scrolling_surface_list_selection_prompt(surfaces: list[pygame.Surface], disp
     pygame.display.flip()
     time.sleep(1.0/FPS)
   assert False, "unreachable"
-    
-  # join_surfaces_vertically()
-  
+
+
+
+
+
 class AtlasPromptResponse:
   pass
 class AtlasPromptSubmission(AtlasPromptResponse):
@@ -426,8 +341,6 @@ class AtlasPromptDefinition(pydantic.BaseModel):
   acceptable_keys: dict[str, list[int]]
   clicks_are_acceptable: bool
   model_config = {"arbitrary_types_allowed": True} # this is required by Pydantic to use arbitrary types such as PIL's Image.Image as a type hint
-
-NEWLINE = "\n" # because you can't use a backslash inside the expression of an f-string.
 
 TOOLTIP_PADDING = PaddingDescription(top=6,right=6,bottom=6,left=6)
 
@@ -455,7 +368,7 @@ def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_
     
     # determine pointer conditions
     hoveredTileCoord = tuple(pygame.mouse.get_pos()[i]//CONFIG.tile_size[i] for i in (0,1)) # TODO int vec divide
-    if not tile_coordinate_is_in_bounds(hoveredTileCoord):
+    if not cell_coordinate_is_in_bounds(hoveredTileCoord):
       hoveredTileCoord = None
     hoveredTileName = CONFIG.coordinates_to_names.get(hoveredTileCoord, None)
     
@@ -478,7 +391,6 @@ def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_
       screen.blit(tooltipSurf, dest=int_vec_add(pygame.mouse.get_pos(), (2, 22)))
     # }
     
-    
     time.sleep(1.0/FPS) # the target FPS will never be hit this way but that's ok.
     pygame.display.flip()
     for event in pygame.event.get():
@@ -492,9 +404,7 @@ def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_
         if not prompt_definition.clicks_are_acceptable:
           continue
         return AtlasPromptSubmission(coordinate=hoveredTileCoord, event=event)
-      elif event.type == pygame.KEYDOWN:
-        # for keydown, don't check whether the hoveredTileCoord is None, because some keypresses (such as [s] for skip) are valid even without a valid coordinate.
-        
+      elif event.type == pygame.KEYDOWN:        
         if event.key in prompt_definition.acceptable_keys["no_requirements"]:
           return AtlasPromptSubmission(coordinate=hoveredTileCoord, event=event)
         elif event.key in prompt_definition.acceptable_keys["coordinate_required"]:
@@ -529,11 +439,6 @@ def prompt_user_for_a_free_coordinate(tile_image, tile_name, atlas_image) -> Atl
   pygame.display.quit()
   return result
 
-def apply_haze(surface: pygame.Surface) -> None:  
-  for y in range(surface.get_size()[1]):
-    for x in range(surface.get_size()[0]):
-      if (x+y)%2:
-        surface.set_at((x,y), WINDOW_HAZE_COLOR)
 
 def pygame_wait_for_any_key():
   runEventLoop = True
@@ -560,7 +465,6 @@ def run_interactive_management_mode() -> None:
         tile_preview_bottom_text="Hover over a tile in the atlas for more options.",
         acceptable_keys={"no_requirements":[ord("q"), pygame.K_RETURN],"coordinate_required":[ord("s"), pygame.K_BACKSPACE],"link_required":[ord("u"), ord("r"), ord("i"), ord("e"), pygame.K_DELETE], "coordinate_required_link_forbidden":[ord("l")]},
         clicks_are_acceptable=False,
-        # alt_instructions="\n\n[s] show\n[i] import\n[e] export\n[r] rename\n[u] unlink\n[del] delete tile file",
         key_descriptions={
           ord("s"): "[s] show",
           ord("i"): "[i] import",
@@ -696,7 +600,7 @@ def import_tile_with_name(tile_name, destination_atlas_pil_image) -> None:
       return
     destination_atlas_pil_image.paste(tileImg, intersection_coordinate_to_pixel_coordinate(destinationCellCoordinate))
     
-def crop_atlas_image_to_tile_image(atlas_image: Image.Image, coordinate) -> Image.Image:
+def crop_atlas_image_to_tile_image(atlas_image: Image.Image, coordinate: tuple[int]) -> Image.Image:
   locationInAtlasImage = cell_coordinate_to_pillow_rect(coordinate)
   tileImg = atlas_image.crop(locationInAtlasImage)
   return tileImg

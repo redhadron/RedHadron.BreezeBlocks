@@ -16,7 +16,8 @@ import sys # to use sys.exit inside async, although this does not work.
 # project
 from Hytale import HYTALE_ASSETS_PATH, SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
 import ProcessPooling
-from Utilities import remove_suffix, remove_prefix, shorten_suffix, assert_equals, int_divide_exact
+from Affixes import remove_suffix, remove_prefix, shorten_suffix
+from Utilities import assert_equals, int_divide_exact
 import Parsing
 
 BAD_EXIT_CODE = 1

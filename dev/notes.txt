@@ -97,11 +97,6 @@ TODO:
 
 
 atlas.py health:
-  shorten file:
-    allow target directory to be specified by a constant.
-    allow target directory to be specified by an argument.
-    import utilities.
-    make Graphics.py.
   make input critic class that provides critiques to user input before it is accepted.
   refactor interactive management mode
   replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
@@ -113,6 +108,8 @@ atlas.py health:
   replace tkinter with pygame everywhere.
   
 atlas.py:
+  allow X button press from within scrolling list prompt.
+  add pageUp and pageDown to scrolling list prompt.
   PaddingDescription(all=...)
   interactive mode:
     Add keyboard shortcuts from above design:
@@ -248,3 +245,8 @@ atlas.py interactive mode:
   padding around text.
 atlas.py:
   make a scrolling surface list prompt.
+  allow target directory to be specified by a constant.
+  allow target directory to be specified by an argument.
+  import utilities.
+  shorten file:
+    make Graphics.py.
