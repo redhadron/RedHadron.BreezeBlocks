@@ -353,6 +353,52 @@ def join_surfaces_vertically(surfaces, background_color, padding=PaddingDescript
     y += surf.get_height()
   assert y + padding.bottom == newSurf.get_height()
   return newSurf
+
+pygame.init() # TODO 
+FONT = pygame.freetype.SysFont(pygame.freetype.get_default_font(), 18, bold=False)
+
+def make_externally_outlined_copy(input_surface: pygame.Surface, thickness: int, color: tuple[int]):
+  # TODO use this in tooltip generation for interactive atlas prompt
+  assert isinstance(input_surface, pygame.Surface)
+  assert isinstance(thickness, int)
+  outputSurface = pygame.Surface(int_vec_add(input_surface.get_size(), (thickness*2,)*2))
+  outputSurface.fill(color)
+  outputSurface.blit(input_surface, (thickness,)*2)
+  return outputSurface
+
+def scrolling_surface_list_selection_prompt(surfaces: list[pygame.Surface], display_at_once: int) -> int|None:
+  assert display_at_once%2 == 1
+  head = 0
+  screen = pygame.display.set_mode((300, 300))
+  while True:
+    for event in pygame.event.get():
+      if event.type == pygame.KEYDOWN:
+        if event.key == pygame.K_DOWNARROW:
+          head += 1
+        if event.key == pygame.K_UPARROW:
+          head -= 1
+        if event.key == pygame.K_RETURN:
+          return head
+    head %= len(surfaces)
+    
+    topToDisplay = head - (display_at_once//2)
+    bottomToDisplay = head + (display_at_once//2)
+    
+    topToDisplay = max(0, topToDisplay)
+    bottomToDisplay = min(len(surfaces)-1, bottomToDisplay)
+    
+    bottomToDisplay = max(bottomToDisplay, topToDisplay+display_at_once-1)
+    topToDisplay = min(topToDisplay, bottomToDisplay-display_at_once+1)
+    
+    topToDisplay = max(0, topToDisplay)
+    bottomToDisplay = min(len(surfaces)-1, bottomToDisplay)
+    # TODO make this less stupid /\
+    surfaceIndicesToUse = range(topToDisplay, bottomToDisplay+1)
+    surfacesToShow = [(make_externally_outlined_copy(surfaces[i], thickness=4, color=WINDOW_HIGHLIGHT_COLOR) if i == head else surfaces[i]) for i in surfaceIndicesToUse]
+    screen.blit(join_surfaces_vertically(surfacesToShow, WINDOW_BACKGROUND_COLOR, padding=PaddingDescription(top=6,right=6,bottom=6,left=6)), (0,0)) # TODO extract a blit_centered method
+  assert False, "unreachable"
+    
+  # join_surfaces_vertically()
   
 class AtlasPromptResponse:
   pass
@@ -378,15 +424,13 @@ NEWLINE = "\n" # because you can't use a backslash inside the expression of an f
 
 TOOLTIP_PADDING = PaddingDescription(top=6,right=6,bottom=6,left=6)
 
-def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_image: Image.Image, _font=[]) -> AtlasPromptResponse:
+def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_image: Image.Image) -> AtlasPromptResponse:
   # this method should never do anything except display a prompt and return the user's choice of action. It should not perform that action.
   assert isinstance(prompt_definition.tile_preview_image, Image.Image)
   assert all(isinstance(item, int) for item in itertools.chain(*prompt_definition.acceptable_keys.values()))
   assert isinstance(atlas_image, Image.Image)
   pygame.init()
-  if len(_font) == 0:
-    _font.append(pygame.freetype.SysFont(pygame.freetype.get_default_font(), 18, bold=False))
-  font = _font[0]
+  font = FONT # TODO
   
   atlasSurf = pil_image_to_surface(atlas_image)
   screen = pygame.display.set_mode((max(600,atlasSurf.get_width()+400), max(400, atlasSurf.get_height())))
@@ -416,7 +460,8 @@ def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_
       pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [intersection_coordinate_to_pixel_coordinate(int_vec_add(hoveredTileCoord, offset)) for offset in [(0,0), (1,0), (1,1), (0,1)]])
       # generate the tooltip:
       hoveredTileDisplayName = CONFIG.coordinates_to_names.get(hoveredTileCoord, default="empty")
-      tooltipText = f"{hoveredTileDisplayName}\n\n{NEWLINE.join(prompt_definition.key_descriptions[keyCode] for keyCode in itertools.chain(prompt_definition.acceptable_keys['coordinate_required'] if hoveredTileCoord is not None else [], prompt_definition.acceptable_keys['link_required'] if hoveredTileName is not None else []))}"
+      _keycodesAvailableNowGen = (itertools.chain([] if hoveredTileCoord is None else itertools.chain(prompt_definition.acceptable_keys['coordinate_required'], prompt_definition.acceptable_keys["coordinate_required_link_forbidden"] if hoveredTileName is None else []), [] if hoveredTileName is None else prompt_definition.acceptable_keys['link_required']))
+      tooltipText = f"{hoveredTileDisplayName}\n\n{NEWLINE.join(prompt_definition.key_descriptions[keyCode] for keyCode in _keycodesAvailableNowGen)}"
       tooltipLineSurfs = [font.render(text=tooltipTextLine, fgcolor=WINDOW_TEXT_COLOR, bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tooltipTextLine in tooltipText.split("\n")]
       tooltipSurf = join_surfaces_vertically(tooltipLineSurfs, WINDOW_BACKGROUND_COLOR, padding=TOOLTIP_PADDING)
       # blit the tooltip a bit below the pointer:
@@ -455,9 +500,14 @@ def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_
           if hoveredTileName is None:
             continue
           return AtlasPromptSubmission(coordinate=hoveredTileCoord, event=event)
+        elif event.key in prompt_definition.acceptable_keys["coordinate_required_link_forbidden"]:
+          if hoveredTileCoord is None:
+            continue
+          if hoveredTileName is not None:
+            continue
+          return AtlasPromptSubmission(coordinate=hoveredTileCoord, event=event)
         else:
           print(f"atlas_interactive_prompt: ignoring key {event.key!r} because it is not acceptable.")
-
 
 def prompt_user_for_a_free_coordinate(tile_image, tile_name, atlas_image) -> AtlasPromptResponse:
   raise NotImplementedError("this usage of AtlasPromptDefinition is out of date.")
@@ -491,6 +541,7 @@ def pygame_wait_for_any_key():
       if event.type == pygame.MOUSEBUTTONDOWN:
         runEventLoop = False
 
+
 def run_interactive_management_mode() -> None:
   blankPreviewImage = Image.new("RGB", size=(64,1))
   with Image.open(ATLAS_IMAGE_PATH) as atlasImage:
@@ -500,7 +551,7 @@ def run_interactive_management_mode() -> None:
         tile_preview_image=blankPreviewImage,
         tile_preview_top_text="Welcome to atlas.py!",
         tile_preview_bottom_text="Hover over a tile in the atlas for more options.",
-        acceptable_keys={"no_requirements":[ord("q"), pygame.K_RETURN],"coordinate_required":[ord("s"), pygame.K_BACKSPACE],"link_required":[ord("u"), ord("r"), ord("i"), ord("e"), pygame.K_DELETE]},
+        acceptable_keys={"no_requirements":[ord("q"), pygame.K_RETURN],"coordinate_required":[ord("s"), pygame.K_BACKSPACE],"link_required":[ord("u"), ord("r"), ord("i"), ord("e"), pygame.K_DELETE], "coordinate_required_link_forbidden":[ord("l")]},
         clicks_are_acceptable=False,
         # alt_instructions="\n\n[s] show\n[i] import\n[e] export\n[r] rename\n[u] unlink\n[del] delete tile file",
         key_descriptions={
@@ -508,6 +559,7 @@ def run_interactive_management_mode() -> None:
           ord("i"): "[i] import",
           ord("e"): "[e] export",
           ord("r"): "[r] rename",
+          ord("l"): "[l] link",
           ord("u"): "[u] unlink",
           pygame.K_BACKSPACE: "[backspace] clear cell",
           pygame.K_DELETE: "[delete] delete tile file",
@@ -521,7 +573,12 @@ def run_interactive_management_mode() -> None:
       if isinstance(response, AtlasPromptSubmission):
         tilePreviewPilImage = None if response.coordinate is None else make_tile_preview_image(atlasImage.crop(cell_coordinate_to_pillow_rect(response.coordinate))) # used by multiple cases
         if response.event.type == pygame.KEYDOWN:
-          if response.event.key == ord("u"):
+          if response.event.key == ord("l"):
+            print("the user pressed 'l'")
+            tileNamesForPrompt = find_tile_names()
+            surfaceSelectionResponse = scrolling_surface_list_selection_response([FONT.render(text=tileName, fgcolor=(WINDOW_FAINT_TEXT_COLOR if tileName in CONFIG.coordinates_to_names.inverse else WINDOW_TEXT_COLOR)) for tileName in tileNamesForPrompt])
+            raise NotImplementedError()
+          elif response.event.key == ord("u"):
             print(f"removing link from {response.coordinate} to {CONFIG.coordinates_to_names[response.coordinate]!r}")
             del CONFIG.coordinates_to_names[response.coordinate]
           elif response.event.key == pygame.K_DELETE:
@@ -570,6 +627,7 @@ def run_interactive_management_mode() -> None:
             export_tile_with_coordinate(response.coordinate, atlasImage)
           elif response.event.key == pygame.K_RETURN:
             print("finished with interactive management mode")
+            atlasImage.save(ATLAS_IMAGE_PATH)
             pygame.display.quit()
             return
           elif response.event.key == ord("q"):

@@ -98,6 +98,8 @@ TODO:
 move color shelf into a data folder.
 
 atlas.py:
+  make a scrolling surface list prompt.
+  PaddingDescription(all=...)
   allow target directory to be specified by an argument.
   import utilities.
   interactive mode:
