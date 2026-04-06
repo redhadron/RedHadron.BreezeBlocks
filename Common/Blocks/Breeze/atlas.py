@@ -20,33 +20,35 @@ import pydantic
 
 """
 todo:
-  -add check that atlas image file and atlas image size specified by config are the same.
   -allow multiple values to be specified as blank, so that a solid-color tile in any of those colors will be ignored. Introduce checkerboard background pattern.
   -make a better atlas_config.json creation process, eliminate default values for atlas size and tile size.
   -2d range.
-  -vector math methods.
+  -add check that atlas image file and atlas image size specified by config are the same.
   -search "TODO" and "NotImplementedError" in this file.
 """
 
-TILE_FOLDER = "."
+TILE_FOLDER_PATH = "."
 SEP = os.sep
 FPS = 30.0
 ATLAS_IMAGE_NAME = "atlas_image.png"
-ATLAS_IMAGE_PATH = ".\\" + ATLAS_IMAGE_NAME
-ATLAS_CONFIG_PATH = ".\\atlas_config.json"
+ATLAS_IMAGE_PATH = TILE_FOLDER_PATH + SEP + ATLAS_IMAGE_NAME
+_ATLAS_CONFIG_NAME = "atlas_config.json"
+ATLAS_CONFIG_PATH = TILE_FOLDER_PATH + SEP + _ATLAS_CONFIG_NAME
+
 ATLAS_CONFIG_SORT_KEYS = True
 ATLAS_CONFIG_INDENT = 4
+
 ATLAS_IMAGE_CREATION_FILL_COLOR = (255, 255, 255)
 ATLAS_IMAGE_BLANK_COLOR = (*ATLAS_IMAGE_CREATION_FILL_COLOR, 255)
+
 TILE_PREVIEW_SCALE = 10
-# ATLAS_PREVIEW_SCALE = 5
 PREVIEW_GRID_LINE_COLOR = (127, 127, 127)
 HIGHLIGHT_COLOR = (255, 0, 0)
 WINDOW_BACKGROUND_COLOR = (31, 31, 31)
 WINDOW_TEXT_COLOR = (250, 250, 250)
 WINDOW_FAINT_TEXT_COLOR = (127, 127, 127)
 WINDOW_BG_STRING = "#cccccc"
-WINDOW_HAZE_COLOR = (64, 64, 64)
+WINDOW_HAZE_COLOR = (63, 63, 63)
 class TRANSPORT_DIRECTION(enum.Enum):
   IMPORT = enum.auto()
   EXPORT = enum.auto()
@@ -579,7 +581,6 @@ def run_interactive_management_mode() -> None:
         tilePreviewPilImage = None if response.coordinate is None else make_tile_preview_image(atlasImage.crop(cell_coordinate_to_pillow_rect(response.coordinate))) # used by multiple cases
         if response.event.type == pygame.KEYDOWN:
           if response.event.key == ord("l"):
-            # print("the user pressed 'l'")
             tileNamesForPrompt = find_tile_names()
             surfaceSelectionResponse = scrolling_surface_list_selection_prompt([FONT.render(text=tileName, fgcolor=(WINDOW_FAINT_TEXT_COLOR if tileName in CONFIG.coordinates_to_names.inverse else WINDOW_TEXT_COLOR), bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tileName in tileNamesForPrompt])
             if isinstance(surfaceSelectionResponse, int):
@@ -592,7 +593,7 @@ def run_interactive_management_mode() -> None:
             print(f"removing link from {response.coordinate} to {CONFIG.coordinates_to_names[response.coordinate]!r}")
             del CONFIG.coordinates_to_names[response.coordinate]
           elif response.event.key == pygame.K_DELETE:
-            pathToRemove = TILE_FOLDER + SEP + CONFIG.coordinates_to_names[response.coordinate]
+            pathToRemove = TILE_FOLDER_PATH + SEP + CONFIG.coordinates_to_names[response.coordinate]
             if os.path.exists(pathToRemove):
               print(f"deleting tile file {pathToRemove}")
               os.remove(pathToRemove)
@@ -605,7 +606,7 @@ def run_interactive_management_mode() -> None:
                 # assert ATLAS_IMAGE_CREATION_FILL_COLOR == ATLAS_IMAGE_BLANK_COLOR, "update for checkerboard??"
                 atlasImage.putpixel((x,y), ATLAS_IMAGE_CREATION_FILL_COLOR)
           elif response.event.key == ord("r"):
-            pathToRename = TILE_FOLDER + SEP + CONFIG.coordinates_to_names[response.coordinate]
+            pathToRename = TILE_FOLDER_PATH + SEP + CONFIG.coordinates_to_names[response.coordinate]
             tilePromptResponse = prompt_user_for_tile_name(tilePreviewPilImage, enable_skip_button=False)
             assert isinstance(tilePromptResponse, TilePromptResponse)
             newName = None # absolutely must not carry from previous iteration
@@ -616,7 +617,7 @@ def run_interactive_management_mode() -> None:
               exit(EXIT_CODES["TILE_PROMPT_EXIT_CHOICE"])
             else:
               raise ValueError(tilePromptResponse)
-            newPath = TILE_FOLDER + SEP + newName
+            newPath = TILE_FOLDER_PATH + SEP + newName
             assert newName not in CONFIG.coordinates_to_names.values()
             assert not os.path.exists(newPath)
             if os.path.exists(pathToRename):
@@ -667,10 +668,10 @@ def tile_image_is_blank(tile_image) -> bool:
   return True
   
 def find_tile_names():
-  return [item for item in os.listdir(TILE_FOLDER) if item.endswith(".png") and item != ATLAS_IMAGE_NAME]
+  return [item for item in os.listdir(TILE_FOLDER_PATH) if item.endswith(".png") and item != ATLAS_IMAGE_NAME]
 
 def tile_name_to_path(tile_name):
-  return TILE_FOLDER + SEP + tile_name
+  return TILE_FOLDER_PATH + SEP + tile_name
   
 def import_tile_with_coordinate(cell_coordinate, destination_atlas_pil_image) -> None:
   return import_tile_with_name(CONFIG.coordinates_to_names[cell_coordinate], destination_atlas_pil_image)

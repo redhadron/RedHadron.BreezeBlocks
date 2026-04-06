@@ -95,20 +95,34 @@ atlas.py: atlas interactive prompt:
 
 TODO:
 
-move color shelf into a data folder.
 
+atlas.py health:
+  shorten file:
+    allow target directory to be specified by a constant.
+    allow target directory to be specified by an argument.
+    import utilities.
+    make Graphics.py.
+  make input critic class that provides critiques to user input before it is accepted.
+  refactor interactive management mode
+  replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
+  add procedure tests.
+  fix tile_name_to_path only being used in some places.
+  make saving of config file better.
+    split config into config settings and config mappings.
+  refactor do_tile_import to not fall out of such a big if.
+  replace tkinter with pygame everywhere.
+  
 atlas.py:
-  make a scrolling surface list prompt.
   PaddingDescription(all=...)
-  allow target directory to be specified by an argument.
-  import utilities.
   interactive mode:
-    Add keyboard shortcuts from above design.
+    Add keyboard shortcuts from above design:
+      [m] move
     make newline acceptable in any text.
     add info to tile show feature.
   in tile name prompt, make rules for whether or not a tile name will be accepted injectable.
   give tile name prompt a prompt_definition makeover.
   
+move color shelf into a data folder.
 use hytale stock translations of materials in translated names of breeze blocks.
 make ${set} more regular
 don't use ${set} for families that shouldn't have a set.
@@ -118,14 +132,6 @@ texture generation:
 
 factor language out of generate.py.
 
-atlas.py health:
-  make saving of config file better.
-    split config into config settings and config mappings.
-  refactor do_tile_import to not fall out of such a big if.
-  replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
-  add procedure tests.
-  replace tkinter with pygame everywhere.
-  fix tile_name_to_path only being used in some places.
   
 add rename detection to atlas.py.
 make a model variants system.
@@ -240,3 +246,5 @@ factor parsing out of generate.py.
 atlas.py interactive mode:
   make tooltip adapt to which keys are valid by looking up key descriptions.
   padding around text.
+atlas.py:
+  make a scrolling surface list prompt.
