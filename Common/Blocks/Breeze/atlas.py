@@ -335,18 +335,23 @@ def pil_image_to_surface(pil_image):
   assert isinstance(pil_image, Image.Image)
   return pygame.image.fromstring(pil_image.tobytes(), pil_image.size, pil_image.mode)
 
-def join_surfaces_vertically(surfaces, background_color):
-  # raise NotImplementedError("add margins")
+class PaddingDescription:
+  def __init__(self, *, top, right, bottom, left):
+    assert all(isinstance(item, int) and item >= 0 for item in (top, right, bottom, left))
+    self.top, self.right, self.bottom, self.left = top, right, bottom, left
+
+def join_surfaces_vertically(surfaces, background_color, padding=PaddingDescription(top=0,right=0,bottom=0,left=0)):
+  
   assert all(isinstance(item, pygame.Surface) for item in surfaces), surfaces
-  width = max(surf.get_width() for surf in surfaces)
-  height = sum(surf.get_height() for surf in surfaces)
+  width = max(surf.get_width() for surf in surfaces) + padding.left + padding.right
+  height = sum(surf.get_height() for surf in surfaces) + padding.top + padding.bottom
   newSurf = pygame.Surface((width, height))
   newSurf.fill(background_color)
-  y = 0
+  y = padding.top
   for surf in surfaces:
-    newSurf.blit(surf, (0, y))
+    newSurf.blit(surf, (padding.left, y))
     y += surf.get_height()
-  assert y == newSurf.get_height()
+  assert y + padding.bottom == newSurf.get_height()
   return newSurf
   
 class AtlasPromptResponse:
@@ -371,6 +376,8 @@ class AtlasPromptDefinition(pydantic.BaseModel):
 
 NEWLINE = "\n" # because you can't use a backslash inside the expression of an f-string.
 
+TOOLTIP_PADDING = PaddingDescription(top=6,right=6,bottom=6,left=6)
+
 def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_image: Image.Image, _font=[]) -> AtlasPromptResponse:
   # this method should never do anything except display a prompt and return the user's choice of action. It should not perform that action.
   assert isinstance(prompt_definition.tile_preview_image, Image.Image)
@@ -387,7 +394,6 @@ def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_
   tilePreviewSurf = pil_image_to_surface(prompt_definition.tile_preview_image)
   
   while True:
-    
     
     screen.fill(WINDOW_BACKGROUND_COLOR)
     screen.blit(atlasSurf, (0,0))
@@ -412,7 +418,7 @@ def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_
       hoveredTileDisplayName = CONFIG.coordinates_to_names.get(hoveredTileCoord, default="empty")
       tooltipText = f"{hoveredTileDisplayName}\n\n{NEWLINE.join(prompt_definition.key_descriptions[keyCode] for keyCode in itertools.chain(prompt_definition.acceptable_keys['coordinate_required'] if hoveredTileCoord is not None else [], prompt_definition.acceptable_keys['link_required'] if hoveredTileName is not None else []))}"
       tooltipLineSurfs = [font.render(text=tooltipTextLine, fgcolor=WINDOW_TEXT_COLOR, bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tooltipTextLine in tooltipText.split("\n")]
-      tooltipSurf = join_surfaces_vertically(tooltipLineSurfs, WINDOW_BACKGROUND_COLOR)
+      tooltipSurf = join_surfaces_vertically(tooltipLineSurfs, WINDOW_BACKGROUND_COLOR, padding=TOOLTIP_PADDING)
       # blit the tooltip a bit below the pointer:
       # TODO break out
       tooltipSurfSize = tooltipSurf.get_size()
@@ -454,6 +460,7 @@ def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_
 
 
 def prompt_user_for_a_free_coordinate(tile_image, tile_name, atlas_image) -> AtlasPromptResponse:
+  raise NotImplementedError("this usage of AtlasPromptDefinition is out of date.")
   result = atlas_interactive_prompt(prompt_definition=AtlasPromptDefinition(
     tile_preview_image=tile_image,
     tile_preview_top_text="choose a coordinate for this new tile",

@@ -106,7 +106,6 @@ atlas.py:
     add info to tile show feature.
   in tile name prompt, make rules for whether or not a tile name will be accepted injectable.
   give tile name prompt a prompt_definition makeover.
-  padding around text.
   
 use hytale stock translations of materials in translated names of breeze blocks.
 make ${set} more regular
@@ -211,7 +210,7 @@ texture issues:
   back of G2x2F2pB4pL2pHead. - overlap fixed, uv fixed
   back of G2x2T2pHead. - fixed overlap, no uv issues.
 fixed back uv of dice
-fixed all sides of G1x1T4pHead. coiuld be simplified.
+fixed all sides of G1x1T4pHead. could be simplified.
 fixed all side uvs on G2x2F2pB4pL2pHead. could be simplified.
 fixed back UVs on G4x4T1pVoid
 fix all side texture directions on all models, except for those which remain sideways but still look correct.
@@ -238,3 +237,4 @@ png optimization:
 factor parsing out of generate.py.
 atlas.py interactive mode:
   make tooltip adapt to which keys are valid by looking up key descriptions.
+  padding around text.
