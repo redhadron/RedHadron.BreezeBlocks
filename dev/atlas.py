@@ -22,7 +22,7 @@ import pydantic
 from Affixes import remove_suffix, remove_prefix, bisect_at_infix
 from Utilities import validate_int_pair_tuple, nand, at_most_one
 from Vectors import int_vec_add, int_vec_parallel_multiply, int_vec_all_components_are_less, int_vec_all_components_are_lessequal, int_vec_scale_by
-from Graphics import pil_image_to_surface, PaddingDescription, join_surfaces_vertically, make_externally_outlined_copy
+from Graphics import pil_image_to_surface, PaddingDescription, join_surfaces_vertically, make_externally_outlined_copy, apply_haze
 
 """
 todo:
@@ -453,93 +453,126 @@ def pygame_wait_for_any_key():
       if event.type == pygame.MOUSEBUTTONDOWN:
         runEventLoop = False
 
+def get_preview_pil_image_of_cell(atlas_image, coordinate):
+  # contains duplicate code of crop_atlas...
+  validate_int_pair_tuple(coordinate)
+  assert isinstance(atlas_image, Image.Image)
+  return make_tile_preview_image(atlas_image.crop(cell_coordinate_to_pillow_rect(coordinate)))
+  
+def get_preview_surface_of_cell(atlas_image, coordinate):
+  validate_int_pair_tuple(coordinate)
+  assert isinstance(atlas_image, Image.Image)
+  return pil_image_to_surface(get_preview_pil_image_of_cell(atlas_image, coordinate))
+
 
 def run_interactive_management_mode() -> None:
+  
   blankPreviewImage = Image.new("RGB", size=(64,1))
+  mainPromptDefinition = AtlasPromptDefinition(
+    tile_preview_image=blankPreviewImage,
+    tile_preview_top_text="Welcome to atlas.py!",
+    tile_preview_bottom_text="Hover over a tile in the atlas for more options.",
+    acceptable_keys={"no_requirements":[ord("q"), pygame.K_RETURN],"coordinate_required":[ord("s"), pygame.K_BACKSPACE],"link_required":[ord("u"), ord("r"), ord("i"), ord("e"), pygame.K_DELETE], "coordinate_required_link_forbidden":[ord("l")]},
+    clicks_are_acceptable=False,
+    key_descriptions={
+      ord("s"): "[s] show",
+      ord("i"): "[i] import",
+      ord("e"): "[e] export",
+      ord("r"): "[r] rename",
+      ord("l"): "[l] link",
+      ord("u"): "[u] unlink",
+      pygame.K_BACKSPACE: "[backspace] clear cell",
+      pygame.K_DELETE: "[delete] delete tile file",
+      pygame.K_RETURN: "[enter] save and quit",
+      ord("q"):"[q] quit without saving",
+    },
+    static_instructions="[enter] save and exit\n[q] quit without saving",
+  )
+  
+  def manage_link(coordinate):
+    tileNamesForPrompt = find_tile_names()
+    surfaceSelectionResponse = scrolling_surface_list_selection_prompt([FONT.render(text=tileName, fgcolor=(WINDOW_FAINT_TEXT_COLOR if tileName in CONFIG.coordinates_to_names.inverse else WINDOW_TEXT_COLOR), bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tileName in tileNamesForPrompt])
+    if isinstance(surfaceSelectionResponse, int):
+      chosenName = tileNamesForPrompt[surfaceSelectionResponse]
+      CONFIG.coordinates_to_names[coordinate] = chosenName
+    else:
+      assert surfaceSelectionResponse is None
+      # do nothing (cancel), because the user did not select a name.
+  
+  def manage_unlink(coordinate):    
+    print(f"removing link from {coordinate} to {CONFIG.coordinates_to_names[coordinate]!r}")
+    del CONFIG.coordinates_to_names[coordinate]
+  
+  def manage_delete_tile_file(coordinate):
+    pathToRemove = TILE_FOLDER_PATH + SEP + CONFIG.coordinates_to_names[coordinate]
+    if os.path.exists(pathToRemove):
+      print(f"deleting tile file {pathToRemove}")
+      os.remove(pathToRemove)
+    else:
+      print(f"cannot remove tile file {pathToRemove} because it does not exist")
+      
+  def manage_clear_cell(coordinate):
+    startX, startY, stopX, stopY = cell_coordinate_to_pillow_rect(coordinate)
+    for y in range(startY, stopY):
+      for x in range(startX, stopX):
+        # assert ATLAS_IMAGE_CREATION_FILL_COLOR == ATLAS_IMAGE_BLANK_COLOR, "update for checkerboard??"
+        atlasImage.putpixel((x,y), ATLAS_IMAGE_CREATION_FILL_COLOR)
+        
+  def manage_rename(atlas_image, coordinate):
+    assert isinstance(atlas_image, Image.Image)
+    validate_int_pair_tuple(coordinate)
+    pathToRename = TILE_FOLDER_PATH + SEP + CONFIG.coordinates_to_names[coordinate]
+    tilePromptResponse = prompt_user_for_tile_name(get_preview_pil_image_of_cell(atlas_image, coordinate), enable_skip_button=False)
+    assert isinstance(tilePromptResponse, TilePromptResponse)
+    newName = None
+    if isinstance(tilePromptResponse, TilePromptSubmission):
+      newName = tilePromptResponse.name
+    elif isinstance(tilePromptResponse, TilePromptExit):
+      print("exiting because of tile prompt choice to exit")
+      exit(EXIT_CODES["TILE_PROMPT_EXIT_CHOICE"])
+    else:
+      raise ValueError(tilePromptResponse)
+    newPath = TILE_FOLDER_PATH + SEP + newName
+    assert newName not in CONFIG.coordinates_to_names.values()
+    assert not os.path.exists(newPath)
+    if os.path.exists(pathToRename):
+      os.rename(pathToRename, newPath)
+    del CONFIG.coordinates_to_names[coordinate]
+    CONFIG.coordinates_to_names[coordinate] = newName
+  
+  def manage_show(atlas_image, coordinate):
+    assert isinstance(atlas_image, Image.Image)
+    validate_int_pair_tuple(coordinate)
+    screen = pygame.display.get_surface()
+    apply_haze(screen)
+    screen.blit(get_preview_surface_of_cell(atlas_image, coordinate), dest=(0, 0))
+    pygame.display.flip()
+    pygame_wait_for_any_key()
+  
   with Image.open(ATLAS_IMAGE_PATH) as atlasImage:
     while True:
       
-      response = atlas_interactive_prompt(prompt_definition=AtlasPromptDefinition(
-        tile_preview_image=blankPreviewImage,
-        tile_preview_top_text="Welcome to atlas.py!",
-        tile_preview_bottom_text="Hover over a tile in the atlas for more options.",
-        acceptable_keys={"no_requirements":[ord("q"), pygame.K_RETURN],"coordinate_required":[ord("s"), pygame.K_BACKSPACE],"link_required":[ord("u"), ord("r"), ord("i"), ord("e"), pygame.K_DELETE], "coordinate_required_link_forbidden":[ord("l")]},
-        clicks_are_acceptable=False,
-        key_descriptions={
-          ord("s"): "[s] show",
-          ord("i"): "[i] import",
-          ord("e"): "[e] export",
-          ord("r"): "[r] rename",
-          ord("l"): "[l] link",
-          ord("u"): "[u] unlink",
-          pygame.K_BACKSPACE: "[backspace] clear cell",
-          pygame.K_DELETE: "[delete] delete tile file",
-          pygame.K_RETURN: "[enter] save and quit",
-          ord("q"):"[q] quit without saving",
-        },
-        static_instructions="[enter] save and exit\n[q] quit without saving",
-      ), atlas_image=atlasImage)
+      response = atlas_interactive_prompt(prompt_definition=mainPromptDefinition, atlas_image=atlasImage)
       assert isinstance(response, AtlasPromptResponse)
       
       if isinstance(response, AtlasPromptSubmission):
-        tilePreviewPilImage = None if response.coordinate is None else make_tile_preview_image(atlasImage.crop(cell_coordinate_to_pillow_rect(response.coordinate))) # used by multiple cases
         if response.event.type == pygame.KEYDOWN:
           if response.event.key == ord("l"):
-            tileNamesForPrompt = find_tile_names()
-            surfaceSelectionResponse = scrolling_surface_list_selection_prompt([FONT.render(text=tileName, fgcolor=(WINDOW_FAINT_TEXT_COLOR if tileName in CONFIG.coordinates_to_names.inverse else WINDOW_TEXT_COLOR), bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tileName in tileNamesForPrompt])
-            if isinstance(surfaceSelectionResponse, int):
-              chosenName = tileNamesForPrompt[surfaceSelectionResponse]
-              CONFIG.coordinates_to_names[response.coordinate] = chosenName
-            else:
-              assert surfaceSelectionResponse is None
-              # do nothing (cancel), because the user did not select a name.
+            manage_link(response.coordinate)
           elif response.event.key == ord("u"):
-            print(f"removing link from {response.coordinate} to {CONFIG.coordinates_to_names[response.coordinate]!r}")
-            del CONFIG.coordinates_to_names[response.coordinate]
+            manage_unlink(response.coordinate)
           elif response.event.key == pygame.K_DELETE:
-            pathToRemove = TILE_FOLDER_PATH + SEP + CONFIG.coordinates_to_names[response.coordinate]
-            if os.path.exists(pathToRemove):
-              print(f"deleting tile file {pathToRemove}")
-              os.remove(pathToRemove)
-            else:
-              print(f"cannot remove tile file {pathToRemove} because it does not exist")
+            manage_delete_tile_file(response.coordinate)
           elif response.event.key == pygame.K_BACKSPACE:
-            startX, startY, stopX, stopY = cell_coordinate_to_pillow_rect(response.coordinate)
-            for y in range(startY, stopY):
-              for x in range(startX, stopX):
-                # assert ATLAS_IMAGE_CREATION_FILL_COLOR == ATLAS_IMAGE_BLANK_COLOR, "update for checkerboard??"
-                atlasImage.putpixel((x,y), ATLAS_IMAGE_CREATION_FILL_COLOR)
+            manage_clear_cell(response.coordinate)
           elif response.event.key == ord("r"):
-            pathToRename = TILE_FOLDER_PATH + SEP + CONFIG.coordinates_to_names[response.coordinate]
-            tilePromptResponse = prompt_user_for_tile_name(tilePreviewPilImage, enable_skip_button=False)
-            assert isinstance(tilePromptResponse, TilePromptResponse)
-            newName = None # absolutely must not carry from previous iteration
-            if isinstance(tilePromptResponse, TilePromptSubmission):
-              newName = tilePromptResponse.name
-            elif isinstance(tilePromptResponse, TilePromptExit):
-              print("exiting because of tile prompt choice to exit")
-              exit(EXIT_CODES["TILE_PROMPT_EXIT_CHOICE"])
-            else:
-              raise ValueError(tilePromptResponse)
-            newPath = TILE_FOLDER_PATH + SEP + newName
-            assert newName not in CONFIG.coordinates_to_names.values()
-            assert not os.path.exists(newPath)
-            if os.path.exists(pathToRename):
-              os.rename(pathToRename, newPath)
-            del CONFIG.coordinates_to_names[response.coordinate]
-            CONFIG.coordinates_to_names[response.coordinate] = newName
+            manage_rename(atlasImage, response.coordinate)
           elif response.event.key == ord("s"):
-            
-            screen = pygame.display.get_surface()
-            apply_haze(screen)      
-            tilePreviewSurf = pil_image_to_surface(tilePreviewPilImage)
-            screen.blit(tilePreviewSurf, dest=(0, 0))
-            pygame.display.flip()
-            pygame_wait_for_any_key()
+            manage_show(atlasImage, response.coordinate)
           elif response.event.key == ord("i"):
-            import_tile_with_coordinate(response.coordinate, atlasImage)
+            import_tile_with_coordinate(atlasImage, response.coordinate)
           elif response.event.key == ord("e"):
-            export_tile_with_coordinate(response.coordinate, atlasImage)
+            export_tile_with_coordinate(atlasImage, response.coordinate)
           elif response.event.key == pygame.K_RETURN:
             print("finished with interactive management mode")
             atlasImage.save(ATLAS_IMAGE_PATH)
@@ -577,10 +610,12 @@ def find_tile_names():
 def tile_name_to_path(tile_name):
   return TILE_FOLDER_PATH + SEP + tile_name
   
-def import_tile_with_coordinate(cell_coordinate, destination_atlas_pil_image) -> None:
-  return import_tile_with_name(CONFIG.coordinates_to_names[cell_coordinate], destination_atlas_pil_image)
+def import_tile_with_coordinate(destination_atlas_pil_image, cell_coordinate) -> None:
+  validate_int_pair_tuple(cell_coordinate)
+  assert isinstance(destination_atlas_pil_image, Image.Image)
+  return import_tile_with_name(destination_atlas_pil_image, CONFIG.coordinates_to_names[cell_coordinate])
 
-def import_tile_with_name(tile_name, destination_atlas_pil_image) -> None:
+def import_tile_with_name(destination_atlas_pil_image, tile_name) -> None:
   assert isinstance(tile_name, str)
   assert isinstance(destination_atlas_pil_image, Image.Image)
   assert tile_name in CONFIG.coordinates_to_names.inverse
@@ -601,11 +636,14 @@ def import_tile_with_name(tile_name, destination_atlas_pil_image) -> None:
     destination_atlas_pil_image.paste(tileImg, intersection_coordinate_to_pixel_coordinate(destinationCellCoordinate))
     
 def crop_atlas_image_to_tile_image(atlas_image: Image.Image, coordinate: tuple[int]) -> Image.Image:
+  assert isinstance(atlas_image, Image.Image)
+  validate_int_pair_tuple(coordinate)
   locationInAtlasImage = cell_coordinate_to_pillow_rect(coordinate)
   tileImg = atlas_image.crop(locationInAtlasImage)
   return tileImg
 
-def export_tile_with_coordinate(coordinate, *, atlas_image: Image.Image):
+def export_tile_with_coordinate(atlas_image: Image.Image, coordinate: tuple[int]) -> None:
+  assert isinstance(atlas_image, Image.Image)
   validate_int_pair_tuple(coordinate)
   tileImgPath = tile_name_to_path(CONFIG.coordinates_to_names[coordinate])
   tileImg = crop_atlas_image_to_tile_image(atlas_image, coordinate)
@@ -655,7 +693,7 @@ def do_tile_import(*, atlas_image: Image.Image, discover: bool, organize: bool):
       print(f"warning: cannot import tile {registeredTileName!r} to cell {registeredTileCoord} because it does not exist as a file.")
   for tileName in availableFileTileNames:
     if tileName in CONFIG.coordinates_to_names.inverse:
-      import_tile_with_name(tileName, atlas_image)
+      import_tile_with_name(atlas_image, tileName)
     else:
       newlyDiscoveredNames.append(tileName)
   atlas_image.save(ATLAS_IMAGE_PATH) # this is a good time to save progress. config has not changed and doesn't need to be saved.
@@ -685,7 +723,7 @@ def do_tile_import(*, atlas_image: Image.Image, discover: bool, organize: bool):
         assert False, "unreachable"
       validate_int_pair_tuple(placementCoordinate)
       CONFIG.coordinates_to_names.inverse[tileName] = placementCoordinate
-      import_tile_with_name(tileName, atlasImg)
+      import_tile_with_name(atlas_image, tileName)
     atlas_image.save(ATLAS_IMAGE_PATH)
     # TODO put transport in charge of whether and when atlas config gets saved. Atlas config and atlas image should probably be saved at the same time.
 
