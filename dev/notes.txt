@@ -95,13 +95,14 @@ atlas.py: atlas interactive prompt:
 
 TODO:
 
+manifest.json copying
 
 atlas.py health:
+  fix tile_name_to_path only being used in some places.
+  fix partial duplication of code for cropping atlas down to a tile.
   make input critic class that provides critiques to user input before it is accepted.
-  refactor interactive management mode
   replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
   add procedure tests.
-  fix tile_name_to_path only being used in some places.
   make saving of config file better.
     split config into config settings and config mappings.
   refactor do_tile_import to not fall out of such a big if.
@@ -250,3 +251,5 @@ atlas.py:
   import utilities.
   shorten file:
     make Graphics.py.
+  
+  refactor interactive management mode

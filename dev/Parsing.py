@@ -1,8 +1,8 @@
 
 
 # project
-from Utilities import remove_prefix, assert_equals, assert_isinstance
-
+from Utilities import assert_equals, assert_isinstance
+from Affixes import remove_prefix
 
 
 # ----- helpers for name parsing -----

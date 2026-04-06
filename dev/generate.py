@@ -19,6 +19,7 @@ import ProcessPooling
 from Affixes import remove_suffix, remove_prefix, shorten_suffix
 from Utilities import assert_equals, int_divide_exact
 import Parsing
+from colors import COLORS_SHELF_PATH
 
 BAD_EXIT_CODE = 1
 
@@ -528,7 +529,7 @@ async def generate_assets():
 
   codecStrings = {"en-US": "utf-8", "pt-BR": "utf-8-sig", "uk-UA": "utf-8", "ru-RU": "utf-8"}
   languageFiles = {langCode: codecs.open(GET_LANGUAGE_FILE_DESTINATION_PATH(langCode), "w", codecStrings[langCode]) for langCode in BREEZE_BLOCKS_LANGUAGE_CODES}
-  colorsShelf = shelve.open("colors.shelf")
+  colorsShelf = shelve.open(COLORS_SHELF_PATH)
 
   for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if name.endswith(".blockymodel")):
     shutil.copy(MODEL_FOLDER_SOURCE_PATH+SEP+modelFileName, MODEL_FOLDER_DESTINATION_PATH+SEP+modelFileName)
