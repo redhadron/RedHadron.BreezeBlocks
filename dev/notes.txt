@@ -85,7 +85,7 @@ atlas.py: atlas interactive prompt:
   while hovering over cell with or without link:
     [e] export now / [i] import now // TODO: if there is no link, prompt whether user really wants to create one, then prompt for file name.
     [backspace] wipe // delete the contents of this cell.
-    [m] move //moves cell contents and link if present. cannot move to cell that already has a link.
+    [m] move //moves cell contents and link if present. can perform a swap.
   while hovering over cell without link:
     [l] link //uses a new menu that allows user to see which tile files are part of links and click an unlinked file.
   at any time:
@@ -98,7 +98,7 @@ TODO:
 manifest.json copying
 
 atlas.py health:
-  fix tile_name_to_path only being used in some places.
+  FIX BUG: atlas config file might not reflect change after interactive mode tile rename if user quits without saving, But file is still renamed.
   fix partial duplication of code for cropping atlas down to a tile.
   make input critic class that provides critiques to user input before it is accepted.
   replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
@@ -106,43 +106,42 @@ atlas.py health:
   make saving of config file better.
     split config into config settings and config mappings.
   refactor do_tile_import to not fall out of such a big if.
-  replace tkinter with pygame everywhere.
+  fix tile_name_to_path only being used in some places.
   
 atlas.py:
   allow X button press from within scrolling list prompt.
   add pageUp and pageDown to scrolling list prompt.
   PaddingDescription(all=...)
-  interactive mode:
-    Add keyboard shortcuts from above design:
-      [m] move
-    make newline acceptable in any text.
-    add info to tile show feature.
+  Add keyboard shortcuts from above design:
+    [m] move
+  make newline acceptable in any text.
+  add info to tile show feature. diff cell vs tile file.
+  divide tooltip key descriptions into categories based on whether or not they deal with the link.
   in tile name prompt, make rules for whether or not a tile name will be accepted injectable.
   give tile name prompt a prompt_definition makeover.
+  replace tkinter with pygame everywhere.
   
-move color shelf into a data folder.
-use hytale stock translations of materials in translated names of breeze blocks.
 make ${set} more regular
 don't use ${set} for families that shouldn't have a set.
 texture generation:
   add a smooth stone brick texture simplifier.
   add a front texture generator that uses the thumbnail mask to create shading.
 
-factor language out of generate.py.
 
-  
-add rename detection to atlas.py.
 make a model variants system.
   idea: follow the depth information (Db1000) with "_WoodOnly" or "_StoneOnly" so that suffix must be removed and then generate.py continues as normal.
 language:
+  switch to better translator.
+  use hytale stock translations of materials in translated names of breeze blocks. assets/languages/(language code)/server.lang
   translate to every language in the hytale multi-language bundle mod.
   "cobogo" in Portuguese.
   synonym fuzzing - if any word in the pool can make a round-trip translation to any other word in the pool, use the foreign word that is the step between those two words.
+  factor language out of generate.py.
 make option to rebuild destination mod.
 add a command to atlas.py to predict which tiles would be changed upon export or import, and optionally, to show the changes.
 add terracotta back:
   don't add clay until hytale's method of obtaining hardened clay is decided.
-make string library, add length assertions back to remove_prefix etc.
+add length assertions back to remove_prefix etc.
 add all models from designs canvas.
 improve texture shading on all models.
 add THIN cloth breeze blocks (basically lace/drapes with holes)
@@ -167,6 +166,7 @@ shelved:
 add command line args to renamer.
 what is creative build light made out of?
 create JSON recipe input ItemID control.
+add rename detection to atlas.py. (use interactive mode instead.)
 
 
 cancelled:
@@ -253,3 +253,4 @@ atlas.py:
     make Graphics.py.
   
   refactor interactive management mode
+move color shelf into a data folder.

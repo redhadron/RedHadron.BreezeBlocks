@@ -131,10 +131,7 @@ CONFIG = ConfigManager()
 def get_atlas_image_size():
   # TODO add builtin check that image is the same size as configured size?
   return int_vec_parallel_multiply(CONFIG.tile_size, CONFIG.atlas_size)
-  
-def intersection_coordinate_to_pixel_coordinate(intersection_address):
-  return int_vec_parallel_multiply(CONFIG.tile_size, intersection_address)
-  
+
 def get_a_free_coordinate():
   for y in range(CONFIG.atlas_size[1]):
     for x in range(CONFIG.atlas_size[0]):
@@ -142,17 +139,13 @@ def get_a_free_coordinate():
         return (x,y)
   assert False, "out of room"
 
-def cell_coordinate_is_in_bounds(coordinate):
-  validate_int_pair_tuple(coordinate)
-  return 0 <= coordinate[0] < CONFIG.atlas_size[0] and 0 <= coordinate[1] < CONFIG.atlas_size[1]
-
-def cell_coordinate_to_pillow_rect(coordinate):
-  validate_int_pair_tuple(coordinate)
-  x, y = coordinate
-  return (*intersection_coordinate_to_pixel_coordinate((x,y)), *intersection_coordinate_to_pixel_coordinate((x+1,y+1)))
 
 
 
+
+
+
+# ----- file handling -----
 
 def create_atlas_image():
   if os.path.exists(ATLAS_IMAGE_PATH):
@@ -183,8 +176,35 @@ def delete_atlas_config():
 
 
 
+# ----- cell math -----
 
-def make_tile_preview_image(tile_image):
+def intersection_coordinate_to_pixel_coordinate(intersection_address):
+  return int_vec_parallel_multiply(CONFIG.tile_size, intersection_address)
+  
+def cell_coordinate_is_in_bounds(coordinate):
+  validate_int_pair_tuple(coordinate)
+  return 0 <= coordinate[0] < CONFIG.atlas_size[0] and 0 <= coordinate[1] < CONFIG.atlas_size[1]
+
+def cell_coordinate_to_pillow_rect(coordinate):
+  validate_int_pair_tuple(coordinate)
+  x, y = coordinate
+  return (*intersection_coordinate_to_pixel_coordinate((x,y)), *intersection_coordinate_to_pixel_coordinate((x+1,y+1)))
+
+
+
+
+
+
+
+
+
+
+# ----- methods for working with tile images -----
+
+def make_tile_preview_image(tile_image: Image.Image) -> Image.Image:
+  """
+  a tile preview image is a much larger version of a tile image, with a pixel grid drawn over it.
+  """
   previewSize = int_vec_scale_by(CONFIG.tile_size, TILE_PREVIEW_SCALE)
   modifiedTileImage = tile_image.resize(size=previewSize, resample=Image.Resampling.NEAREST)
   imageDrawer = ImageDraw.Draw(modifiedTileImage) 
@@ -193,6 +213,87 @@ def make_tile_preview_image(tile_image):
   for x in range(CONFIG.tile_size[0]):
     imageDrawer.line((x*TILE_PREVIEW_SCALE, 0, x*TILE_PREVIEW_SCALE, modifiedTileImage.size[1]), PREVIEW_GRID_LINE_COLOR)
   return modifiedTileImage
+  
+def get_preview_pil_image_of_cell(atlas_image, coordinate):
+  # contains duplicate code of crop_atlas...
+  validate_int_pair_tuple(coordinate)
+  assert isinstance(atlas_image, Image.Image)
+  return make_tile_preview_image(atlas_image.crop(cell_coordinate_to_pillow_rect(coordinate)))
+  
+def get_preview_surface_of_cell(atlas_image, coordinate):
+  validate_int_pair_tuple(coordinate)
+  assert isinstance(atlas_image, Image.Image)
+  return pil_image_to_surface(get_preview_pil_image_of_cell(atlas_image, coordinate))
+
+def tile_image_is_blank(tile_image) -> bool:
+  # assert tile_image.mode == "RGB", tile_image.mode
+  assert tile_image.size == CONFIG.tile_size
+  for pixelY in range(tile_image.size[1]):
+    for pixelX in range(tile_image.size[0]):
+      if tile_image.getpixel((pixelX,pixelY)) != ATLAS_IMAGE_BLANK_COLOR:
+        return False
+  return True
+  
+def find_tile_names():
+  return [item for item in os.listdir(TILE_FOLDER_PATH) if item.endswith(".png") and item != ATLAS_IMAGE_NAME]
+
+def tile_name_to_path(tile_name):
+  return TILE_FOLDER_PATH + SEP + tile_name
+  
+def crop_atlas_image_to_tile_image(atlas_image: Image.Image, coordinate: tuple[int]) -> Image.Image:
+  assert isinstance(atlas_image, Image.Image)
+  validate_int_pair_tuple(coordinate)
+  locationInAtlasImage = cell_coordinate_to_pillow_rect(coordinate)
+  tileImg = atlas_image.crop(locationInAtlasImage)
+  return tileImg
+  
+  
+  
+# ----- methods to import and export individual tiles -----
+  
+def import_tile_with_coordinate(destination_atlas_pil_image, cell_coordinate) -> None:
+  validate_int_pair_tuple(cell_coordinate)
+  assert isinstance(destination_atlas_pil_image, Image.Image)
+  return import_tile_with_name(destination_atlas_pil_image, CONFIG.coordinates_to_names[cell_coordinate])
+
+def import_tile_with_name(destination_atlas_pil_image, tile_name) -> None:
+  assert isinstance(tile_name, str)
+  assert isinstance(destination_atlas_pil_image, Image.Image)
+  assert tile_name in CONFIG.coordinates_to_names.inverse
+  tilePath = tile_name_to_path(tile_name)
+  if not os.path.exists(tilePath):
+    raise FileNotFoundError(f"Tile with path {tilePath} does not exist and cannot be imported at the configured location. import_tile_with_name should only be called for names that are known to exist as files.")
+  with Image.open(tilePath) as tileImg:
+    if tileImg.size != CONFIG.tile_size:
+      print(f"WARNING: Tile with name {tile_name} will not be imported because it is the wrong size: {tileImg.size}")
+      return
+    destinationCellCoordinate = CONFIG.coordinates_to_names.inverse[tile_name]
+    if not int_vec_all_components_are_less(destinationCellCoordinate, CONFIG.atlas_size):
+      print(f"WARNING: Tile with name {tile_name} will not be imported to the cell at {destinationCellCoordinate} because it is outside of the atlas according to the atlas config size of {config_data['atlas_size']}.")
+      return
+    if not int_vec_all_components_are_lessequal(intersection_coordinate_to_pixel_coordinate(int_vec_add(destinationCellCoordinate, (1,1))), destination_atlas_pil_image.size):
+      print(f"WARNING: Tile with name {tile_name} will not be imported to the cell at {destinationCellCoordinate} because it would start or extend outside of the atlas image.")
+      return
+    destination_atlas_pil_image.paste(tileImg, intersection_coordinate_to_pixel_coordinate(destinationCellCoordinate))
+    
+def export_tile_with_coordinate(atlas_image: Image.Image, coordinate: tuple[int]) -> None:
+  assert isinstance(atlas_image, Image.Image)
+  validate_int_pair_tuple(coordinate)
+  tileImgPath = tile_name_to_path(CONFIG.coordinates_to_names[coordinate])
+  tileImg = crop_atlas_image_to_tile_image(atlas_image, coordinate)
+      
+  # \/ refuse to overwrite tile of wrong size
+  if os.path.exists(tileImgPath):
+    with Image.open(tileImgPath) as oldTileImg:
+      if oldTileImg.size != tileImg.size:
+        raise FileExistsError("the tile will not be overwritten because it is of a different size.")
+        
+  tileImg.save(tileImgPath)
+
+
+
+
+
 
 
 class TilePromptResponse:
@@ -206,6 +307,7 @@ def TilePromptSkip(TilePromptResponse):
 def TilePromptExit(TilePromptResponse):
   def __init__(self):
     pass
+    
 def prompt_user_for_tile_name(tile_image, enable_skip_button=True) -> TilePromptResponse:
   assert isinstance(tile_image, Image.Image) # tile_image must be a PIL Image
   window = tkinter.Tk()
@@ -440,30 +542,21 @@ def prompt_user_for_a_free_coordinate(tile_image, tile_name, atlas_image) -> Atl
   return result
 
 
+
+
+
 def pygame_wait_for_any_key():
-  runEventLoop = True
-  while runEventLoop:
-    time.sleep(1.0/FPS)
-    for event in pygame.event.get():
-      if event.type == pygame.QUIT:
-        print("exiting from pygame quit")
-        exit(EXIT_CODES["PYGAME_QUIT"])
-      if event.type == pygame.KEYDOWN:
-        runEventLoop = False
-      if event.type == pygame.MOUSEBUTTONDOWN:
-        runEventLoop = False
-
-def get_preview_pil_image_of_cell(atlas_image, coordinate):
-  # contains duplicate code of crop_atlas...
-  validate_int_pair_tuple(coordinate)
-  assert isinstance(atlas_image, Image.Image)
-  return make_tile_preview_image(atlas_image.crop(cell_coordinate_to_pillow_rect(coordinate)))
-  
-def get_preview_surface_of_cell(atlas_image, coordinate):
-  validate_int_pair_tuple(coordinate)
-  assert isinstance(atlas_image, Image.Image)
-  return pil_image_to_surface(get_preview_pil_image_of_cell(atlas_image, coordinate))
-
+    runEventLoop = True
+    while runEventLoop:
+      time.sleep(1.0/FPS)
+      for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+          print("exiting from pygame quit")
+          exit(EXIT_CODES["PYGAME_QUIT"])
+        if event.type == pygame.KEYDOWN:
+          runEventLoop = False
+        if event.type == pygame.MOUSEBUTTONDOWN:
+          runEventLoop = False
 
 def run_interactive_management_mode() -> None:
   
@@ -488,6 +581,7 @@ def run_interactive_management_mode() -> None:
     },
     static_instructions="[enter] save and exit\n[q] quit without saving",
   )
+  
   
   def manage_link(coordinate):
     tileNamesForPrompt = find_tile_names()
@@ -595,66 +689,9 @@ def run_interactive_management_mode() -> None:
 
 
 
-def tile_image_is_blank(tile_image) -> bool:
-  # assert tile_image.mode == "RGB", tile_image.mode
-  assert tile_image.size == CONFIG.tile_size
-  for pixelY in range(tile_image.size[1]):
-    for pixelX in range(tile_image.size[0]):
-      if tile_image.getpixel((pixelX,pixelY)) != ATLAS_IMAGE_BLANK_COLOR:
-        return False
-  return True
-  
-def find_tile_names():
-  return [item for item in os.listdir(TILE_FOLDER_PATH) if item.endswith(".png") and item != ATLAS_IMAGE_NAME]
 
-def tile_name_to_path(tile_name):
-  return TILE_FOLDER_PATH + SEP + tile_name
-  
-def import_tile_with_coordinate(destination_atlas_pil_image, cell_coordinate) -> None:
-  validate_int_pair_tuple(cell_coordinate)
-  assert isinstance(destination_atlas_pil_image, Image.Image)
-  return import_tile_with_name(destination_atlas_pil_image, CONFIG.coordinates_to_names[cell_coordinate])
 
-def import_tile_with_name(destination_atlas_pil_image, tile_name) -> None:
-  assert isinstance(tile_name, str)
-  assert isinstance(destination_atlas_pil_image, Image.Image)
-  assert tile_name in CONFIG.coordinates_to_names.inverse
-  tilePath = tile_name_to_path(tile_name)
-  if not os.path.exists(tilePath):
-    raise FileNotFoundError(f"Tile with path {tilePath} does not exist and cannot be imported at the configured location. import_tile_with_name should only be called for names that are known to exist as files.")
-  with Image.open(tilePath) as tileImg:
-    if tileImg.size != CONFIG.tile_size:
-      print(f"WARNING: Tile with name {tile_name} will not be imported because it is the wrong size: {tileImg.size}")
-      return
-    destinationCellCoordinate = CONFIG.coordinates_to_names.inverse[tile_name]
-    if not int_vec_all_components_are_less(destinationCellCoordinate, CONFIG.atlas_size):
-      print(f"WARNING: Tile with name {tile_name} will not be imported to the cell at {destinationCellCoordinate} because it is outside of the atlas according to the atlas config size of {config_data['atlas_size']}.")
-      return
-    if not int_vec_all_components_are_lessequal(intersection_coordinate_to_pixel_coordinate(int_vec_add(destinationCellCoordinate, (1,1))), destination_atlas_pil_image.size):
-      print(f"WARNING: Tile with name {tile_name} will not be imported to the cell at {destinationCellCoordinate} because it would start or extend outside of the atlas image.")
-      return
-    destination_atlas_pil_image.paste(tileImg, intersection_coordinate_to_pixel_coordinate(destinationCellCoordinate))
-    
-def crop_atlas_image_to_tile_image(atlas_image: Image.Image, coordinate: tuple[int]) -> Image.Image:
-  assert isinstance(atlas_image, Image.Image)
-  validate_int_pair_tuple(coordinate)
-  locationInAtlasImage = cell_coordinate_to_pillow_rect(coordinate)
-  tileImg = atlas_image.crop(locationInAtlasImage)
-  return tileImg
 
-def export_tile_with_coordinate(atlas_image: Image.Image, coordinate: tuple[int]) -> None:
-  assert isinstance(atlas_image, Image.Image)
-  validate_int_pair_tuple(coordinate)
-  tileImgPath = tile_name_to_path(CONFIG.coordinates_to_names[coordinate])
-  tileImg = crop_atlas_image_to_tile_image(atlas_image, coordinate)
-      
-  # \/ refuse to overwrite tile of wrong size
-  if os.path.exists(tileImgPath):
-    with Image.open(tileImgPath) as oldTileImg:
-      if oldTileImg.size != tileImg.size:
-        raise FileExistsError("the tile will not be overwritten because it is of a different size.")
-        
-  tileImg.save(tileImgPath)
 
 def do_tile_export(*, atlas_image: Image.Image, discover: bool, organize: bool):
   if not os.path.exists(ATLAS_IMAGE_PATH):
@@ -663,6 +700,7 @@ def do_tile_export(*, atlas_image: Image.Image, discover: bool, organize: bool):
   for y in range(CONFIG.atlas_size[1]):
     for x in range(CONFIG.atlas_size[0]):
       
+      raise NotImplementedError("something is really wrong here")
       tileImg = crop_atlas_image_to_tile_image()
       if (x,y) not in CONFIG.coordinates_to_names:
         if discover and not tile_image_is_blank(tileImg):
