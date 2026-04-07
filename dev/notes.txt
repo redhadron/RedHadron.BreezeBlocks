@@ -97,9 +97,12 @@ TODO:
 
 manifest.json copying
 
-atlas.py health:
+atlas.py:
   FIX BUG: atlas config file might not reflect change after interactive mode tile rename if user quits without saving, But file is still renamed.
-  fix partial duplication of code for cropping atlas down to a tile.
+    when should anything be saved?
+    it would be okay to save at unintuitive times if there were a notifications area where a message "all changes saved" could appear.
+    
+atlas.py health:
   make input critic class that provides critiques to user input before it is accepted.
   replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
   add procedure tests.
@@ -107,6 +110,7 @@ atlas.py health:
     split config into config settings and config mappings.
   refactor do_tile_import to not fall out of such a big if.
   fix tile_name_to_path only being used in some places.
+  font caching.
   
 atlas.py:
   allow X button press from within scrolling list prompt.
@@ -126,7 +130,6 @@ don't use ${set} for families that shouldn't have a set.
 texture generation:
   add a smooth stone brick texture simplifier.
   add a front texture generator that uses the thumbnail mask to create shading.
-
 
 make a model variants system.
   idea: follow the depth information (Db1000) with "_WoodOnly" or "_StoneOnly" so that suffix must be removed and then generate.py continues as normal.
@@ -251,6 +254,8 @@ atlas.py:
   import utilities.
   shorten file:
     make Graphics.py.
-  
   refactor interactive management mode
 move color shelf into a data folder.
+atlas.py health:
+  fix partial duplication of code for cropping atlas down to a tile.
+  replace validate_int_pair_tuple with int_pair_tuple_is_valid.

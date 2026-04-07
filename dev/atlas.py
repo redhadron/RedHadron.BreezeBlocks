@@ -20,7 +20,7 @@ import pydantic
 
 # project:
 from Affixes import remove_suffix, remove_prefix, bisect_at_infix
-from Utilities import validate_int_pair_tuple, nand, at_most_one
+from Utilities import is_valid_int_pair_tuple, nand, at_most_one
 from Vectors import int_vec_add, int_vec_parallel_multiply, int_vec_all_components_are_less, int_vec_all_components_are_lessequal, int_vec_scale_by
 from Graphics import pil_image_to_surface, PaddingDescription, join_surfaces_vertically, make_externally_outlined_copy, apply_haze
 
@@ -91,7 +91,7 @@ class ConfigManager:
     self.coordinates_to_names = bidict()
     for keyString, value in loadedData["coordinates_to_names"].items():
       key = ast.literal_eval(keyString)
-      validate_int_pair_tuple(key)
+      assert is_valid_int_pair_tuple(key)
       assert key not in self.coordinates_to_names
       # only key duplicates are searched for here, because the bidict itself catches value duplicates.
       self.coordinates_to_names[key] = value
@@ -182,11 +182,11 @@ def intersection_coordinate_to_pixel_coordinate(intersection_address):
   return int_vec_parallel_multiply(CONFIG.tile_size, intersection_address)
   
 def cell_coordinate_is_in_bounds(coordinate):
-  validate_int_pair_tuple(coordinate)
+  assert is_valid_int_pair_tuple(coordinate)
   return 0 <= coordinate[0] < CONFIG.atlas_size[0] and 0 <= coordinate[1] < CONFIG.atlas_size[1]
 
 def cell_coordinate_to_pillow_rect(coordinate):
-  validate_int_pair_tuple(coordinate)
+  assert is_valid_int_pair_tuple(coordinate)
   x, y = coordinate
   return (*intersection_coordinate_to_pixel_coordinate((x,y)), *intersection_coordinate_to_pixel_coordinate((x+1,y+1)))
 
@@ -214,19 +214,23 @@ def make_tile_preview_image(tile_image: Image.Image) -> Image.Image:
     imageDrawer.line((x*TILE_PREVIEW_SCALE, 0, x*TILE_PREVIEW_SCALE, modifiedTileImage.size[1]), PREVIEW_GRID_LINE_COLOR)
   return modifiedTileImage
   
-def get_preview_pil_image_of_cell(atlas_image, coordinate):
-  # contains duplicate code of crop_atlas...
-  validate_int_pair_tuple(coordinate)
+def crop_atlas_image_to_tile_image(atlas_image: Image.Image, coordinate) -> Image.Image:
+  assert is_valid_int_pair_tuple(coordinate)
   assert isinstance(atlas_image, Image.Image)
-  return make_tile_preview_image(atlas_image.crop(cell_coordinate_to_pillow_rect(coordinate)))
+  return atlas_image.crop(cell_coordinate_to_pillow_rect(coordinate))
   
-def get_preview_surface_of_cell(atlas_image, coordinate):
-  validate_int_pair_tuple(coordinate)
+def get_preview_pil_image_of_cell(atlas_image: Image.Image, coordinate) -> Image.Image:
+  assert is_valid_int_pair_tuple(coordinate)
+  assert isinstance(atlas_image, Image.Image)
+  return make_tile_preview_image(crop_atlas_image_to_tile_image(atlas_image, coordinate))
+  
+def get_preview_surface_of_cell(atlas_image: Image.Image, coordinate) -> pygame.Surface:
+  assert is_valid_int_pair_tuple(coordinate)
   assert isinstance(atlas_image, Image.Image)
   return pil_image_to_surface(get_preview_pil_image_of_cell(atlas_image, coordinate))
 
-def tile_image_is_blank(tile_image) -> bool:
-  # assert tile_image.mode == "RGB", tile_image.mode
+def tile_image_is_blank(tile_image: Image.Image) -> bool:
+  assert isinstance(tile_image, Image.Image)
   assert tile_image.size == CONFIG.tile_size
   for pixelY in range(tile_image.size[1]):
     for pixelX in range(tile_image.size[0]):
@@ -240,19 +244,13 @@ def find_tile_names():
 def tile_name_to_path(tile_name):
   return TILE_FOLDER_PATH + SEP + tile_name
   
-def crop_atlas_image_to_tile_image(atlas_image: Image.Image, coordinate: tuple[int]) -> Image.Image:
-  assert isinstance(atlas_image, Image.Image)
-  validate_int_pair_tuple(coordinate)
-  locationInAtlasImage = cell_coordinate_to_pillow_rect(coordinate)
-  tileImg = atlas_image.crop(locationInAtlasImage)
-  return tileImg
   
   
   
 # ----- methods to import and export individual tiles -----
   
 def import_tile_with_coordinate(destination_atlas_pil_image, cell_coordinate) -> None:
-  validate_int_pair_tuple(cell_coordinate)
+  assert is_valid_int_pair_tuple(cell_coordinate)
   assert isinstance(destination_atlas_pil_image, Image.Image)
   return import_tile_with_name(destination_atlas_pil_image, CONFIG.coordinates_to_names[cell_coordinate])
 
@@ -278,7 +276,7 @@ def import_tile_with_name(destination_atlas_pil_image, tile_name) -> None:
     
 def export_tile_with_coordinate(atlas_image: Image.Image, coordinate: tuple[int]) -> None:
   assert isinstance(atlas_image, Image.Image)
-  validate_int_pair_tuple(coordinate)
+  assert is_valid_int_pair_tuple(coordinate)
   tileImgPath = tile_name_to_path(CONFIG.coordinates_to_names[coordinate])
   tileImg = crop_atlas_image_to_tile_image(atlas_image, coordinate)
       
@@ -614,7 +612,7 @@ def run_interactive_management_mode() -> None:
         
   def manage_rename(atlas_image, coordinate):
     assert isinstance(atlas_image, Image.Image)
-    validate_int_pair_tuple(coordinate)
+    assert is_valid_int_pair_tuple(coordinate)
     pathToRename = TILE_FOLDER_PATH + SEP + CONFIG.coordinates_to_names[coordinate]
     tilePromptResponse = prompt_user_for_tile_name(get_preview_pil_image_of_cell(atlas_image, coordinate), enable_skip_button=False)
     assert isinstance(tilePromptResponse, TilePromptResponse)
@@ -636,7 +634,7 @@ def run_interactive_management_mode() -> None:
   
   def manage_show(atlas_image, coordinate):
     assert isinstance(atlas_image, Image.Image)
-    validate_int_pair_tuple(coordinate)
+    assert is_valid_int_pair_tuple(coordinate)
     screen = pygame.display.get_surface()
     apply_haze(screen)
     screen.blit(get_preview_surface_of_cell(atlas_image, coordinate), dest=(0, 0))
@@ -700,8 +698,8 @@ def do_tile_export(*, atlas_image: Image.Image, discover: bool, organize: bool):
   for y in range(CONFIG.atlas_size[1]):
     for x in range(CONFIG.atlas_size[0]):
       
-      raise NotImplementedError("something is really wrong here")
-      tileImg = crop_atlas_image_to_tile_image()
+      raise NotImplementedError("this needs testing")
+      tileImg = crop_atlas_image_to_tile_image(atlas_image, (x,y))
       if (x,y) not in CONFIG.coordinates_to_names:
         if discover and not tile_image_is_blank(tileImg):
           response = prompt_user_for_tile_name(tileImg)
@@ -759,7 +757,7 @@ def do_tile_import(*, atlas_image: Image.Image, discover: bool, organize: bool):
             raise ValueError(promptResult)
       else:
         assert False, "unreachable"
-      validate_int_pair_tuple(placementCoordinate)
+      assert is_valid_int_pair_tuple(placementCoordinate)
       CONFIG.coordinates_to_names.inverse[tileName] = placementCoordinate
       import_tile_with_name(atlas_image, tileName)
     atlas_image.save(ATLAS_IMAGE_PATH)

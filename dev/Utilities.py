@@ -37,8 +37,8 @@ def int_divide_exact(a,b):
   
   
 
-def validate_int_pair_tuple(int_tuple):
-  assert isinstance(int_tuple, tuple) and len(int_tuple) == 2 and all(isinstance(item, int) for item in int_tuple), int_tuple
+def is_valid_int_pair_tuple(int_tuple):
+  return isinstance(int_tuple, tuple) and len(int_tuple) == 2 and all(isinstance(item, int) for item in int_tuple), int_tuple
 
 def nand(a, b):
   return not (a and b)
