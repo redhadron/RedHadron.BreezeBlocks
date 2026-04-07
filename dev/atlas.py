@@ -8,6 +8,7 @@ import tkinter
 import time
 import itertools
 import operator
+import functools
 
 
 # pip:
@@ -21,8 +22,8 @@ import pydantic
 # project:
 from Affixes import remove_suffix, remove_prefix, bisect_at_infix
 from Utilities import is_valid_int_pair_tuple, nand, at_most_one
-from Vectors import int_vec_add, int_vec_parallel_multiply, int_vec_all_components_are_less, int_vec_all_components_are_lessequal, int_vec_scale_by
-from Graphics import pil_image_to_surface, PaddingDescription, join_surfaces_vertically, make_externally_outlined_copy, apply_haze
+from Vectors import int_vec_add, int_vec_subtract, int_vec_divide_by_scalar_exact, int_vec_parallel_multiply, int_vec_all_components_are_less, int_vec_all_components_are_lessequal, int_vec_scale_by
+from Graphics import pil_image_to_surface, surface_to_pil_image, PaddingDescription, join_surfaces_vertically, make_externally_outlined_copy, apply_haze # make_copy_with_shadow
 
 """
 todo:
@@ -375,10 +376,10 @@ def prompt_user_for_tile_name(tile_image, enable_skip_button=True) -> TilePrompt
 
 
 
-
-
-pygame.init() # TODO 
-FONT = pygame.freetype.SysFont(pygame.freetype.get_default_font(), 18, bold=False)
+@functools.cache
+def GET_DEFAULT_FONT():
+  pygame.init()
+  return pygame.freetype.SysFont(pygame.freetype.get_default_font(), 18, bold=False)
 
 def scrolling_surface_list_selection_prompt(surfaces: list[pygame.Surface], display_at_once: int = 9) -> int|None:
   assert display_at_once%2 == 1
@@ -413,7 +414,7 @@ def scrolling_surface_list_selection_prompt(surfaces: list[pygame.Surface], disp
     # TODO make this less stupid /\
     surfaceIndicesToUse = range(topToDisplay, bottomToDisplay+1)
     surfacesToShow = [(make_externally_outlined_copy(surfaces[i], thickness=4, color=HIGHLIGHT_COLOR) if i == head else surfaces[i]) for i in surfaceIndicesToUse]
-    screen.blit(join_surfaces_vertically(surfacesToShow, WINDOW_BACKGROUND_COLOR, padding=PaddingDescription(top=6,right=6,bottom=6,left=6)), (0,0)) # TODO extract a blit_centered method
+    screen.blit(join_surfaces_vertically(surfacesToShow, WINDOW_BACKGROUND_COLOR, padding=PaddingDescription(all_sides=6)), (0,0)) # TODO extract a blit_centered method
     pygame.display.flip()
     time.sleep(1.0/FPS)
   assert False, "unreachable"
@@ -433,16 +434,15 @@ class AtlasPromptExit(AtlasPromptResponse):
 
 class AtlasPromptDefinition(pydantic.BaseModel):
   tile_preview_image: Image.Image
+  pointer_image: None|Image.Image
   tile_preview_top_text: str
   tile_preview_bottom_text: str
-  # alt_instructions: str
   key_descriptions: dict[int, str]
-  # static_instructions: str
   acceptable_keys: dict[str, list[int]]
   clicks_are_acceptable: bool
   model_config = {"arbitrary_types_allowed": True} # this is required by Pydantic to use arbitrary types such as PIL's Image.Image as a type hint
 
-TOOLTIP_PADDING = PaddingDescription(top=6,right=6,bottom=6,left=6)
+TOOLTIP_PADDING = PaddingDescription(all_sides=6)
 
 def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_image: Image.Image) -> AtlasPromptResponse:
   # this method should never do anything except display a prompt and return the user's choice of action. It should not perform that action.
@@ -450,7 +450,7 @@ def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_
   assert all(isinstance(item, int) for item in itertools.chain(*prompt_definition.acceptable_keys.values()))
   assert isinstance(atlas_image, Image.Image)
   pygame.init()
-  font = FONT # TODO
+  font = GET_DEFAULT_FONT()
   
   atlasSurf = pil_image_to_surface(atlas_image)
   screen = pygame.display.set_mode((max(600,atlasSurf.get_width()+400), max(400, atlasSurf.get_height())))
@@ -466,15 +466,17 @@ def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_
     labeledTilePreviewSurf = join_surfaces_vertically([tilePreviewTopTextSurf, tilePreviewSurf, tilePreviewBottomTextSurf], WINDOW_BACKGROUND_COLOR)
     screen.blit(labeledTilePreviewSurf, (atlasSurf.get_width()+10, 0))
     
-    # determine pointer conditions
+    # determine pointer conditions:
     hoveredTileCoord = tuple(pygame.mouse.get_pos()[i]//CONFIG.tile_size[i] for i in (0,1)) # TODO int vec divide
     if not cell_coordinate_is_in_bounds(hoveredTileCoord):
       hoveredTileCoord = None
     hoveredTileName = CONFIG.coordinates_to_names.get(hoveredTileCoord, None)
     
     # rendering that depends on pointer conditions {
+    # static instructions:
     font.render_to(screen, text="\n".join(prompt_definition.key_descriptions[keyCode] for keyCode in prompt_definition.acceptable_keys["no_requirements"]), dest=(atlasSurf.get_width()+10, screen.get_height()-30), fgcolor=WINDOW_TEXT_COLOR)
     
+    # tooltip:
     if hoveredTileCoord is not None:
       # highlight the cell:
       pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [intersection_coordinate_to_pixel_coordinate(int_vec_add(hoveredTileCoord, offset)) for offset in [(0,0), (1,0), (1,1), (0,1)]])
@@ -484,11 +486,13 @@ def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_
       tooltipText = f"{hoveredTileDisplayName}\n\n{NEWLINE.join(prompt_definition.key_descriptions[keyCode] for keyCode in _keycodesAvailableNowGen)}"
       tooltipLineSurfs = [font.render(text=tooltipTextLine, fgcolor=WINDOW_TEXT_COLOR, bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tooltipTextLine in tooltipText.split("\n")]
       tooltipSurf = join_surfaces_vertically(tooltipLineSurfs, WINDOW_BACKGROUND_COLOR, padding=TOOLTIP_PADDING)
+      outlinedTooltipSurf = make_externally_outlined_copy(tooltipSurf, thickness=2, color=WINDOW_TEXT_COLOR)
       # blit the tooltip a bit below the pointer:
-      # TODO break out
-      tooltipSurfSize = tooltipSurf.get_size()
-      screen.fill(WINDOW_TEXT_COLOR, rect=(*int_vec_add(pygame.mouse.get_pos(), (0,20)), *int_vec_add(tooltipSurfSize, (4,4))))
-      screen.blit(tooltipSurf, dest=int_vec_add(pygame.mouse.get_pos(), (2, 22)))
+      screen.blit(outlinedTooltipSurf, dest=int_vec_add(pygame.mouse.get_pos(), (2, 22)))
+    
+    # pointer image:
+    if prompt_definition.pointer_image is not None:    
+      screen.blit(pil_image_to_surface(prompt_definition.pointer_image), dest=int_vec_subtract(pygame.mouse.get_pos(), int_vec_divide_by_scalar_exact(prompt_definition.pointer_image.size, 2)))
     # }
     
     time.sleep(1.0/FPS) # the target FPS will never be hit this way but that's ok.
@@ -561,9 +565,10 @@ def run_interactive_management_mode() -> None:
   blankPreviewImage = Image.new("RGB", size=(64,1))
   mainPromptDefinition = AtlasPromptDefinition(
     tile_preview_image=blankPreviewImage,
+    pointer_image=None,
     tile_preview_top_text="Welcome to atlas.py!",
     tile_preview_bottom_text="Hover over a tile in the atlas for more options.",
-    acceptable_keys={"no_requirements":[ord("q"), pygame.K_RETURN],"coordinate_required":[ord("s"), pygame.K_BACKSPACE],"link_required":[ord("u"), ord("r"), ord("i"), ord("e"), pygame.K_DELETE], "coordinate_required_link_forbidden":[ord("l")]},
+    acceptable_keys={"no_requirements":[ord("q"), pygame.K_RETURN],"coordinate_required":[ord("s"), ord("m"), pygame.K_BACKSPACE],"link_required":[ord("u"), ord("r"), ord("i"), ord("e"), pygame.K_DELETE], "coordinate_required_link_forbidden":[ord("l")]},
     clicks_are_acceptable=False,
     key_descriptions={
       ord("s"): "[s] show",
@@ -572,18 +577,18 @@ def run_interactive_management_mode() -> None:
       ord("r"): "[r] rename",
       ord("l"): "[l] link",
       ord("u"): "[u] unlink",
+      ord("m"): "[m] move",
       pygame.K_BACKSPACE: "[backspace] clear cell",
       pygame.K_DELETE: "[delete] delete tile file",
       pygame.K_RETURN: "[enter] save and quit",
       ord("q"):"[q] quit without saving",
     },
-    static_instructions="[enter] save and exit\n[q] quit without saving",
   )
   
   
   def manage_link(coordinate):
     tileNamesForPrompt = find_tile_names()
-    surfaceSelectionResponse = scrolling_surface_list_selection_prompt([FONT.render(text=tileName, fgcolor=(WINDOW_FAINT_TEXT_COLOR if tileName in CONFIG.coordinates_to_names.inverse else WINDOW_TEXT_COLOR), bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tileName in tileNamesForPrompt])
+    surfaceSelectionResponse = scrolling_surface_list_selection_prompt([GET_DEFAULT_FONT().render(text=tileName, fgcolor=(WINDOW_FAINT_TEXT_COLOR if tileName in CONFIG.coordinates_to_names.inverse else WINDOW_TEXT_COLOR), bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tileName in tileNamesForPrompt])
     if isinstance(surfaceSelectionResponse, int):
       chosenName = tileNamesForPrompt[surfaceSelectionResponse]
       CONFIG.coordinates_to_names[coordinate] = chosenName
@@ -640,6 +645,19 @@ def run_interactive_management_mode() -> None:
     screen.blit(get_preview_surface_of_cell(atlas_image, coordinate), dest=(0, 0))
     pygame.display.flip()
     pygame_wait_for_any_key()
+    
+  def manage_move(atlas_image, coordinate):
+    assert isinstance(atlas_image, Image.Image)
+    assert is_valid_int_pair_tuple(coordinate)
+    moveResponse = atlas_interactive_prompt(prompt_definition=AtlasPromptDefinition(
+      tile_preview_image=blankPreviewImage,
+      pointer_image=surface_to_pil_image(make_externally_outlined_copy(pil_image_to_surface(crop_atlas_image_to_tile_image(atlas_image, coordinate)), thickness=1, color=HIGHLIGHT_COLOR)),
+      tile_preview_top_text="", tile_preview_bottom_text="",
+      acceptable_keys={"no_requirements":[],"coordinate_required":[],"link_required":[], "coordinate_required_link_forbidden":[]},
+      clicks_are_acceptable=True,
+      key_descriptions=dict(),
+    ), atlas_image=atlas_image)
+    raise NotImplementedError()
   
   with Image.open(ATLAS_IMAGE_PATH) as atlasImage:
     while True:
@@ -661,10 +679,13 @@ def run_interactive_management_mode() -> None:
             manage_rename(atlasImage, response.coordinate)
           elif response.event.key == ord("s"):
             manage_show(atlasImage, response.coordinate)
+          elif response.event.key == ord("m"):
+            manage_move(atlasImage, response.coordinate)
           elif response.event.key == ord("i"):
             import_tile_with_coordinate(atlasImage, response.coordinate)
           elif response.event.key == ord("e"):
             export_tile_with_coordinate(atlasImage, response.coordinate)
+            
           elif response.event.key == pygame.K_RETURN:
             print("finished with interactive management mode")
             atlasImage.save(ATLAS_IMAGE_PATH)
@@ -697,8 +718,6 @@ def do_tile_export(*, atlas_image: Image.Image, discover: bool, organize: bool):
     
   for y in range(CONFIG.atlas_size[1]):
     for x in range(CONFIG.atlas_size[0]):
-      
-      raise NotImplementedError("this needs testing")
       tileImg = crop_atlas_image_to_tile_image(atlas_image, (x,y))
       if (x,y) not in CONFIG.coordinates_to_names:
         if discover and not tile_image_is_blank(tileImg):
@@ -716,7 +735,7 @@ def do_tile_export(*, atlas_image: Image.Image, discover: bool, organize: bool):
         else:
           continue # don't attempt to export.
       assert (x,y) in CONFIG.coordinates_to_names
-      export_tile_with_coordinate((x,y), atlas_image=atlas_image)
+      export_tile_with_coordinate(atlas_image=atlas_image, coordinate=(x,y))
       
 def do_tile_import(*, atlas_image: Image.Image, discover: bool, organize: bool):
   if not os.path.exists(ATLAS_IMAGE_PATH):
@@ -733,9 +752,13 @@ def do_tile_import(*, atlas_image: Image.Image, discover: bool, organize: bool):
     else:
       newlyDiscoveredNames.append(tileName)
   atlas_image.save(ATLAS_IMAGE_PATH) # this is a good time to save progress. config has not changed and doesn't need to be saved.
-      
-  if discover or organize:
-    assert nand(discover, organize), "the following code is designed for either discover or organize to be true, but not both"
+  
+  if discover and organize:
+    raise ValueError("can't do discover and organize at the same time.")
+  elif not (discover or organize):
+    pass
+  else:
+    assert xor(discover, organize)
     for tileName in newlyDiscoveredNames:
       placementCoordinate = None # must not carry over from previous iteration
       if discover:

@@ -103,25 +103,23 @@ atlas.py:
     it would be okay to save at unintuitive times if there were a notifications area where a message "all changes saved" could appear.
     
 atlas.py health:
-  make input critic class that provides critiques to user input before it is accepted.
   replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
   add procedure tests.
   make saving of config file better.
     split config into config settings and config mappings.
-  refactor do_tile_import to not fall out of such a big if.
-  fix tile_name_to_path only being used in some places.
   font caching.
   
 atlas.py:
-  allow X button press from within scrolling list prompt.
-  add pageUp and pageDown to scrolling list prompt.
-  PaddingDescription(all=...)
-  Add keyboard shortcuts from above design:
-    [m] move
+  improve scrolling list selection prompt:
+    make input critic class that provides critiques to user input before it is accepted. use this also in tile renaming prompt, as an injections.
+    make join_surfaces_vertically more powerful
+    allow X button press from within scrolling list prompt.
+    add pageUp and pageDown to scrolling list prompt.
+  Add keyboard shortcuts from above design: [m] move:
+    add the mouse pointer image to prompts that result from commands.
   make newline acceptable in any text.
   add info to tile show feature. diff cell vs tile file.
   divide tooltip key descriptions into categories based on whether or not they deal with the link.
-  in tile name prompt, make rules for whether or not a tile name will be accepted injectable.
   give tile name prompt a prompt_definition makeover.
   replace tkinter with pygame everywhere.
   
@@ -170,6 +168,8 @@ add command line args to renamer.
 what is creative build light made out of?
 create JSON recipe input ItemID control.
 add rename detection to atlas.py. (use interactive mode instead.)
+refactor do_tile_import to not fall out of such a big if.
+fix tile_name_to_path only being used in some places.
 
 
 cancelled:
@@ -259,3 +259,6 @@ move color shelf into a data folder.
 atlas.py health:
   fix partial duplication of code for cropping atlas down to a tile.
   replace validate_int_pair_tuple with int_pair_tuple_is_valid.
+  
+PaddingDescription(all_sides=...)
+add floating ghost tile stuck to mouse pointer as an option in prompt_definition.

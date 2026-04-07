@@ -1,6 +1,8 @@
 
 import operator
 
+from Utilities import int_divide_exact
+
 
 
 def int_vec_parallel_operation(a, b, operation, packager):
@@ -10,6 +12,7 @@ def int_vec_parallel_operation(a, b, operation, packager):
   assert all(isinstance(val, int) for val in b)
   return packager(operation(aVal, bVal) for aVal,bVal in zip(a,b))
 int_vec_add = lambda a, b: int_vec_parallel_operation(a, b, operator.add, tuple)
+int_vec_subtract = lambda a, b: int_vec_parallel_operation(a, b, operator.sub, tuple)
 int_vec_parallel_multiply = lambda a, b: int_vec_parallel_operation(a, b, operator.mul, tuple)
 # int_vec_parallel_compare_less = lambda a, b: int_vec_parallel_operation(a, b, operator.lt, tuple)
 int_vec_all_components_are_less = lambda a, b: int_vec_parallel_operation(a, b, operator.lt, all)
@@ -22,3 +25,8 @@ def int_vec_scale_by(vec, scale):
   assert all(isinstance(component, int) for component in vec)
   assert isinstance(scale, int)
   return tuple(component*scale for component in vec)
+  
+def int_vec_divide_by_scalar_exact(vec, scalar):
+  func = lambda a: int_divide_exact(a, scalar)
+  return tuple(map(func, vec))
+assert int_vec_divide_by_scalar_exact((32,16), 2) == (16, 8)
