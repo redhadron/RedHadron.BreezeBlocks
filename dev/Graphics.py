@@ -19,9 +19,10 @@ def pil_image_to_surface(pil_image):
   assert isinstance(pil_image, Image.Image)
   return pygame.image.fromstring(pil_image.tobytes(), pil_image.size, pil_image.mode)
   
-def surface_to_pil_image(surface):
+def surface_to_pil_image(surface, mode: str = "RGB"):
   assert isinstance(surface, pygame.Surface)
-  return Image.frombytes("RGB", surface.get_size(), pygame.image.tostring(surface, "RGB", False))
+  assert isinstance(mode, str)
+  return Image.frombytes(mode, surface.get_size(), pygame.image.tostring(surface, mode, False))
 
 class PaddingDescription:
   def __init__(self, *, top=None, right=None, bottom=None, left=None, all_sides=None):
@@ -32,7 +33,7 @@ class PaddingDescription:
     self.top, self.right, self.bottom, self.left = top, right, bottom, left
 
 def join_surfaces_vertically(surfaces, background_color, padding=PaddingDescription(all_sides=0)):
-  
+  # TODO add item margins option
   assert all(isinstance(item, pygame.Surface) for item in surfaces), surfaces
   width = max(surf.get_width() for surf in surfaces) + padding.left + padding.right
   height = sum(surf.get_height() for surf in surfaces) + padding.top + padding.bottom

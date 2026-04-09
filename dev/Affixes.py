@@ -19,3 +19,14 @@ def bisect_at_infix(string, infix):
   assert string.count(infix) == 1
   a, b = string.split(infix)
   return (a, b)
+  
+  
+def lstrip_and_count(text: str, prefix: str) -> tuple[str, int]:
+  assert len(prefix) > 0
+  resultStr = text.lstrip(prefix)
+  return (resultStr, int_divide_exact(len(text)-len(resultStr), len(prefix)))
+
+def rstrip_and_count(text: str, suffix: str) -> tuple[str, int]:
+  assert len(suffix) > 0
+  resultStr = text.rstrip(suffix)
+  return (resultStr, int_divide_exact(len(text)-len(resultStr), len(suffix)))

@@ -414,7 +414,7 @@ def scrolling_surface_list_selection_prompt(surfaces: list[pygame.Surface], disp
     # TODO make this less stupid /\
     surfaceIndicesToUse = range(topToDisplay, bottomToDisplay+1)
     surfacesToShow = [(make_externally_outlined_copy(surfaces[i], thickness=4, color=HIGHLIGHT_COLOR) if i == head else surfaces[i]) for i in surfaceIndicesToUse]
-    screen.blit(join_surfaces_vertically(surfacesToShow, WINDOW_BACKGROUND_COLOR, padding=PaddingDescription(all_sides=6)), (0,0)) # TODO extract a blit_centered method
+    screen.blit(join_surfaces_vertically(surfacesToShow, WINDOW_BACKGROUND_COLOR, padding=PaddingDescription(all_sides=6)), (0,0)) # TODO: create blit_centered method and use it to put this scrolling menu in the middle of the window.
     pygame.display.flip()
     time.sleep(1.0/FPS)
   assert False, "unreachable"

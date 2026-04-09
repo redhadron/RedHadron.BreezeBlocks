@@ -16,7 +16,7 @@ import sys # to use sys.exit inside async, although this does not work.
 # project
 from Hytale import HYTALE_ASSETS_PATH, SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
 import ProcessPooling
-from Affixes import remove_suffix, remove_prefix, shorten_suffix
+from Affixes import remove_suffix, remove_prefix, shorten_suffix, lstrip_and_count, rstrip_and_count
 from Utilities import assert_equals, int_divide_exact
 import Parsing
 from colors import COLORS_SHELF_PATH
@@ -194,6 +194,157 @@ assert_equals(color_tuple_to_hytale_string((255, 254, 0)), "#fffe00")
 
 
 
+
+
+
+# ----- display name translation -----
+
+SHAPE_NICKNAMES_TO_NAMES = {"Hair": "Crosshair", "Head": "Empty Crosshair", "SlowNeckNeckSlow": "Bottleneck Basketweave"}
+
+SHAPE_NAME_TRANSLATION_CORRECTIONS = {
+  "uk":{"Empty Crosshair":"порожнє перехрестя", "Crosshair":"перехрестя", "Dice":"грати в кості", "Nope":"Ні", "Bottleneck Basketweave":"схема плетіння Вузьке місце", "Void":"порожній"},
+  "ru":{"Dice":"Игральные кости", "Nope":"Вычеркнуто", "Bottleneck Basketweave":"Переплетение узких мест"}
+}
+
+def dictionary_translate_if_able(dictionary, key):
+  return dictionary.get(key, key)
+
+def split_and_keep_delimeters(text, delimeters, keep_empty_strings):
+  regexPattern = "(["+"".join("\\"+item for item in delimeters)+"])"
+  result = re.split(regexPattern, text)
+  return result if keep_empty_strings else [item for item in result if len(item) > 0]
+US_KEYBOARD_SYMBOLS = r'`~!@#$%^&*()-_+=[{]}\|;:",<.>/? ' + "'"
+for testChar0 in US_KEYBOARD_SYMBOLS:
+  for testChar1 in US_KEYBOARD_SYMBOLS:
+    _testTup = ("a", testChar0, "b", testChar1, "c", testChar0, testChar1, "d", testChar1, testChar0, "e")
+  assert_equals(tuple(split_and_keep_delimeters("".join(_testTup), [testChar0, testChar1], False)), _testTup)
+del _testTup
+
+
+@functools.cache
+def cached_libretranslate_call(text, source, target):
+  # functools cache here offers significant speedup even when caching is turned on for the libretranslate instance
+  if source == "en":
+    if target in SHAPE_NAME_TRANSLATION_CORRECTIONS:
+      if text in SHAPE_NAME_TRANSLATION_CORRECTIONS[target]:
+        return SHAPE_NAME_TRANSLATION_CORRECTIONS[target][text]
+  return LIBRETRANSLATE_API.translate(text, source, target)
+
+def translate_with_flavor(text, source, target):
+  # flavor includes whitespace and ellipses and other things that might be removed by the translation model. They should always be provided to the translation model in case they improve the output. If the translation model removes them, they should be added back in.
+  if source == target:
+    return text # don't translate from a language to itself
+  assert len(text) > 0
+  assert len(text.lstrip(" ")) > 0
+  if "..." in text:
+    raise NotImplementedError("ellipses")
+  textWOLeft, leftSpaceCount = lstrip_and_count(text, " ")
+  textWOLeftRight, rightSpaceCount = rstrip_and_count(textWOLeft, " ")
+  translationResult = cached_libretranslate_call(textWOLeftRight, source=LANGUAGE_CODE_LIBRETRANSLATE_SUBSTITUTIONS[source], target=LANGUAGE_CODE_LIBRETRANSLATE_SUBSTITUTIONS[target])
+  return (" "*leftSpaceCount) + translationResult.lstrip(" ").rstrip(" ") + (" "*rightSpaceCount)
+
+def translate_string_piecewise(text, source, target, delimeters):
+  if source == target:
+    return text # don't translate from a language to itself
+  inputPieces = split_and_keep_delimeters(text, delimeters, keep_empty_strings=False)
+  assert all(len(piece) > 0 for piece in inputPieces)
+  isTranslatable = lambda string: not (string in delimeters or any(digit in string for digit in DIGITS))
+  outputPieces = [translate_with_flavor(piece, source, target) if isTranslatable(piece) else piece for piece in inputPieces]
+  return "".join(outputPieces)
+  
+  
+  
+
+
+# ----- mod path constants -----
+
+def is_a_valid_mod(modPath):
+  assert os.path.exists(modPath)
+  return all(item in os.listdir(modPath) for item in ["Common"])
+  
+# TODO Manifest.json copying
+
+if os.getcwd().count("dev") > 1:
+  raise NotImplementedError()
+assert not os.getcwd().endswith(SEP)
+
+MOD_NAME = "RedHadron.BreezeBlocks"
+assert MOD_NAME in os.getcwd()
+MOD_SOURCE_PATH = shorten_suffix(os.getcwd(), SEP+MOD_NAME+SEP+"dev", SEP+MOD_NAME) if os.getcwd().endswith(SEP+"dev") else os.getcwd()
+assert is_a_valid_mod(MOD_SOURCE_PATH) and "dev" in os.listdir(MOD_SOURCE_PATH), "mod source path or structure may be invalid"
+MOD_DESTINATION_PATH = SEP.join([MOD_SOURCE_PATH, "..", "..", "mods", MOD_NAME])
+assert is_a_valid_mod(MOD_DESTINATION_PATH), "Not a valid mod: " + MOD_DESTINATION_PATH
+assert "dev" not in os.listdir(MOD_DESTINATION_PATH), "mod destination path or structure may be invalid: " + MOD_DESTINATION_PATH
+
+MODEL_FOLDER_SUBPATH = SEP.join(["Common", "Blocks", "Breeze"])
+MODEL_FOLDER_SOURCE_PATH = SEP.join([MOD_SOURCE_PATH, MODEL_FOLDER_SUBPATH])
+MODEL_FOLDER_DESTINATION_PATH = SEP.join([MOD_DESTINATION_PATH, MODEL_FOLDER_SUBPATH])
+assert os.path.exists(MODEL_FOLDER_SOURCE_PATH), MODEL_FOLDER_SOURCE_PATH
+assert os.path.exists(MODEL_FOLDER_DESTINATION_PATH), MODEL_FOLDER_DESTINATION_PATH
+
+ASSET_FOLDER_SUBPATH = SEP.join(["Server", "Item", "Items"])
+ASSET_FOLDER_DESTINATION_PATH = MOD_DESTINATION_PATH + SEP + ASSET_FOLDER_SUBPATH
+assert os.path.exists(ASSET_FOLDER_DESTINATION_PATH), ASSET_FOLDER_DESTINATION_PATH
+
+ICON_FOLDER_SUBPATH = SEP.join(["Common", "Icons", "ItemsGenerated"])
+ICON_FOLDER_DESTINATION_PATH = MOD_DESTINATION_PATH + SEP + ICON_FOLDER_SUBPATH
+assert os.path.exists(ICON_FOLDER_DESTINATION_PATH), ICON_FOLDER_DESTINATION_PATH
+
+TEMPLATE_FILE_SUBPATH = "dev" + SEP + "Breeze_Template.json"
+TEMPLATE_FILE_PATH = MOD_SOURCE_PATH + SEP + TEMPLATE_FILE_SUBPATH
+assert os.path.exists(TEMPLATE_FILE_PATH), TEMPLATE_FILE_PATH
+
+
+def GET_LANGUAGE_FILE_SUBPATH(language_code):
+  if not LANGUAGE_CODE_LIBRETRANSLATE_SUBSTITUTIONS[language_code] in LIBRETRANSLATE_SUPPORTED_LANGUAGE_CODES:
+    print(f"warning: {language_code} is not supported.")
+  return SEP.join(["Server", "Languages", language_code, "items.lang"])
+
+def GET_LANGUAGE_FILE_DESTINATION_PATH(language_code):
+  return SEP.join([MOD_DESTINATION_PATH, GET_LANGUAGE_FILE_SUBPATH(language_code)])
+
+
+
+
+
+
+  
+  
+def clear_folder(folder_path, expected_extension):
+  for nameToDelete in os.listdir(folder_path):
+    pathToDelete = folder_path + SEP + nameToDelete
+    assert MOD_NAME in str(pathlib.Path(pathToDelete).resolve())
+    assert os.path.exists(pathToDelete)
+    assert pathToDelete.endswith(expected_extension)
+    assert not os.path.isdir(pathToDelete)
+    os.remove(pathToDelete)
+  
+  
+  
+async def optimize_png_in_place(path):
+  command = f"optipng -o9 \"{path}\""  # don't use repr for path because windows does not treat backslash as an escape character in paths.
+  # print(f"running command {command}")
+  try:
+    proc = await asyncio.create_subprocess_shell(command, stderr=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE)
+    stdout, stderr = await proc.communicate()
+    if proc.returncode != 0:
+      print(f"{proc.returncode=}") # , {stdout=}, {stderr=}")
+  except FileNotFoundError: # TODO test whether this is still effective after async change
+    print("the PNG file could not be found OR the executable could not be found.")
+    sys.exit(BAD_EXIT_CODE)
+  except Exception as e:
+    print(f"something else went wrong: {e}")
+    sys.exit(BAD_EXIT_CODE)
+  
+  
+
+
+
+
+
+
+
+
 # ----- Hytale game data constants -----
 
 CLAY_COLORS = "Black Blue Cyan Green Grey Lime Orange Pink Purple Red White Yellow".split()
@@ -339,156 +490,6 @@ PROTOTYPE_DATA_PAGES = [
 
 
 
-# ----- display name translation -----
-
-SHAPE_NICKNAMES_TO_NAMES = {"Hair": "Crosshair", "Head": "Empty Crosshair", "SlowNeckNeckSlow": "Bottleneck Basketweave"}
-
-SHAPE_NAME_TRANSLATION_CORRECTIONS = {
-  "uk":{"Empty Crosshair":"порожнє перехрестя", "Crosshair":"перехрестя", "Dice":"грати в кості", "Nope":"Ні", "Bottleneck Basketweave":"схема плетіння Вузьке місце", "Void":"порожній"},
-  "ru":{"Dice":"Игральные кости", "Nope":"Вычеркнуто", "Bottleneck Basketweave":"Переплетение узких мест"}
-}
-
-def dictionary_translate_if_able(dictionary, key):
-  return dictionary.get(key, key)
-
-def split_and_keep_delimeters(text, delimeters, keep_empty_strings):
-  regexPattern = "(["+"".join("\\"+item for item in delimeters)+"])"
-  result = re.split(regexPattern, text)
-  return result if keep_empty_strings else [item for item in result if len(item) > 0]
-US_KEYBOARD_SYMBOLS = r'`~!@#$%^&*()-_+=[{]}\|;:",<.>/? ' + "'"
-for testChar0 in US_KEYBOARD_SYMBOLS:
-  for testChar1 in US_KEYBOARD_SYMBOLS:
-    _testTup = ("a", testChar0, "b", testChar1, "c", testChar0, testChar1, "d", testChar1, testChar0, "e")
-  assert_equals(tuple(split_and_keep_delimeters("".join(_testTup), [testChar0, testChar1], False)), _testTup)
-del _testTup
-
-def lstrip_and_count(text, prefix):
-  assert len(prefix) > 0
-  resultStr = text.lstrip(prefix)
-  return (resultStr, int_divide_exact(len(text)-len(resultStr), len(prefix)))
-
-def rstrip_and_count(text, suffix):
-  assert len(suffix) > 0
-  resultStr = text.rstrip(suffix)
-  return (resultStr, int_divide_exact(len(text)-len(resultStr), len(suffix)))
-
-@functools.cache
-def cached_libretranslate_call(text, source, target):
-  # functools cache here offers significant speedup even when caching is turned on for the libretranslate instance
-  if source == "en":
-    if target in SHAPE_NAME_TRANSLATION_CORRECTIONS:
-      if text in SHAPE_NAME_TRANSLATION_CORRECTIONS[target]:
-        return SHAPE_NAME_TRANSLATION_CORRECTIONS[target][text]
-  return LIBRETRANSLATE_API.translate(text, source, target)
-
-def translate_with_flavor(text, source, target):
-  # flavor includes whitespace and ellipses and other things that might be removed by the translation model. They should always be provided to the translation model in case they improve the output. If the translation model removes them, they should be added back in.
-  if source == target:
-    return text # don't translate from a language to itself
-  assert len(text) > 0
-  assert len(text.lstrip(" ")) > 0
-  if "..." in text:
-    raise NotImplementedError("ellipses")
-  textWOLeft, leftSpaceCount = lstrip_and_count(text, " ")
-  textWOLeftRight, rightSpaceCount = rstrip_and_count(textWOLeft, " ")
-  translationResult = cached_libretranslate_call(textWOLeftRight, source=LANGUAGE_CODE_LIBRETRANSLATE_SUBSTITUTIONS[source], target=LANGUAGE_CODE_LIBRETRANSLATE_SUBSTITUTIONS[target])
-  return (" "*leftSpaceCount) + translationResult.lstrip(" ").rstrip(" ") + (" "*rightSpaceCount)
-
-def translate_string_piecewise(text, source, target, delimeters):
-  if source == target:
-    return text # don't translate from a language to itself
-  inputPieces = split_and_keep_delimeters(text, delimeters, keep_empty_strings=False)
-  assert all(len(piece) > 0 for piece in inputPieces)
-  isTranslatable = lambda string: not (string in delimeters or any(digit in string for digit in DIGITS))
-  outputPieces = [translate_with_flavor(piece, source, target) if isTranslatable(piece) else piece for piece in inputPieces]
-  return "".join(outputPieces)
-  
-  
-  
-
-
-# ----- mod path constants -----
-
-def is_a_valid_mod(modPath):
-  assert os.path.exists(modPath)
-  return all(item in os.listdir(modPath) for item in ["Common"])
-  
-# TODO Manifest.json copying
-
-if os.getcwd().count("dev") > 1:
-  raise NotImplementedError()
-assert not os.getcwd().endswith(SEP)
-
-MOD_NAME = "RedHadron.BreezeBlocks"
-assert MOD_NAME in os.getcwd()
-MOD_SOURCE_PATH = shorten_suffix(os.getcwd(), SEP+MOD_NAME+SEP+"dev", SEP+MOD_NAME) if os.getcwd().endswith(SEP+"dev") else os.getcwd()
-assert is_a_valid_mod(MOD_SOURCE_PATH) and "dev" in os.listdir(MOD_SOURCE_PATH), "mod source path or structure may be invalid"
-MOD_DESTINATION_PATH = SEP.join([MOD_SOURCE_PATH, "..", "..", "mods", MOD_NAME])
-assert is_a_valid_mod(MOD_DESTINATION_PATH), "Not a valid mod: " + MOD_DESTINATION_PATH
-assert "dev" not in os.listdir(MOD_DESTINATION_PATH), "mod destination path or structure may be invalid: " + MOD_DESTINATION_PATH
-
-MODEL_FOLDER_SUBPATH = SEP.join(["Common", "Blocks", "Breeze"])
-MODEL_FOLDER_SOURCE_PATH = SEP.join([MOD_SOURCE_PATH, MODEL_FOLDER_SUBPATH])
-MODEL_FOLDER_DESTINATION_PATH = SEP.join([MOD_DESTINATION_PATH, MODEL_FOLDER_SUBPATH])
-assert os.path.exists(MODEL_FOLDER_SOURCE_PATH), MODEL_FOLDER_SOURCE_PATH
-assert os.path.exists(MODEL_FOLDER_DESTINATION_PATH), MODEL_FOLDER_DESTINATION_PATH
-
-ASSET_FOLDER_SUBPATH = SEP.join(["Server", "Item", "Items"])
-ASSET_FOLDER_DESTINATION_PATH = MOD_DESTINATION_PATH + SEP + ASSET_FOLDER_SUBPATH
-assert os.path.exists(ASSET_FOLDER_DESTINATION_PATH), ASSET_FOLDER_DESTINATION_PATH
-
-ICON_FOLDER_SUBPATH = SEP.join(["Common", "Icons", "ItemsGenerated"])
-ICON_FOLDER_DESTINATION_PATH = MOD_DESTINATION_PATH + SEP + ICON_FOLDER_SUBPATH
-assert os.path.exists(ICON_FOLDER_DESTINATION_PATH), ICON_FOLDER_DESTINATION_PATH
-
-TEMPLATE_FILE_SUBPATH = "dev" + SEP + "Breeze_Template.json"
-TEMPLATE_FILE_PATH = MOD_SOURCE_PATH + SEP + TEMPLATE_FILE_SUBPATH
-assert os.path.exists(TEMPLATE_FILE_PATH), TEMPLATE_FILE_PATH
-
-
-def GET_LANGUAGE_FILE_SUBPATH(language_code):
-  if not LANGUAGE_CODE_LIBRETRANSLATE_SUBSTITUTIONS[language_code] in LIBRETRANSLATE_SUPPORTED_LANGUAGE_CODES:
-    print(f"warning: {language_code} is not supported.")
-  return SEP.join(["Server", "Languages", language_code, "items.lang"])
-
-def GET_LANGUAGE_FILE_DESTINATION_PATH(language_code):
-  return SEP.join([MOD_DESTINATION_PATH, GET_LANGUAGE_FILE_SUBPATH(language_code)])
-
-
-
-
-
-
-  
-  
-def clear_folder(folder_path, expected_extension):
-  for nameToDelete in os.listdir(folder_path):
-    pathToDelete = folder_path + SEP + nameToDelete
-    assert MOD_NAME in str(pathlib.Path(pathToDelete).resolve())
-    assert os.path.exists(pathToDelete)
-    assert pathToDelete.endswith(expected_extension)
-    assert not os.path.isdir(pathToDelete)
-    os.remove(pathToDelete)
-  
-  
-  
-async def optimize_png_in_place(path):
-  command = f"optipng -o9 \"{path}\""  # don't use repr for path because windows does not treat backslash as an escape character in paths.
-  # print(f"running command {command}")
-  try:
-    proc = await asyncio.create_subprocess_shell(command, stderr=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE)
-    stdout, stderr = await proc.communicate()
-    if proc.returncode != 0:
-      print(f"{proc.returncode=}") # , {stdout=}, {stderr=}")
-  except FileNotFoundError: # TODO test whether this is still effective after async change
-    print("the PNG file could not be found OR the executable could not be found.")
-    sys.exit(BAD_EXIT_CODE)
-  except Exception as e:
-    print(f"something else went wrong: {e}")
-    sys.exit(BAD_EXIT_CODE)
-  
-  
-  
   
   
   
@@ -536,8 +537,6 @@ async def generate_assets():
     modelNameWithDepth = remove_suffix(modelFileName, ".blockymodel")
     modelNameWithoutDepth = remove_suffix(modelNameWithDepth, "_Db1000")
     iconMaskFileName = modelNameWithoutDepth + ".png"
-    
-    
     
     for dataPage in DATA_PAGES:
       for family in data_page_get_value(dataPage, "FAMILY_LIST"):
