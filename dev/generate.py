@@ -35,6 +35,8 @@ except urllib.error.URLError:
   print("failed to communicate with libretranslate. Are you running a libretranslate server on the default port? https://docs.libretranslate.com/ recommended command \"libretranslate --translation-cache all --disable-web-ui\"")
   exit(BAD_EXIT_CODE)
 import psutil
+# import numpy
+# from stablerandom import stablerandom
 
 # PNG_OPTIMIZATION_DO_POOLING = True
 USE_HYPERTHREADING = False
@@ -144,7 +146,7 @@ MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS = 2
 
 # ----- helpers specific to Hytale -----
 
-BRICK_TEXTURE_NAME_SUBSTRING_COSTS = {"Cobble": 100, "Corner": 1000, "Ornate": 150, "Decorative": 175, "Top":20, "Side":21, "Smooth":30, "0":1, "1":2, "2":3, "3":4, "4":5, "5":6, "6":7, "7":8, "8":9, "9":10} # the texture with the lowest score will be chosen when an exact match to the predicted texture name is not found.
+BRICK_TEXTURE_NAME_SUBSTRING_COSTS = {"Cobble": 100, "Corner": 1000, "Ornate": 150, "Decorative": 175, "Top":20, "Side":21, "Smooth":-50, "0":1, "1":2, "2":3, "3":4, "4":5, "5":6, "6":7, "7":8, "8":9, "9":10} # the texture with the lowest score will be chosen when an exact match to the predicted texture name is not found.
 
 def patch_wood_texture_name(input_string):
   return input_string.replace("Wood_Softwood_Planks.png", "Wood_Softwood_Planks_Top.png").replace("Wood_Greenwood_Planks.png", "Wood_Green.png")
@@ -377,6 +379,28 @@ UNIFIED_DISPLAY_NAME_TRANSLATIONS = dict(list(_ROCK_BRICK_DISPLAY_NAME_TRANSLATI
 
 # ----- structured data about how to generate assets -----
 
+_PROTOTYPE_DATA_PAGES = [
+  [
+    ("TEXTURE_NAME_PREFIX", ""),
+    ("FAMILY_LIST", ["Clay"]),
+    ("TEXTURE_NAME_SUFFIX_LIST", list("_"+item for item in CLAY_COLORS)),
+    ("INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME", True), # this flag exists because of clay.
+    ("AUTOMATIC_JSON_ITEMS", [
+      ("JSON_CATEGORIES_LINE", r'"Blocks.Soils", "Blocks.Structural"'), # ?
+      ("JSON_RECIPE_INPUT_RESOURCETYPEID_STR", "Soil_${FAMILY}${TEXTURE_NAME_SUFFIX}"),
+      ("JSON_TAGS_TYPE_STR", "Rock"),
+      ("JSON_TAGS_SUBTYPE", ""),
+      ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
+      ("JSON_BLOCKTYPE_GATHERING_BREAKING_GATHERTYPE_STR", "Rocks"),
+      ("JSON_BLOCKTYPE_BLOCKPARTICLESETID_STR", "Stone"),
+      ("JSON_FUEL_QUALITY_LINE", ""),
+      ("JSON_BLOCKTYPE_BLOCKSOUNDSETID_STR", "Stone"),
+      ("JSON_ITEMSOUNDSETID_STR", "ISS_Blocks_Stone"),
+    ]),
+  ],
+]
+
+
 DATA_PAGES = [
   [ # ----- Wood plank -----
     ("PRIVATE_TYPE", "Wood"), # this is used in the name of the asset file but might not be included in the file as a type tag.
@@ -411,7 +435,7 @@ DATA_PAGES = [
       ("JSON_RECIPE_INPUT_REQUIREMENT_KEY_STR", "ResourceTypeId"),
       ("JSON_RECIPE_INPUT_REQUIREMENT_VALUE_STR", "Rock_${FAMILY}_Brick"),
       ("JSON_TAGS_TYPE", '"Type": [ "Rock" ]'),
-      ("JSON_TAGS_SUBTYPE", ""),
+      ("JSON_TAGS_SUBTYPE", ""), # ao 20260326, there is no subtype for brick.
       ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
       ("JSON_BLOCKTYPE_GROUP_LINE", ""),
       ("JSON_BLOCKTYPE_GATHERING_BREAKING_GATHERTYPE_STR", "Rocks"),
@@ -465,28 +489,6 @@ DATA_PAGES = [
   ],
 ]
 
-PROTOTYPE_DATA_PAGES = [
-  [
-    ("TEXTURE_NAME_PREFIX", ""),
-    ("FAMILY_LIST", ["Clay"]),
-    ("TEXTURE_NAME_SUFFIX_LIST", list("_"+item for item in CLAY_COLORS)),
-    ("INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME", True), # this flag exists because of clay.
-    ("AUTOMATIC_JSON_ITEMS", [
-      ("JSON_CATEGORIES_LINE", r'"Blocks.Soils", "Blocks.Structural"'), # ?
-      ("JSON_RECIPE_INPUT_RESOURCETYPEID_STR", "Soil_${FAMILY}${TEXTURE_NAME_SUFFIX}"),
-      ("JSON_TAGS_TYPE_STR", "Rock"),
-      ("JSON_TAGS_SUBTYPE", ""),
-      ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
-      ("JSON_BLOCKTYPE_GATHERING_BREAKING_GATHERTYPE_STR", "Rocks"),
-      ("JSON_BLOCKTYPE_BLOCKPARTICLESETID_STR", "Stone"),
-      ("JSON_FUEL_QUALITY_LINE", ""),
-      ("JSON_BLOCKTYPE_BLOCKSOUNDSETID_STR", "Stone"),
-      ("JSON_ITEMSOUNDSETID_STR", "ISS_Blocks_Stone"),
-    ]),
-  ],
-]
-
-
 
 
 
@@ -532,27 +534,32 @@ async def generate_assets():
   languageFiles = {langCode: codecs.open(GET_LANGUAGE_FILE_DESTINATION_PATH(langCode), "w", codecStrings[langCode]) for langCode in BREEZE_BLOCKS_LANGUAGE_CODES}
   colorsShelf = shelve.open(COLORS_SHELF_PATH)
 
-  for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if name.endswith(".blockymodel")):
-    shutil.copy(MODEL_FOLDER_SOURCE_PATH+SEP+modelFileName, MODEL_FOLDER_DESTINATION_PATH+SEP+modelFileName)
-    modelNameWithDepth = remove_suffix(modelFileName, ".blockymodel")
-    modelNameWithoutDepth = remove_suffix(modelNameWithDepth, "_Db1000")
-    iconMaskFileName = modelNameWithoutDepth + ".png"
+
+
+  for dataPage in DATA_PAGES:
+    for family in data_page_get_value(dataPage, "FAMILY_LIST"):
+      for textureNameSuffix in data_page_get_value(dataPage, "TEXTURE_NAME_SUFFIX_LIST"):
+        
+        
+        
+        for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if name.endswith(".blockymodel")):
+          shutil.copy(MODEL_FOLDER_SOURCE_PATH+SEP+modelFileName, MODEL_FOLDER_DESTINATION_PATH+SEP+modelFileName)
+          modelNameWithDepth = remove_suffix(modelFileName, ".blockymodel")
+          modelNameWithoutDepth = remove_suffix(modelNameWithDepth, "_Db1000")
+          iconMaskFileName = modelNameWithoutDepth + ".png"
     
-    for dataPage in DATA_PAGES:
-      for family in data_page_get_value(dataPage, "FAMILY_LIST"):
-        for textureNameSuffix in data_page_get_value(dataPage, "TEXTURE_NAME_SUFFIX_LIST"):
           
           
           # asset info specific to this model and texture:
           assetInfo = dict()
           assetInfo["unpatched_texture_base_name"] = f"{data_page_get_value(dataPage, 'TEXTURE_NAME_PREFIX')}{family}{textureNameSuffix}" # this is also used as the block set later
-          assetInfo["texture_file_name"] = select_best_texture_file_name(base_name=assetInfo["unpatched_texture_base_name"])
+          assetInfo["stock_texture_file_name"] = select_best_texture_file_name(base_name=assetInfo["unpatched_texture_base_name"])
           assetInfo["full_name"] = data_page_get_value(dataPage, "PRIVATE_TYPE") + "_" + family + (textureNameSuffix if data_page_get_value(dataPage, "INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME") else "") + "_" + modelNameWithoutDepth
           assetInfo["output_file_path"] = ASSET_FOLDER_DESTINATION_PATH + SEP + assetInfo["full_name"] + ".json"
           assetInfo["icon_file_name"] = assetInfo["full_name"] + ".png"
           assetInfo["icon_file_path"] = ICON_FOLDER_DESTINATION_PATH + SEP + assetInfo["icon_file_name"]
           try:
-            assetInfo["particle_color_as_tuple"] = colorsShelf[assetInfo["texture_file_name"]][PARTICLE_COLORATION]
+            assetInfo["particle_color_as_tuple"] = colorsShelf[assetInfo["stock_texture_file_name"]][PARTICLE_COLORATION]
           except KeyError:
             raise KeyError("Some textures in your hytale assets folder aren't registered by colors.py, or the shelf is malformed. Try running colors.py again.")          
           
@@ -560,23 +567,38 @@ async def generate_assets():
           # asset info specific to this model and texture, for inclusion in asset file:
           assetContents = {
             "ICON_PATH_IN_MOD": "Icons/ItemsGenerated/" + assetInfo["icon_file_name"],
-            "BLOCK_SET": assetInfo["unpatched_texture_base_name"],
-            "TEXTURE_PATH_IN_MOD": f"BlockTextures/{assetInfo['texture_file_name']}",
+            "TEXTURE_PATH_IN_MOD": f"BlockTextures/{assetInfo['stock_texture_file_name']}", # TODO get rid of this here
+            "SET": assetInfo["unpatched_texture_base_name"],
             "PARTICLECOLOR_STR": color_tuple_to_hytale_string(assetInfo["particle_color_as_tuple"]),
-          }
+          } # a new key "TEXTURE_PATH" will be added in the texture and icon work loop.
           
           
-          # icon generation:
+          # texture and icon work:
+          
+          
           with Image.open(MODEL_FOLDER_SOURCE_PATH + SEP + iconMaskFileName) as thumbnailMaskImage:
-            with Image.open(HYTALE_BLOCKTEXTURES_PATH + SEP + assetInfo["texture_file_name"]) as thumbnailTextureImage:
+            with Image.open(HYTALE_BLOCKTEXTURES_PATH + SEP + assetInfo["stock_texture_file_name"]) as thumbnailTextureImage:
               assert thumbnailMaskImage.size == thumbnailTextureImage.size
+              
+              """
+              # texture generation:
+              raise NotImplementedError("only run texture generation once per material. perhaps refactor loop first.")
+              if "Smooth" in assetInfo["stock_texture_file_name"]:
+                ....
+              else:
+                assetInfo["final_texture_file_name"] = assetInfo["stock_texture_file_name"]
+              """
+              
+              # icon generation:
               thumbnailResultImageNoBG = ImageChops.multiply(thumbnailMaskImage.convert("RGB"), thumbnailTextureImage.convert("RGB"))
               if sum(assetInfo["particle_color_as_tuple"]) <= ICON_BACKGROUND_INVERSION_THRESHOLD:
                 thumbnailResultImage = ImageChops.add(thumbnailResultImageNoBG, ImageChops.invert(thumbnailMaskImage).convert("RGB"))
               else:
                 thumbnailResultImage = thumbnailResultImageNoBG
               thumbnailResultImage.save(assetInfo["icon_file_path"])
-              PNG_OPTIMIZATION_PROCESS_POOLER.put(ProcessPooling.WorkOrder(optimize_png_in_place, [assetInfo["icon_file_path"]], dict()))
+              
+              
+          PNG_OPTIMIZATION_PROCESS_POOLER.put(ProcessPooling.WorkOrder(optimize_png_in_place, [assetInfo["icon_file_path"]], dict()))
           
           
           # language file stuff:
@@ -599,7 +621,7 @@ async def generate_assets():
               outputLine = currentLine.replace("${FULL_NAME}", assetInfo["full_name"]
                 ).replace("${MODEL_BASE_NAME}", modelNameWithDepth
                 ).replace("${ICON_PATH_IN_MOD}", assetContents["ICON_PATH_IN_MOD"]
-                ).replace("${SET}", assetContents["BLOCK_SET"]
+                ).replace("${SET}", assetContents["SET"]
                 ).replace("${TEXTURE_PATH_IN_MOD}", assetContents["TEXTURE_PATH_IN_MOD"]
                 ).replace("${PARTICLECOLOR_STR}", assetContents["PARTICLECOLOR_STR"]
                 )

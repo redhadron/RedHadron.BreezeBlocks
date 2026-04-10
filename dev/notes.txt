@@ -75,6 +75,9 @@ notes on UVs:
 other notes:
   hytale update 4 added new state data to smooth stone brick slabs to make a double slab drop 2 slabs when broken.
   why is bronze in the basalt family?
+  Rock Stone Brick has type Rock and family stone.
+  Wood Softwood Planks Half has type Wood, subtype Planks, and no family!
+  Wood Goldenwood Planks Half has type Wood and family Goldenwood, and no subtype!
 
 atlas.py: atlas interactive prompt:
   while hovering over cell with link:
@@ -126,9 +129,17 @@ atlas.py:
   improve performance:
     options for join_surfaces_vertically to draw directly to screen instead of a result surface.
 
-make ${set} more regular
 don't use ${set} for families that shouldn't have a set.
   examine block set usage in stock assets.
+refactor data pages:
+  data that will not be modified will be called context.
+  things from assetContents probably can't go in the data page because they are dependent on the context section (which is iterated to get the context for the current asset while generating assets.)
+refactor generate.py:
+  refactor main loop so that materials loop is on the outside and models loop is on the inside. This makes texture generation easier and should not interfere with making a model variants system, which might get easier too.
+  it should be possible to reuse the loop iterator. loop once to generate textures, loop again to generate assets. this way if generate.py has an argument to control which actions it will take, the branching to choose between these actions doesn't need to happen inside the loop.
+  two options for texture processing:
+    process all textures, like colors.py does to find colors.
+    process only the needed textures, and do it in the main loop of generate.py.
 texture generation:
   add a smooth stone brick texture simplifier.
   add a front texture generator that uses the thumbnail mask to create shading.
@@ -181,6 +192,7 @@ cancelled:
 pickling as a context manager. (this already exists: import shelve)
 replace tkinter with pygame everywhere.
 add caching of tooltip surface (direct draw to screen is better, wouldn't take more compute when switching tiles)
+make ${set} more regular
 
 done:
 upgrade renamer.py to optionally edit the content of asset definition files (or any other files in a second directory) too.
