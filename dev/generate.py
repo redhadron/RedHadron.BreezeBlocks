@@ -12,6 +12,7 @@ import urllib # for libretranslate error handling
 import subprocess # for png crushing
 import asyncio # for using multiple processes for png crushing
 import sys # to use sys.exit inside async, although this does not work.
+import json
 
 # project
 from Hytale import HYTALE_ASSETS_PATH, SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
@@ -273,7 +274,16 @@ if os.getcwd().count("dev") > 1:
 assert not os.getcwd().endswith(SEP)
 
 def assert_path_exists(input_path: str) -> None:
+  assert isinstance(input_path, str)
   assert os.path.exists(input_path), input_path
+def assert_directory_exists(input_path: str) -> None:
+  assert isinstance(input_path, str)
+  assert_path_exists(input_path)
+  assert os.path.isdir(input_path), input_path
+def assert_file_exists(input_path: str) -> None:
+  assert isinstance(input_path, str)
+  assert_path_exists(input_path)
+  assert not os.path.isdir(input_path), input_path
 
 MOD_NAME = "RedHadron.BreezeBlocks"
 assert MOD_NAME in os.getcwd()
@@ -286,24 +296,28 @@ assert "dev" not in os.listdir(MOD_DESTINATION_PATH), "mod destination path or s
 MODEL_FOLDER_SUBPATH = SEP.join(["Common", "Blocks", "Breeze"])
 MODEL_FOLDER_SOURCE_PATH = SEP.join([MOD_SOURCE_PATH, MODEL_FOLDER_SUBPATH])
 MODEL_FOLDER_DESTINATION_PATH = SEP.join([MOD_DESTINATION_PATH, MODEL_FOLDER_SUBPATH])
-assert_path_exists(MODEL_FOLDER_SOURCE_PATH)
-assert_path_exists(MODEL_FOLDER_DESTINATION_PATH)
+assert_directory_exists(MODEL_FOLDER_SOURCE_PATH)
+assert_directory_exists(MODEL_FOLDER_DESTINATION_PATH)
 
 ASSET_FOLDER_SUBPATH = SEP.join(["Server", "Item", "Items"])
 ASSET_FOLDER_DESTINATION_PATH = MOD_DESTINATION_PATH + SEP + ASSET_FOLDER_SUBPATH
-assert_path_exists(ASSET_FOLDER_DESTINATION_PATH)
+assert_directory_exists(ASSET_FOLDER_DESTINATION_PATH)
 
 ICON_FOLDER_SUBPATH = SEP.join(["Common", "Icons", "ItemsGenerated"])
 ICON_FOLDER_DESTINATION_PATH = MOD_DESTINATION_PATH + SEP + ICON_FOLDER_SUBPATH
-assert_path_exists(ICON_FOLDER_DESTINATION_PATH)
+assert_directory_exists(ICON_FOLDER_DESTINATION_PATH)
 
 BLOCKTEXTURE_FOLDER_SUBPATH = SEP.join(["Common", "BlockTextures"])
 BLOCKTEXTURE_FOLDER_DESTINATION_PATH = MOD_DESTINATION_PATH + SEP + BLOCKTEXTURE_FOLDER_SUBPATH
-assert_path_exists(BLOCKTEXTURE_FOLDER_DESTINATION_PATH)
+assert_directory_exists(BLOCKTEXTURE_FOLDER_DESTINATION_PATH)
 
 TEMPLATE_FILE_SUBPATH = "dev" + SEP + "Breeze_Template.json"
 TEMPLATE_FILE_PATH = MOD_SOURCE_PATH + SEP + TEMPLATE_FILE_SUBPATH
-assert_path_exists(TEMPLATE_FILE_PATH)
+assert_file_exists(TEMPLATE_FILE_PATH)
+
+MANIFEST_FILE_SOURCE_PATH = MOD_SOURCE_PATH + SEP + "manifest.json"
+MANIFEST_FILE_DESTINATION_PATH = MOD_DESTINATION_PATH + SEP + "manifest.json"
+assert_file_exists(MANIFEST_FILE_SOURCE_PATH)
 
 
 def GET_LANGUAGE_FILE_SUBPATH(language_code):
@@ -325,9 +339,8 @@ def clear_folder(folder_path, expected_extension):
   for nameToDelete in os.listdir(folder_path):
     pathToDelete = folder_path + SEP + nameToDelete
     assert MOD_NAME in str(pathlib.Path(pathToDelete).resolve())
-    assert os.path.exists(pathToDelete)
     assert pathToDelete.endswith(expected_extension)
-    assert not os.path.isdir(pathToDelete)
+    assert_file_exists(pathToDelete) # and is not dir
     os.remove(pathToDelete)
   
   
@@ -368,6 +381,7 @@ ROCK_RUNIC_BRICK = "Runic_Blue Runic Runic_Teal Runic_Dark".split(" ") # the tex
 ROCK_BRICK_BUT_ACTUALLY_METAL = ["Gold"]
 METAL = ["Iron", "Bronze", "Copper", "Zinc"]
 
+ROCK_BRICK_FAMILY_DO_NOT_GENERATE_TEXTURE = ["Aqua", "Marble", "Peach"]
 ROCK_BRICK_TEXTURE_NAME_SUBSTRING_REPLACEMENTS = {"Ledge": "Ledgestone", "Lime":"Limestone", "Peach":"Peachstone"}
 ROCK_BRICK_TEXTURE_NAME_NO_ROCK_PREFIX_REQUIRED = ["Peachstone", "Calcite", "Runic_Brick_Dark", "Runic_Brick_Dark_Blue"]
 _ROCK_BRICK_DISPLAY_NAME_TRANSLATIONS = {"Runic_Blue": "Blue Runic", "Runic_Teal": "Dark Blue Runic", "Runic_Dark": "Dark Runic", "Sandstone_Red":"Red Sandstone", "Sandstone_White": "White Sandstone"}
@@ -523,12 +537,30 @@ if len(templateFileLines) == 0:
 
 
 # clear destination folders and prepare destination mod \/
+def rjust_tuple(input_tuple, fill_value, length):
+  assert isinstance(input_tuple, tuple)
+  if len(input_tuple) >= length:
+    return input_tuple
+  else:
+    return (fill_value,)*(length-len(input_tuple)) + input_tuple
+assert rjust_tuple((3,4,5), 0, 5) == (0,0,3,4,5)
+assert rjust_tuple((3,4,5), 0, 2) == (3,4,5)
 
 clear_folder(ASSET_FOLDER_DESTINATION_PATH, ".json")
 clear_folder(ICON_FOLDER_DESTINATION_PATH, ".png")
 clear_folder(MODEL_FOLDER_DESTINATION_PATH, ".blockymodel")
 clear_folder(BLOCKTEXTURE_FOLDER_DESTINATION_PATH, ".png")
-shutil.copy(MOD_SOURCE_PATH+SEP+"manifest.json", MOD_DESTINATION_PATH+SEP+"manifest.json")
+if os.path.exists(MANIFEST_FILE_DESTINATION_PATH):
+  # TODO make and use a json shelf-like CM
+  with open(MANIFEST_FILE_SOURCE_PATH, "r") as srcManifestFile, open(MANIFEST_FILE_DESTINATION_PATH) as destManifestFile:
+    srcText, destText = srcManifestFile.read(), destManifestFile.read()
+  srcManifest, destManifest = json.loads(srcText), json.loads(destText)
+  srcVer, destVer = (tuple(int(component) for component in manifest["Version"].split(".")) for manifest in (srcManifest, destManifest))
+  maxComponentCount = max(len(srcVer), len(destVer))
+  srcVer, destVer = (rjust_tuple(ver, 0, maxComponentCount) for ver in (srcVer, destVer))
+  if srcVer < destVer:
+    print("you are overwriting a newer version of the mod. if the newer version has files that are unused by the older version, you should delete them manually.")
+shutil.copy(MANIFEST_FILE_SOURCE_PATH, MANIFEST_FILE_DESTINATION_PATH)
 for langCode in BREEZE_BLOCKS_LANGUAGE_CODES:
   pathToRemove = GET_LANGUAGE_FILE_DESTINATION_PATH(langCode)
   if os.path.exists(pathToRemove):
@@ -563,27 +595,36 @@ async def generate_assets():
         # texture generation:
         stockTexName = materialInfo["stock_texture_file_name"]
         stockTexPath = HYTALE_BLOCKTEXTURES_PATH + SEP + stockTexName
-        if "Brick" in stockTexName:
-          outputFileNameStr = remove_suffix(stockTexName, ".png") + "_Breeze.png"
+        if "Brick" in stockTexName and family not in ROCK_BRICK_FAMILY_DO_NOT_GENERATE_TEXTURE:
+          
+          outputFileNameStr = remove_suffix(stockTexName, ".png") + "_Breeze_Cubes2x2.png"
+          
           outputFilePathStr = BLOCKTEXTURE_FOLDER_DESTINATION_PATH + SEP + outputFileNameStr
-          if "Smooth" in stockTexName:
-            with Image.open(stockTexPath) as stockTexture:
-              assert stockTexture.size == (32, 32), "is this Hytale?"
+          
+          with Image.open(stockTexPath) as stockTexture:
+            outputTexture = stockTexture.copy()
+            assert stockTexture.size == (32, 32), "is this Hytale?"
+            if "Smooth" in stockTexName:
               outputQuadrant = stockTexture.crop((0,0,16,16))
               assert outputQuadrant.size == (16, 16)
               outputQuadrant.paste(stockTexture.crop((24,0,32,8)), (8,0,16,8))
               outputQuadrant.paste(stockTexture.crop((24,24,32,32)), (8,8,16,16))
               outputQuadrant.paste(stockTexture.crop((0,24,8,32)), (0,8,8,16))
-              outputTexture = stockTexture.copy()
-            for location in [(0,0,16,16),(16,0,32,16),(16,16,32,32),(0,16,16,32)]:
-              outputTexture.paste(outputQuadrant, location)
-            outputTexture.save(outputFilePathStr)
-            materialInfo["final_texture_file_name"] = outputFileNameStr
-            materialInfo["generated_texture_exists"] = True
-          else:
-            print("not implemented: process regular bricks texture into breeze blocks texture.")
-            materialInfo["final_texture_file_name"] = stockTexName
-            materialInfo["generated_texture_exists"] = False
+              for location in [(0,0,16,16),(16,0,32,16),(16,16,32,32),(0,16,16,32)]:
+                outputTexture.paste(outputQuadrant, location)
+            else:
+              """
+              print("not implemented: process regular bricks texture into breeze blocks texture.")
+              materialInfo["final_texture_file_name"] = stockTexName
+              materialInfo["generated_texture_exists"] = False
+              """
+              # use 7 pixel wide bands. I got this number by staring at the basalt brick texture.
+              outputTexture.paste(stockTexture.crop((0,0,7,16)), (0,16,7,32)) # top left move down
+              outputTexture.paste(stockTexture.crop((32-7,0,32,16)), (32-7,16,32,32)) # top right move down
+              outputTexture.paste(stockTexture.crop((16-7,16,16+7,32)), (16-7,0,16+7,16)) # bottom center move up
+          outputTexture.save(outputFilePathStr)
+          materialInfo["final_texture_file_name"] = outputFileNameStr
+          materialInfo["generated_texture_exists"] = True
         else:
           materialInfo["final_texture_file_name"] = stockTexName
           materialInfo["generated_texture_exists"] = False

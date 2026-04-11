@@ -105,8 +105,8 @@ atlas.py: atlas interactive prompt:
 
 TODO:
 
-manifest.json copying
 FIX BUG: icons appear black on MacOS (details in curseforge comment)
+  test on linux
 
 atlas.py:
   FIX BUG: atlas config file might not reflect change after interactive mode tile rename if user quits without saving, But file is still renamed.
@@ -120,16 +120,17 @@ atlas.py health:
     split config into config settings and config mappings.
   
 atlas.py:
-  Add keyboard shortcuts from above design: [m] move:
-    add the mouse pointer image to prompts that result from commands.
+  Add keyboard shortcuts from above design:
+    [m] move
   make newline acceptable in any text.
   add info to tile show feature. diff cell vs tile file.
   divide tooltip key descriptions into categories based on whether or not they deal with the link.
   give tile name prompt a prompt_definition makeover.
   improve scrolling list selection prompt:
-    make input critic class that provides critiques to user input before it is accepted. use this also in tile renaming prompt, as an injections.
+    make input critic class that provides critiques to user input before it is accepted. use this also in tile renaming prompt, as an injection.
     make join_surfaces_vertically more powerful:
       item margins
+      spacing
       uniform placement
     allow X button press from within scrolling list prompt.
     add pageUp and pageDown to scrolling list prompt.
@@ -143,11 +144,12 @@ refactor data pages:
   things from assetContents probably can't go in the data page because they are dependent on the context section (which is iterated to get the context for the current asset while generating assets.)
 refactor generate.py:
   refactor main loop so that materials loop is on the outside and models loop is on the inside. This makes texture generation easier and should not interfere with making a model variants system, which might get easier too.
-  it should be possible to reuse the loop iterator. loop once to generate textures, loop again to generate assets. this way if generate.py has an argument to control which actions it will take, the branching to choose between these actions doesn't need to happen inside the loop.
+  it should be possible to reuse the loop iterator. loop once to generate textures, loop again to generate assets. this way if generate.py has an argument to control which actions it will take, the branching to choose between these actions doesn't need to happen inside the loop. 
   two options for texture processing:
     process all textures, like colors.py does to find colors.
     process only the needed textures, and do it in the main loop of generate.py.
 texture generation:
+  refactor texture assembly logic to use methods with descriptive names like get_top_right_quadrant
   add a "supersmooth" version of each texture.
   add a front texture generator that uses the supersmooth texture and the thumbnail mask to create shading.
   add a thumbnail mask partitioner that turns it into rectangular blocks.
@@ -200,7 +202,7 @@ create JSON recipe input ItemID control.
 add rename detection to atlas.py. (use interactive mode instead.)
 refactor do_tile_import to not fall out of such a big if.
 fix tile_name_to_path only being used in some places.
-
+add the mouse pointer image to prompts that result from commands. (improve performance first)
 
 cancelled:
 pickling as a context manager. (this already exists: import shelve)
@@ -295,3 +297,4 @@ atlas.py health:
 PaddingDescription(all_sides=...)
 add floating ghost tile stuck to mouse pointer as an option in prompt_definition.
 atlas.py font caching.
+manifest.json copying
