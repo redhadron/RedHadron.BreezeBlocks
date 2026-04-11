@@ -45,3 +45,6 @@ def nand(a, b):
   
 def at_most_one(input_list):
   return sum(bool(item) for item in input_list) in (0, 1)
+  
+# _print_once_
+# def print_once(*args, **kwargs)

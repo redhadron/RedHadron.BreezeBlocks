@@ -65,6 +65,13 @@ notes that are helpful for planning:
   As long as the mod continues to provide asset jsons for deprecated block IDs, it can also specify in those jsons that the deprecated blocks drop the newer blocks.
   on windows, The "date created" tag persists when a file is deleted and another one with the same name is created, which makes it not very useful.
 
+version format:
+  Major.minor.patch
+    patch = nobody should have to care about this change, not even makers of other mods that link to assets of this mod. no assets, translations, or textures are added or removed. Can downgrade without affecting other mods that link to this mod.
+    minor = may add things, but must not add game assets (blocks or items) or block states. downgrading does not result in invalid blocks or inventory items in the world.
+    major = may add game assets or block states. downgrading may cause some blocks or inventory items in the world to become invalid.
+    I don't plan to make any changes that are bigger than major (an example would be a change that removed a block ID), but if the need arose, a new supermajor version would be added: supermajor.major.minor.patch.
+
 ==============================================================================
 
 notes on UVs:
@@ -141,8 +148,10 @@ refactor generate.py:
     process all textures, like colors.py does to find colors.
     process only the needed textures, and do it in the main loop of generate.py.
 texture generation:
-  add a smooth stone brick texture simplifier.
-  add a front texture generator that uses the thumbnail mask to create shading.
+  add a "supersmooth" version of each texture.
+  add a front texture generator that uses the supersmooth texture and the thumbnail mask to create shading.
+  add a thumbnail mask partitioner that turns it into rectangular blocks.
+  add stone variants that use breezeBlocks generated quad textures. make them accessible with the iron hammer.
 
 make a model variants system.
   idea: follow the depth information (Db1000) with "_WoodOnly" or "_StoneOnly" so that suffix must be removed and then generate.py continues as normal.
@@ -154,6 +163,11 @@ language:
   synonym fuzzing - if any word in the pool can make a round-trip translation to any other word in the pool, use the foreign word that is the step between those two words.
   factor language out of generate.py.
   make SHAPE_NAME_TRANSLATION_CORRECTIONS support translation corrections from any language to any other with tuple keys.
+  
+Pathlib Path
+context manager manager
+match statements
+
 make option to rebuild destination mod.
 add a command to atlas.py to predict which tiles would be changed upon export or import, and optionally, to show the changes.
 add terracotta back:

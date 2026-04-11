@@ -10,7 +10,7 @@ import re
 import functools
 import urllib # for libretranslate error handling
 import subprocess # for png crushing
-import asyncio
+import asyncio # for using multiple processes for png crushing
 import sys # to use sys.exit inside async, although this does not work.
 
 # project
@@ -38,8 +38,10 @@ import psutil
 # import numpy
 # from stablerandom import stablerandom
 
-# PNG_OPTIMIZATION_DO_POOLING = True
-USE_HYPERTHREADING = False
+
+
+
+USE_HYPERTHREADING = False # if true, use one subprocess per logical core. if false, use one per physical core.
 PNG_OPTIMIZATION_SIMULTANEOUS_PROCESSES = psutil.cpu_count(logical=USE_HYPERTHREADING)
 PNG_OPTIMIZATION_PROCESS_POOLER = ProcessPooling.Pooler(PNG_OPTIMIZATION_SIMULTANEOUS_PROCESSES)
 
@@ -205,7 +207,7 @@ SHAPE_NICKNAMES_TO_NAMES = {"Hair": "Crosshair", "Head": "Empty Crosshair", "Slo
 
 SHAPE_NAME_TRANSLATION_CORRECTIONS = {
   "uk":{"Empty Crosshair":"порожнє перехрестя", "Crosshair":"перехрестя", "Dice":"грати в кості", "Nope":"Ні", "Bottleneck Basketweave":"схема плетіння Вузьке місце", "Void":"порожній"},
-  "ru":{"Dice":"Игральные кости", "Nope":"Вычеркнуто", "Bottleneck Basketweave":"Переплетение узких мест"}
+  "ru":{"Dice":"Игральные кости", "Nope":"Вычеркнуто", "Bottleneck Basketweave":"Переплетение узких мест"},
 }
 
 def dictionary_translate_if_able(dictionary, key):
@@ -270,6 +272,9 @@ if os.getcwd().count("dev") > 1:
   raise NotImplementedError()
 assert not os.getcwd().endswith(SEP)
 
+def assert_path_exists(input_path: str) -> None:
+  assert os.path.exists(input_path), input_path
+
 MOD_NAME = "RedHadron.BreezeBlocks"
 assert MOD_NAME in os.getcwd()
 MOD_SOURCE_PATH = shorten_suffix(os.getcwd(), SEP+MOD_NAME+SEP+"dev", SEP+MOD_NAME) if os.getcwd().endswith(SEP+"dev") else os.getcwd()
@@ -281,20 +286,24 @@ assert "dev" not in os.listdir(MOD_DESTINATION_PATH), "mod destination path or s
 MODEL_FOLDER_SUBPATH = SEP.join(["Common", "Blocks", "Breeze"])
 MODEL_FOLDER_SOURCE_PATH = SEP.join([MOD_SOURCE_PATH, MODEL_FOLDER_SUBPATH])
 MODEL_FOLDER_DESTINATION_PATH = SEP.join([MOD_DESTINATION_PATH, MODEL_FOLDER_SUBPATH])
-assert os.path.exists(MODEL_FOLDER_SOURCE_PATH), MODEL_FOLDER_SOURCE_PATH
-assert os.path.exists(MODEL_FOLDER_DESTINATION_PATH), MODEL_FOLDER_DESTINATION_PATH
+assert_path_exists(MODEL_FOLDER_SOURCE_PATH)
+assert_path_exists(MODEL_FOLDER_DESTINATION_PATH)
 
 ASSET_FOLDER_SUBPATH = SEP.join(["Server", "Item", "Items"])
 ASSET_FOLDER_DESTINATION_PATH = MOD_DESTINATION_PATH + SEP + ASSET_FOLDER_SUBPATH
-assert os.path.exists(ASSET_FOLDER_DESTINATION_PATH), ASSET_FOLDER_DESTINATION_PATH
+assert_path_exists(ASSET_FOLDER_DESTINATION_PATH)
 
 ICON_FOLDER_SUBPATH = SEP.join(["Common", "Icons", "ItemsGenerated"])
 ICON_FOLDER_DESTINATION_PATH = MOD_DESTINATION_PATH + SEP + ICON_FOLDER_SUBPATH
-assert os.path.exists(ICON_FOLDER_DESTINATION_PATH), ICON_FOLDER_DESTINATION_PATH
+assert_path_exists(ICON_FOLDER_DESTINATION_PATH)
+
+BLOCKTEXTURE_FOLDER_SUBPATH = SEP.join(["Common", "BlockTextures"])
+BLOCKTEXTURE_FOLDER_DESTINATION_PATH = MOD_DESTINATION_PATH + SEP + BLOCKTEXTURE_FOLDER_SUBPATH
+assert_path_exists(BLOCKTEXTURE_FOLDER_DESTINATION_PATH)
 
 TEMPLATE_FILE_SUBPATH = "dev" + SEP + "Breeze_Template.json"
 TEMPLATE_FILE_PATH = MOD_SOURCE_PATH + SEP + TEMPLATE_FILE_SUBPATH
-assert os.path.exists(TEMPLATE_FILE_PATH), TEMPLATE_FILE_PATH
+assert_path_exists(TEMPLATE_FILE_PATH)
 
 
 def GET_LANGUAGE_FILE_SUBPATH(language_code):
@@ -415,7 +424,7 @@ DATA_PAGES = [
       ("JSON_TAGS_TYPE", '"Type": [ "Wood" ]'),
       ("JSON_TAGS_SUBTYPE", ",\n    \"SubType\": [\n      \"Planks\"\n    ]"),
       ("JSON_TAGS_FAMILY", ",\n    \"Family\": [\n      \"${FAMILY}\"\n    ]"),
-      ("JSON_BLOCKTYPE_GROUP_LINE", "\n"), # there's a group for stone, but not for rock.
+      ("JSON_BLOCKTYPE_GROUP_LINE", "\n"), # there's no group for this???
       ("JSON_BLOCKTYPE_GATHERING_BREAKING_GATHERTYPE_STR", "Woods"),
       ("JSON_BLOCKTYPE_BLOCKPARTICLESETID_STR", "Wood"),
       ("JSON_FUEL_QUALITY_LINE", "\"FuelQuality\": 0.75,"),
@@ -504,7 +513,7 @@ DATA_PAGES = [
 templateFileLines = []
 with open(TEMPLATE_FILE_PATH, "r") as templateFile:
   currentLine = templateFile.readline()
-  while len(currentLine) > 0:
+  while len(currentLine) > 0: # TODO walrus
     templateFileLines.append(currentLine)
     currentLine = templateFile.readline()
 if len(templateFileLines) == 0:
@@ -518,6 +527,7 @@ if len(templateFileLines) == 0:
 clear_folder(ASSET_FOLDER_DESTINATION_PATH, ".json")
 clear_folder(ICON_FOLDER_DESTINATION_PATH, ".png")
 clear_folder(MODEL_FOLDER_DESTINATION_PATH, ".blockymodel")
+clear_folder(BLOCKTEXTURE_FOLDER_DESTINATION_PATH, ".png")
 shutil.copy(MOD_SOURCE_PATH+SEP+"manifest.json", MOD_DESTINATION_PATH+SEP+"manifest.json")
 for langCode in BREEZE_BLOCKS_LANGUAGE_CODES:
   pathToRemove = GET_LANGUAGE_FILE_DESTINATION_PATH(langCode)
@@ -535,13 +545,51 @@ async def generate_assets():
   colorsShelf = shelve.open(COLORS_SHELF_PATH)
 
 
-
+  # iterate through materials:
   for dataPage in DATA_PAGES:
     for family in data_page_get_value(dataPage, "FAMILY_LIST"):
       for textureNameSuffix in data_page_get_value(dataPage, "TEXTURE_NAME_SUFFIX_LIST"):
         
+        # asset info specific to this material:
+        materialInfo = dict()
+        materialInfo["unpatched_texture_base_name"] = f"{data_page_get_value(dataPage, 'TEXTURE_NAME_PREFIX')}{family}{textureNameSuffix}" # this is also used as the block set later
+        materialInfo["stock_texture_file_name"] = select_best_texture_file_name(base_name=materialInfo["unpatched_texture_base_name"])
+        try:
+          materialInfo["particle_color_as_tuple"] = colorsShelf[materialInfo["stock_texture_file_name"]][PARTICLE_COLORATION]
+        except KeyError:
+          raise KeyError("Some textures in your hytale assets folder aren't registered by colors.py, or the shelf is malformed. Try running colors.py again.")
+                  
+        
+        # texture generation:
+        stockTexName = materialInfo["stock_texture_file_name"]
+        stockTexPath = HYTALE_BLOCKTEXTURES_PATH + SEP + stockTexName
+        if "Brick" in stockTexName:
+          outputFileNameStr = remove_suffix(stockTexName, ".png") + "_Breeze.png"
+          outputFilePathStr = BLOCKTEXTURE_FOLDER_DESTINATION_PATH + SEP + outputFileNameStr
+          if "Smooth" in stockTexName:
+            with Image.open(stockTexPath) as stockTexture:
+              assert stockTexture.size == (32, 32), "is this Hytale?"
+              outputQuadrant = stockTexture.crop((0,0,16,16))
+              assert outputQuadrant.size == (16, 16)
+              outputQuadrant.paste(stockTexture.crop((24,0,32,8)), (8,0,16,8))
+              outputQuadrant.paste(stockTexture.crop((24,24,32,32)), (8,8,16,16))
+              outputQuadrant.paste(stockTexture.crop((0,24,8,32)), (0,8,8,16))
+              outputTexture = stockTexture.copy()
+            for location in [(0,0,16,16),(16,0,32,16),(16,16,32,32),(0,16,16,32)]:
+              outputTexture.paste(outputQuadrant, location)
+            outputTexture.save(outputFilePathStr)
+            materialInfo["final_texture_file_name"] = outputFileNameStr
+            materialInfo["generated_texture_exists"] = True
+          else:
+            print("not implemented: process regular bricks texture into breeze blocks texture.")
+            materialInfo["final_texture_file_name"] = stockTexName
+            materialInfo["generated_texture_exists"] = False
+        else:
+          materialInfo["final_texture_file_name"] = stockTexName
+          materialInfo["generated_texture_exists"] = False
         
         
+        # iterate through models:
         for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if name.endswith(".blockymodel")):
           shutil.copy(MODEL_FOLDER_SOURCE_PATH+SEP+modelFileName, MODEL_FOLDER_DESTINATION_PATH+SEP+modelFileName)
           modelNameWithDepth = remove_suffix(modelFileName, ".blockymodel")
@@ -550,48 +598,31 @@ async def generate_assets():
     
           
           
-          # asset info specific to this model and texture:
+          # asset info specific to this model and material:
           assetInfo = dict()
-          assetInfo["unpatched_texture_base_name"] = f"{data_page_get_value(dataPage, 'TEXTURE_NAME_PREFIX')}{family}{textureNameSuffix}" # this is also used as the block set later
-          assetInfo["stock_texture_file_name"] = select_best_texture_file_name(base_name=assetInfo["unpatched_texture_base_name"])
           assetInfo["full_name"] = data_page_get_value(dataPage, "PRIVATE_TYPE") + "_" + family + (textureNameSuffix if data_page_get_value(dataPage, "INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME") else "") + "_" + modelNameWithoutDepth
           assetInfo["output_file_path"] = ASSET_FOLDER_DESTINATION_PATH + SEP + assetInfo["full_name"] + ".json"
           assetInfo["icon_file_name"] = assetInfo["full_name"] + ".png"
           assetInfo["icon_file_path"] = ICON_FOLDER_DESTINATION_PATH + SEP + assetInfo["icon_file_name"]
-          try:
-            assetInfo["particle_color_as_tuple"] = colorsShelf[assetInfo["stock_texture_file_name"]][PARTICLE_COLORATION]
-          except KeyError:
-            raise KeyError("Some textures in your hytale assets folder aren't registered by colors.py, or the shelf is malformed. Try running colors.py again.")          
           
           
           # asset info specific to this model and texture, for inclusion in asset file:
           assetContents = {
             "ICON_PATH_IN_MOD": "Icons/ItemsGenerated/" + assetInfo["icon_file_name"],
-            "TEXTURE_PATH_IN_MOD": f"BlockTextures/{assetInfo['stock_texture_file_name']}", # TODO get rid of this here
-            "SET": assetInfo["unpatched_texture_base_name"],
-            "PARTICLECOLOR_STR": color_tuple_to_hytale_string(assetInfo["particle_color_as_tuple"]),
-          } # a new key "TEXTURE_PATH" will be added in the texture and icon work loop.
+            "TEXTURE_PATH_IN_MOD": f"BlockTextures/{materialInfo['final_texture_file_name']}", # TODO get rid of this here???
+            "SET": materialInfo["unpatched_texture_base_name"],
+            "PARTICLECOLOR_STR": color_tuple_to_hytale_string(materialInfo["particle_color_as_tuple"]),
+          }
           
           
           # texture and icon work:
-          
-          
           with Image.open(MODEL_FOLDER_SOURCE_PATH + SEP + iconMaskFileName) as thumbnailMaskImage:
-            with Image.open(HYTALE_BLOCKTEXTURES_PATH + SEP + assetInfo["stock_texture_file_name"]) as thumbnailTextureImage:
+            with Image.open(BLOCKTEXTURE_FOLDER_DESTINATION_PATH + SEP + materialInfo["final_texture_file_name"] if materialInfo["generated_texture_exists"] else HYTALE_BLOCKTEXTURES_PATH + SEP + materialInfo["stock_texture_file_name"]) as thumbnailTextureImage:
               assert thumbnailMaskImage.size == thumbnailTextureImage.size
-              
-              """
-              # texture generation:
-              raise NotImplementedError("only run texture generation once per material. perhaps refactor loop first.")
-              if "Smooth" in assetInfo["stock_texture_file_name"]:
-                ....
-              else:
-                assetInfo["final_texture_file_name"] = assetInfo["stock_texture_file_name"]
-              """
               
               # icon generation:
               thumbnailResultImageNoBG = ImageChops.multiply(thumbnailMaskImage.convert("RGB"), thumbnailTextureImage.convert("RGB"))
-              if sum(assetInfo["particle_color_as_tuple"]) <= ICON_BACKGROUND_INVERSION_THRESHOLD:
+              if sum(materialInfo["particle_color_as_tuple"]) <= ICON_BACKGROUND_INVERSION_THRESHOLD:
                 thumbnailResultImage = ImageChops.add(thumbnailResultImageNoBG, ImageChops.invert(thumbnailMaskImage).convert("RGB"))
               else:
                 thumbnailResultImage = thumbnailResultImageNoBG
