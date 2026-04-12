@@ -107,44 +107,36 @@ TODO:
 
 FIX BUG: icons appear black on MacOS (details in curseforge comment)
   test on linux
-
-
-    
-atlas.py health:
-  replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
-  add procedure tests.
-  make saving of config file better.
-    split config into config settings and config mappings.
   
 atlas.py:
-  make atlas.py save the mapping and the atlas image any time anything changes. This fixes the bug where renaming a tile during interactive mode might be forgotten when the config is discarded but the file is already named.
+  saving overhaul:
+    context argument that contains atlas_image and mappings data, and can only save both at the same time.
+    split config into config settings and config mappings.
+    make atlas.py save the mapping and the atlas image any time anything changes. This fixes the bug where renaming a tile during interactive mode might be forgotten when the config is discarded but the file is already named.
   make tooltip adjust its position to not go offscreen.
   make newline acceptable in any text.
+  replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
+  add procedure tests.
   add info to tile show feature. diff cell vs tile file.
   divide tooltip key descriptions into categories based on whether or not they deal with the link.
   give tile name prompt a prompt_definition makeover.
   improve scrolling list selection prompt:
     make input critic class that provides critiques to user input before it is accepted. use this also in tile renaming prompt, as an injection.
     make join_surfaces_vertically more powerful:
-      item margins
       spacing
       uniform placement
     allow X button press from within scrolling list prompt.
     add pageUp and pageDown to scrolling list prompt.
   improve performance:
     options for join_surfaces_vertically to draw directly to screen instead of a result surface.
+    cache the surfaces for commonly used lines of text like "[m] move"
 
-don't use ${set} for families that shouldn't have a set.
-  examine block set usage in stock assets.
+crush textures too.
 refactor data pages:
   data that will not be modified will be called context.
   things from assetContents probably can't go in the data page because they are dependent on the context section (which is iterated to get the context for the current asset while generating assets.)
 refactor generate.py:
-  refactor main loop so that materials loop is on the outside and models loop is on the inside. This makes texture generation easier and should not interfere with making a model variants system, which might get easier too.
-  it should be possible to reuse the loop iterator. loop once to generate textures, loop again to generate assets. this way if generate.py has an argument to control which actions it will take, the branching to choose between these actions doesn't need to happen inside the loop. 
-  two options for texture processing:
-    process all textures, like colors.py does to find colors.
-    process only the needed textures, and do it in the main loop of generate.py.
+  it should be possible to reuse the loop iterator. loop once to generate textures, loop again to generate assets. this way if generate.py has an argument to control which actions it will take, the branching to choose between these actions doesn't need to happen inside the loop.
 texture generation:
   refactor texture assembly logic to use methods with descriptive names like get_top_right_quadrant
   add a "supersmooth" version of each texture.
@@ -153,7 +145,7 @@ texture generation:
   add stone variants that use breezeBlocks generated quad textures. make them accessible with the iron hammer.
 
 make a model variants system.
-  idea: follow the depth information (Db1000) with "_WoodOnly" or "_StoneOnly" so that suffix must be removed and then generate.py continues as normal.
+  idea: follow the depth information (Db1000) with "_WoodOnly" or "_StoneOnly" so that suffix must be removed and then generate.py continues as normal. The suffix is not removed from the thumbnail because different thumbnails are needed for different model variants.
 language:
   switch to better translator.
   use hytale stock translations of materials in translated names of breeze blocks. assets/languages/(language code)/server.lang
@@ -190,6 +182,10 @@ document what is a family, what is a family suffix, what is a family prefix, and
 fix bug where things are held in the wrong position.
 PNG optimization
   pngrewrite before pngout (requires test to see if it's any smaller when used with pngout).
+don't use ${set} for families that shouldn't have a set.
+  examine block set usage in stock assets.
+  
+  
   
 
 shelved:
@@ -200,6 +196,8 @@ add rename detection to atlas.py. (use interactive mode instead.)
 refactor do_tile_import to not fall out of such a big if.
 fix tile_name_to_path only being used in some places.
 add the mouse pointer image to prompts that result from commands. (improve performance first)
+item margins in join_surfaces_vertically (just use spacing)
+
 
 cancelled:
 pickling as a context manager. (this already exists: import shelve)
@@ -296,3 +294,4 @@ add floating ghost tile stuck to mouse pointer as an option in prompt_definition
 atlas.py font caching.
 manifest.json copying
 Add keyboard shortcuts from above design: [m] move
+refactor main loop so that materials loop is on the outside and models loop is on the inside. This makes texture generation easier and should not interfere with making a model variants system, which might get easier too.

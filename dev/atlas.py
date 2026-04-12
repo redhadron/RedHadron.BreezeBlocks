@@ -7,7 +7,7 @@ import ast
 import tkinter
 import time
 import itertools
-import operator
+# import operator
 import functools
 
 
@@ -20,8 +20,8 @@ import argparse
 import pydantic
 
 # project:
-from Affixes import remove_suffix, remove_prefix, bisect_at_infix
-from Utilities import is_valid_int_pair_tuple, nand, at_most_one
+from Affixes import remove_suffix
+from Utilities import is_valid_int_pair_tuple, at_most_one, xor
 from Vectors import int_vec_add, int_vec_subtract, int_vec_divide_by_scalar_exact, int_vec_parallel_multiply, int_vec_all_components_are_less, int_vec_all_components_are_lessequal, int_vec_scale_by
 from Graphics import pil_image_to_surface, surface_to_pil_image, PaddingDescription, join_surfaces_vertically, make_externally_outlined_copy, apply_haze # make_copy_with_shadow
 
@@ -82,7 +82,7 @@ class ConfigManager:
     self.tile_size = (32, 32)
     self.atlas_size = (6, 12)
   
-  def _config_data_to_dict(self):
+  def _config_data_to_dict(self) -> dict:
     return {"coordinates_to_names": self.coordinates_to_names, "tile_size":self.tile_size, "atlas_size":self.atlas_size}
   
   def load(self):
@@ -161,6 +161,7 @@ def delete_atlas_image():
   os.remove(ATLAS_IMAGE_PATH)
   
 def create_atlas_config():
+  raise NotImplementedError("not tested")
   if os.path.exists(ATLAS_CONFIG_PATH):
     raise FileExistsError()
   save_config()
@@ -179,14 +180,14 @@ def delete_atlas_config():
 
 # ----- cell math -----
 
-def intersection_coordinate_to_pixel_coordinate(intersection_address):
+def intersection_coordinate_to_pixel_coordinate(intersection_address: tuple[int, int]) -> tuple[int, int]:
   return int_vec_parallel_multiply(CONFIG.tile_size, intersection_address)
   
 def cell_coordinate_is_in_bounds(coordinate):
   assert is_valid_int_pair_tuple(coordinate)
   return 0 <= coordinate[0] < CONFIG.atlas_size[0] and 0 <= coordinate[1] < CONFIG.atlas_size[1]
 
-def cell_coordinate_to_pillow_rect(coordinate):
+def cell_coordinate_to_pillow_rect(coordinate) -> tuple[int, int, int, int]:
   assert is_valid_int_pair_tuple(coordinate)
   x, y = coordinate
   return (*intersection_coordinate_to_pixel_coordinate((x,y)), *intersection_coordinate_to_pixel_coordinate((x+1,y+1)))
@@ -275,7 +276,7 @@ def import_tile_with_name(destination_atlas_pil_image, tile_name) -> None:
       return
     destination_atlas_pil_image.paste(tileImg, intersection_coordinate_to_pixel_coordinate(destinationCellCoordinate))
     
-def export_tile_with_coordinate(atlas_image: Image.Image, coordinate: tuple[int]) -> None:
+def export_tile_with_coordinate(atlas_image: Image.Image, coordinate: tuple[int, int]) -> None:
   assert isinstance(atlas_image, Image.Image)
   assert is_valid_int_pair_tuple(coordinate)
   tileImgPath = tile_name_to_path(CONFIG.coordinates_to_names[coordinate])
@@ -342,7 +343,7 @@ def prompt_user_for_tile_name(tile_image, enable_skip_button=True) -> TilePrompt
     if entryText.lower() == ATLAS_IMAGE_NAME.lower():
       print("name must not match the name of the atlas image")
       return
-    if any(char in "\/\:*?\"<>|" for char in entryText):
+    if any(char in r'/\:*?"<>|' for char in entryText):
       print("name contains invalid character(s)")
       return
     promptResultHolder.value = TilePromptSubmission(entryText)
@@ -880,7 +881,7 @@ elif args.subcommand == "atlas-config":
     with open(ATLAS_CONFIG_PATH, "r") as configFile:
       print(configFile.read())
   else:
-    raise ValueError(ars.subaction)
+    raise ValueError(args.subaction)
 elif args.subcommand == "transport":
   CONFIG.load()
   CONFIG.assert_is_saved_correctly()

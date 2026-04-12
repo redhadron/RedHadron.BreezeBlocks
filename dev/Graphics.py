@@ -46,7 +46,7 @@ def join_surfaces_vertically(surfaces, background_color, padding=PaddingDescript
   assert y + padding.bottom == newSurf.get_height()
   return newSurf
   
-def make_externally_outlined_copy(input_surface: pygame.Surface, thickness: int, color: tuple[int]) -> pygame.Surface:
+def make_externally_outlined_copy(input_surface: pygame.Surface, thickness: int, color: tuple[int, int, int]) -> pygame.Surface:
   # TODO use this in tooltip generation for interactive atlas prompt
   assert isinstance(input_surface, pygame.Surface), input_surface
   assert isinstance(thickness, int)

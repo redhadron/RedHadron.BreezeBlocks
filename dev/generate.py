@@ -9,7 +9,9 @@ import codecs # for portuguese file encoding
 import re
 import functools
 import urllib # for libretranslate error handling
-import subprocess # for png crushing
+from urllib import error
+del error
+# import subprocess # for png crushing
 import asyncio # for using multiple processes for png crushing
 import sys # to use sys.exit inside async, although this does not work.
 import json
@@ -170,7 +172,7 @@ def select_best_texture_file_name(*, base_name):
   elif base_name.startswith("Rock_"):
     assert base_name.endswith("_Brick") or base_name.endswith("_Brick_Smooth"), base_name
     for oldSubstr, newSubstr in ROCK_BRICK_TEXTURE_NAME_SUBSTRING_REPLACEMENTS.items():
-      # this must happen first because "peachstone" (And maybe similar things) are detected for the the Rock_ prefix removal logic \/
+      # this must happen first because "peachstone" (And maybe similar things) are detected for the Rock_ prefix removal logic \/
       base_name = base_name.replace(f"_{oldSubstr}_", f"_{newSubstr}_")
     for rockType in ROCK_BRICK_TEXTURE_NAME_NO_ROCK_PREFIX_REQUIRED:
       if base_name.startswith(f"Rock_{rockType}_"):
@@ -214,15 +216,15 @@ SHAPE_NAME_TRANSLATION_CORRECTIONS = {
 def dictionary_translate_if_able(dictionary, key):
   return dictionary.get(key, key)
 
-def split_and_keep_delimeters(text, delimeters, keep_empty_strings):
-  regexPattern = "(["+"".join("\\"+item for item in delimeters)+"])"
+def split_and_keep_delimiters(text, delimiters, keep_empty_strings):
+  regexPattern = "(["+"".join("\\"+item for item in delimiters)+"])"
   result = re.split(regexPattern, text)
   return result if keep_empty_strings else [item for item in result if len(item) > 0]
 US_KEYBOARD_SYMBOLS = r'`~!@#$%^&*()-_+=[{]}\|;:",<.>/? ' + "'"
 for testChar0 in US_KEYBOARD_SYMBOLS:
   for testChar1 in US_KEYBOARD_SYMBOLS:
     _testTup = ("a", testChar0, "b", testChar1, "c", testChar0, testChar1, "d", testChar1, testChar0, "e")
-  assert_equals(tuple(split_and_keep_delimeters("".join(_testTup), [testChar0, testChar1], False)), _testTup)
+    assert_equals(tuple(split_and_keep_delimiters("".join(_testTup), [testChar0, testChar1], False)), _testTup)
 del _testTup
 
 
@@ -248,12 +250,12 @@ def translate_with_flavor(text, source, target):
   translationResult = cached_libretranslate_call(textWOLeftRight, source=LANGUAGE_CODE_LIBRETRANSLATE_SUBSTITUTIONS[source], target=LANGUAGE_CODE_LIBRETRANSLATE_SUBSTITUTIONS[target])
   return (" "*leftSpaceCount) + translationResult.lstrip(" ").rstrip(" ") + (" "*rightSpaceCount)
 
-def translate_string_piecewise(text, source, target, delimeters):
+def translate_string_piecewise(text, source, target, delimiters):
   if source == target:
     return text # don't translate from a language to itself
-  inputPieces = split_and_keep_delimeters(text, delimeters, keep_empty_strings=False)
+  inputPieces = split_and_keep_delimiters(text, delimiters, keep_empty_strings=False)
   assert all(len(piece) > 0 for piece in inputPieces)
-  isTranslatable = lambda string: not (string in delimeters or any(digit in string for digit in DIGITS))
+  isTranslatable = lambda string: not (string in delimiters or any(digit in string for digit in DIGITS))
   outputPieces = [translate_with_flavor(piece, source, target) if isTranslatable(piece) else piece for piece in inputPieces]
   return "".join(outputPieces)
   
@@ -681,7 +683,7 @@ async def generate_assets():
           displayNameNative = f"{dictionary_translate_if_able(UNIFIED_DISPLAY_NAME_TRANSLATIONS, family)} Breeze Block (shape: {modelNameShapeNameStr}, layout: {modelNameLayoutStr}, thickness: {modelNameSizeDescriptionStr})"
           
           for langCode, langFile in languageFiles.items():
-            displayNameTranslated = translate_string_piecewise(displayNameNative, source=BREEZE_BLOCKS_NATIVE_LANGUAGE_CODE, target=langCode, delimeters=("(", ")", ":", ","))
+            displayNameTranslated = translate_string_piecewise(displayNameNative, source=BREEZE_BLOCKS_NATIVE_LANGUAGE_CODE, target=langCode, delimiters=("(", ")", ":", ","))
             langFile.write(f"{assetInfo['full_name']}.name = {displayNameTranslated}\n")
           
           

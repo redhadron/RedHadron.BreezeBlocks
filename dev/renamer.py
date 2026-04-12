@@ -6,7 +6,7 @@ import sys
 import subprocess
 
 # project:
-from Utilities import bisect_at_infix
+from Affixes import bisect_at_infix
 
 # third party:
 import directory_tree

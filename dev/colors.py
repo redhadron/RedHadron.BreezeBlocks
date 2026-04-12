@@ -3,7 +3,7 @@
 import shelve
 from collections import Counter
 import statistics
-import os
+# import os
 
 # project:
 from Hytale import HYTALE_ASSETS_PATH, SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
@@ -11,7 +11,6 @@ from Hytale import HYTALE_ASSETS_PATH, SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BL
 # pip:
 from PIL import Image
 
-SEP = os.sep
 COLORS_SHELF_PATH = SEP.join([".", "data", "colors.shelf"])
 
 
