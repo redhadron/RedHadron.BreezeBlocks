@@ -1,0 +1,22 @@
+{
+    "coordinates_to_names": {
+        "(0, 0)": "Breeze_G1x1T4pHair.png",
+        "(0, 1)": "Breeze_G4x4T1pVoid.png",
+        "(0, 2)": "Breeze_G2x2F2pB4pL2pHead.png",
+        "(0, 3)": "Breeze_G2x2F2pD4pDice.png",
+        "(0, 4)": "Breeze_G2x2T2pNope.png",
+        "(0, 5)": "Breeze_G2x2T2pSlowNeckNeckSlow.png",
+        "(1, 0)": "Breeze_G1x1T4pHead.png",
+        "(1, 1)": "Breeze_G4x4T2pVoid.png",
+        "(1, 2)": "Breeze_G2x2T2pHead.png",
+        "(1, 6)": "Breeze_G1x1T8pLake.png",
+        "(1, 7)": "Breeze_G1x1T4pVoid.png",
+        "(1, 8)": "Breeze_G2x2T4pVoid.png",
+        "(2, 3)": "Breeze_G1x1T8pDice.png",
+        "(2, 6)": "Breeze_G1x1T8pDark.png",
+        "(2, 7)": "Breeze_G1x1T8pVoid.png",
+        "(2, 8)": "Breeze_G2x2T8pVoid.png",
+        "(3, 7)": "Breeze_G1x1T16pVoid.png",
+        "(5, 4)": "aquestionmark.png"
+    }
+}
