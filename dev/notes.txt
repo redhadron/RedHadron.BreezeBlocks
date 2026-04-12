@@ -108,10 +108,7 @@ TODO:
 FIX BUG: icons appear black on MacOS (details in curseforge comment)
   test on linux
 
-atlas.py:
-  FIX BUG: atlas config file might not reflect change after interactive mode tile rename if user quits without saving, But file is still renamed.
-    when should anything be saved?
-    it would be okay to save at unintuitive times if there were a notifications area where a message "all changes saved" could appear.
+
     
 atlas.py health:
   replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
@@ -120,8 +117,8 @@ atlas.py health:
     split config into config settings and config mappings.
   
 atlas.py:
-  Add keyboard shortcuts from above design:
-    [m] move
+  make atlas.py save the mapping and the atlas image any time anything changes. This fixes the bug where renaming a tile during interactive mode might be forgotten when the config is discarded but the file is already named.
+  make tooltip adjust its position to not go offscreen.
   make newline acceptable in any text.
   add info to tile show feature. diff cell vs tile file.
   divide tooltip key descriptions into categories based on whether or not they deal with the link.
@@ -298,3 +295,4 @@ PaddingDescription(all_sides=...)
 add floating ghost tile stuck to mouse pointer as an option in prompt_definition.
 atlas.py font caching.
 manifest.json copying
+Add keyboard shortcuts from above design: [m] move

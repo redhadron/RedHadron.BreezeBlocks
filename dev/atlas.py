@@ -647,17 +647,40 @@ def run_interactive_management_mode() -> None:
     pygame_wait_for_any_key()
     
   def manage_move(atlas_image, coordinate):
+    """ modify both config and atlas image. save atlas_image immediately, config still needs to be saved later. """
     assert isinstance(atlas_image, Image.Image)
     assert is_valid_int_pair_tuple(coordinate)
     moveResponse = atlas_interactive_prompt(prompt_definition=AtlasPromptDefinition(
       tile_preview_image=blankPreviewImage,
       pointer_image=surface_to_pil_image(make_externally_outlined_copy(pil_image_to_surface(crop_atlas_image_to_tile_image(atlas_image, coordinate)), thickness=1, color=HIGHLIGHT_COLOR)),
       tile_preview_top_text="", tile_preview_bottom_text="",
-      acceptable_keys={"no_requirements":[],"coordinate_required":[],"link_required":[], "coordinate_required_link_forbidden":[]},
+      acceptable_keys={"no_requirements":[], "coordinate_required":[], "link_required":[], "coordinate_required_link_forbidden":[]},
       clicks_are_acceptable=True,
       key_descriptions=dict(),
     ), atlas_image=atlas_image)
-    raise NotImplementedError()
+    assert isinstance(moveResponse, AtlasPromptResponse)
+    if isinstance(moveResponse, AtlasPromptSubmission):
+      # edit the mapping:
+      coordinateA, coordinateB = coordinate, moveResponse.coordinate
+      if coordinateA == coordinateB:
+        print("manage_move will not do anything because the same coordinate was clicked twice.")
+        return
+      del coordinate
+      nameA = CONFIG.coordinates_to_names.pop(coordinateA, None)
+      nameB = CONFIG.coordinates_to_names.pop(coordinateB, None)
+      if nameB is not None:
+        CONFIG.coordinates_to_names[coordinateA] = nameB
+      if nameA is not None:
+        CONFIG.coordinates_to_names[coordinateB] = nameA
+      # edit the atlas_image:
+      tileA = crop_atlas_image_to_tile_image(atlas_image, coordinateA)
+      tileB = crop_atlas_image_to_tile_image(atlas_image, coordinateB)
+      atlas_image.paste(tileA, cell_coordinate_to_pillow_rect(coordinateB))
+      atlas_image.paste(tileB, cell_coordinate_to_pillow_rect(coordinateA))
+      atlas_image.save(ATLAS_IMAGE_PATH)
+    else:
+      assert isinstance(moveResponse, AtlasPromptExit)
+      raise NotImplementedError("what should happen when user exits from move?")
   
   with Image.open(ATLAS_IMAGE_PATH) as atlasImage:
     while True:
