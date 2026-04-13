@@ -126,8 +126,7 @@ class MappingManager:
       print(mapfile_to_string())
       print("the program will exit.")
       assert False
-      
-MAPPING_MANAGER = MappingManager()
+
 
 
 
@@ -135,10 +134,10 @@ def get_atlas_image_size():
   # TODO add builtin check that image is the same size as configured size?
   return int_vec_parallel_multiply(OTHER_CONFIG_SETTINGS.tile_size, OTHER_CONFIG_SETTINGS.atlas_size)
 
-def get_a_free_coordinate():
+def get_a_free_coordinate(mapping_manager: MappingManager):
   for y in range(OTHER_CONFIG_SETTINGS.atlas_size[1]):
     for x in range(OTHER_CONFIG_SETTINGS.atlas_size[0]):
-      if (x,y) not in MAPPING_MANAGER.coordinates_to_names:
+      if (x,y) not in mapping_manager.coordinates_to_names:
         return (x,y)
   assert False, "out of room"
 
@@ -253,15 +252,15 @@ def tile_name_to_path(tile_name):
   
 # ----- methods to import and export individual tiles -----
   
-def import_tile_with_coordinate(destination_atlas_pil_image, cell_coordinate) -> None:
+def import_tile_with_coordinate(mapping_manager: MappingManager, atlas_image: Image.Image, cell_coordinate) -> None:
   assert is_valid_int_pair_tuple(cell_coordinate)
-  assert isinstance(destination_atlas_pil_image, Image.Image)
-  return import_tile_with_name(destination_atlas_pil_image, MAPPING_MANAGER.coordinates_to_names[cell_coordinate])
+  assert isinstance(atlas_image, Image.Image)
+  return import_tile_with_name(mapping_manager, atlas_image, mapping_manager.coordinates_to_names[cell_coordinate])
 
-def import_tile_with_name(destination_atlas_pil_image, tile_name) -> None:
+def import_tile_with_name(mapping_manager: MappingManager, destination_atlas_pil_image, tile_name) -> None:
   assert isinstance(tile_name, str)
   assert isinstance(destination_atlas_pil_image, Image.Image)
-  assert tile_name in MAPPING_MANAGER.coordinates_to_names.inverse
+  assert tile_name in mapping_manager.coordinates_to_names.inverse
   tilePath = tile_name_to_path(tile_name)
   if not os.path.exists(tilePath):
     raise FileNotFoundError(f"Tile with path {tilePath} does not exist and cannot be imported at the configured location. import_tile_with_name should only be called for names that are known to exist as files.")
@@ -269,7 +268,7 @@ def import_tile_with_name(destination_atlas_pil_image, tile_name) -> None:
     if tileImg.size != OTHER_CONFIG_SETTINGS.tile_size:
       print(f"WARNING: Tile with name {tile_name} will not be imported because it is the wrong size: {tileImg.size}")
       return
-    destinationCellCoordinate = MAPPING_MANAGER.coordinates_to_names.inverse[tile_name]
+    destinationCellCoordinate = mapping_manager.coordinates_to_names.inverse[tile_name]
     if not int_vec_all_components_are_less(destinationCellCoordinate, OTHER_CONFIG_SETTINGS.atlas_size):
       print(f"WARNING: Tile with name {tile_name} will not be imported to the cell at {destinationCellCoordinate} because it is outside of the atlas according to the atlas config size of {OTHER_CONFIG_SETTINGS.atlas_size}.")
       return
@@ -278,10 +277,10 @@ def import_tile_with_name(destination_atlas_pil_image, tile_name) -> None:
       return
     destination_atlas_pil_image.paste(tileImg, intersection_coordinate_to_pixel_coordinate(destinationCellCoordinate))
     
-def export_tile_with_coordinate(atlas_image: Image.Image, coordinate: tuple[int, int]) -> None:
+def export_tile_with_coordinate(mapping_manager: MappingManager, atlas_image: Image.Image, coordinate: tuple[int, int]) -> None:
   assert isinstance(atlas_image, Image.Image)
   assert is_valid_int_pair_tuple(coordinate)
-  tileImgPath = tile_name_to_path(MAPPING_MANAGER.coordinates_to_names[coordinate])
+  tileImgPath = tile_name_to_path(mapping_manager.coordinates_to_names[coordinate])
   tileImg = crop_atlas_image_to_tile_image(atlas_image, coordinate)
       
   # \/ refuse to overwrite tile of wrong size
@@ -322,8 +321,9 @@ def prompt_user_for_tile_name(tile_image, enable_skip_button=True) -> TilePrompt
   canvas = tkinter.Canvas(window, width=tilePreviewImage.size[0], height=tilePreviewImage.size[1])
   canvas.pack()
   tkinterImage = ImageTk.PhotoImage(image=tilePreviewImage, size=tilePreviewImage.size)
-  tkinterImageSprite = canvas.create_image(tilePreviewImage.size[0]//2, tilePreviewImage.size[1]//2, image=tkinterImage) # it doesn't matter if the division is not exact, this is just for preview.
-  
+  _ = canvas.create_image(tilePreviewImage.size[0]//2, tilePreviewImage.size[1]//2, image=tkinterImage) # it doesn't matter if the division is not exact, this is just for preview.
+
+
   entryStringVar = tkinter.StringVar()
   entry = tkinter.Entry(window, textvariable=entryStringVar)
   entry.focus_set()
@@ -447,7 +447,7 @@ class AtlasPromptDefinition(pydantic.BaseModel):
 
 TOOLTIP_PADDING = PaddingDescription(all_sides=6)
 
-def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_image: Image.Image) -> AtlasPromptResponse:
+def atlas_interactive_prompt(*, mapping_manager: MappingManager, atlas_image: Image.Image, prompt_definition: AtlasPromptDefinition) -> AtlasPromptResponse:
   # this method should never do anything except display a prompt and return the user's choice of action. It should not perform that action.
   assert isinstance(prompt_definition.tile_preview_image, Image.Image)
   assert all(isinstance(item, int) for item in itertools.chain(*prompt_definition.acceptable_keys.values()))
@@ -473,7 +473,7 @@ def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_
     hoveredTileCoord = tuple(pygame.mouse.get_pos()[i] // OTHER_CONFIG_SETTINGS.tile_size[i] for i in (0, 1)) # TODO int vec divide
     if not cell_coordinate_is_in_bounds(hoveredTileCoord):
       hoveredTileCoord = None
-    hoveredTileName = MAPPING_MANAGER.coordinates_to_names.get(hoveredTileCoord, None)
+    hoveredTileName = mapping_manager.coordinates_to_names.get(hoveredTileCoord, None)
     
     # rendering that depends on pointer conditions {
     # static instructions:
@@ -484,7 +484,7 @@ def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_
       # highlight the cell:
       pygame.draw.lines(screen, HIGHLIGHT_COLOR, True, [intersection_coordinate_to_pixel_coordinate(int_vec_add(hoveredTileCoord, offset)) for offset in [(0,0), (1,0), (1,1), (0,1)]])
       # generate the tooltip:
-      hoveredTileDisplayName = MAPPING_MANAGER.coordinates_to_names.get(hoveredTileCoord, default="empty")
+      hoveredTileDisplayName = mapping_manager.coordinates_to_names.get(hoveredTileCoord, default="empty")
       _keycodesAvailableNowGen = (itertools.chain([] if hoveredTileCoord is None else itertools.chain(prompt_definition.acceptable_keys['coordinate_required'], prompt_definition.acceptable_keys["coordinate_required_link_forbidden"] if hoveredTileName is None else []), [] if hoveredTileName is None else prompt_definition.acceptable_keys['link_required']))
       tooltipText = f"{hoveredTileDisplayName}\n\n{NEWLINE.join(prompt_definition.key_descriptions[keyCode] for keyCode in _keycodesAvailableNowGen)}"
       tooltipLineSurfs = [font.render(text=tooltipTextLine, fgcolor=WINDOW_TEXT_COLOR, bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tooltipTextLine in tooltipText.split("\n")]
@@ -534,18 +534,19 @@ def atlas_interactive_prompt(*, prompt_definition: AtlasPromptDefinition, atlas_
           print(f"atlas_interactive_prompt: ignoring key {event.key!r} because it is not acceptable.")
 
 def prompt_user_for_a_free_coordinate(tile_image, tile_name, atlas_image) -> AtlasPromptResponse:
-  raise NotImplementedError("this usage of AtlasPromptDefinition is out of date.")
-  result = atlas_interactive_prompt(prompt_definition=AtlasPromptDefinition(
+  raise NotImplementedError("create a mappingManager?")
+  """
+  result = atlas_interactive_prompt(atlas_image=atlas_image, prompt_definition=AtlasPromptDefinition(
     tile_preview_image=tile_image,
     tile_preview_top_text="choose a coordinate for this new tile",
     tile_preview_bottom_text=tile_name,
     acceptable_keys={"no_requirements":[],"coordinate_required":[],"link_required":[]},
-    alt_instructions="\n\n[left click] use this coordinate",
     clicks_are_acceptable=True,
-  ), atlas_image=atlas_image)
+    key_descriptions=dict(),
+  ))
   pygame.display.quit()
   return result
-
+  """
 
 
 
@@ -589,39 +590,39 @@ def run_interactive_management_mode() -> None:
   )
   
   
-  def manage_link(coordinate):
+  def manage_link(mapping_manager: MappingManager, coordinate):
     tileNamesForPrompt = find_tile_names()
-    surfaceSelectionResponse = scrolling_surface_list_selection_prompt([GET_DEFAULT_FONT().render(text=tileName, fgcolor=(WINDOW_FAINT_TEXT_COLOR if tileName in MAPPING_MANAGER.coordinates_to_names.inverse else WINDOW_TEXT_COLOR), bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tileName in tileNamesForPrompt])
+    surfaceSelectionResponse = scrolling_surface_list_selection_prompt([GET_DEFAULT_FONT().render(text=tileName, fgcolor=(WINDOW_FAINT_TEXT_COLOR if tileName in mapping_manager.coordinates_to_names.inverse else WINDOW_TEXT_COLOR), bgcolor=WINDOW_BACKGROUND_COLOR)[0] for tileName in tileNamesForPrompt])
     if isinstance(surfaceSelectionResponse, int):
       chosenName = tileNamesForPrompt[surfaceSelectionResponse]
-      MAPPING_MANAGER.coordinates_to_names[coordinate] = chosenName
+      mapping_manager.coordinates_to_names[coordinate] = chosenName
     else:
       assert surfaceSelectionResponse is None
       # do nothing (cancel), because the user did not select a name.
   
-  def manage_unlink(coordinate):    
-    print(f"removing link from {coordinate} to {MAPPING_MANAGER.coordinates_to_names[coordinate]!r}")
-    del MAPPING_MANAGER.coordinates_to_names[coordinate]
+  def manage_unlink(mapping_manager: MappingManager, coordinate):
+    print(f"removing link from {coordinate} to {mapping_manager.coordinates_to_names[coordinate]!r}")
+    del mapping_manager.coordinates_to_names[coordinate]
   
-  def manage_delete_tile_file(coordinate):
-    pathToRemove = TILE_FOLDER_PATH + SEP + MAPPING_MANAGER.coordinates_to_names[coordinate]
+  def manage_delete_tile_file(mapping_manager: MappingManager, coordinate):
+    pathToRemove = TILE_FOLDER_PATH + SEP + mapping_manager.coordinates_to_names[coordinate]
     if os.path.exists(pathToRemove):
       print(f"deleting tile file {pathToRemove}")
       os.remove(pathToRemove)
     else:
       print(f"cannot remove tile file {pathToRemove} because it does not exist")
       
-  def manage_clear_cell(coordinate):
+  def manage_clear_cell(atlas_image: Image.Image, coordinate):
     startX, startY, stopX, stopY = cell_coordinate_to_pillow_rect(coordinate)
     for y in range(startY, stopY):
       for x in range(startX, stopX):
         # assert ATLAS_IMAGE_CREATION_FILL_COLOR == ATLAS_IMAGE_BLANK_COLOR, "update for checkerboard??"
-        atlasImage.putpixel((x,y), ATLAS_IMAGE_CREATION_FILL_COLOR)
+        atlas_image.putpixel((x,y), ATLAS_IMAGE_CREATION_FILL_COLOR) # TODO check number of channels. add checkerboard.
         
-  def manage_rename(atlas_image, coordinate):
+  def manage_rename(mapping_manager: MappingManager, atlas_image: Image.Image, coordinate):
     assert isinstance(atlas_image, Image.Image)
     assert is_valid_int_pair_tuple(coordinate)
-    pathToRename = TILE_FOLDER_PATH + SEP + MAPPING_MANAGER.coordinates_to_names[coordinate]
+    pathToRename = TILE_FOLDER_PATH + SEP + mapping_manager.coordinates_to_names[coordinate]
     tilePromptResponse = prompt_user_for_tile_name(get_preview_pil_image_of_cell(atlas_image, coordinate), enable_skip_button=False)
     assert isinstance(tilePromptResponse, TilePromptResponse)
     newName = None
@@ -633,12 +634,12 @@ def run_interactive_management_mode() -> None:
     else:
       raise ValueError(tilePromptResponse)
     newPath = TILE_FOLDER_PATH + SEP + newName
-    assert newName not in MAPPING_MANAGER.coordinates_to_names.values()
+    assert newName not in mapping_manager.coordinates_to_names.values()
     assert not os.path.exists(newPath)
     if os.path.exists(pathToRename):
       os.rename(pathToRename, newPath)
-    del MAPPING_MANAGER.coordinates_to_names[coordinate]
-    MAPPING_MANAGER.coordinates_to_names[coordinate] = newName
+    del mapping_manager.coordinates_to_names[coordinate]
+    mapping_manager.coordinates_to_names[coordinate] = newName
   
   def manage_show(atlas_image, coordinate):
     assert isinstance(atlas_image, Image.Image)
@@ -649,18 +650,18 @@ def run_interactive_management_mode() -> None:
     pygame.display.flip()
     pygame_wait_for_any_key()
     
-  def manage_move(atlas_image, coordinate):
+  def manage_move(mapping_manager: MappingManager, atlas_image: Image.Image, coordinate):
     """ modify both config and atlas image. save atlas_image immediately, config still needs to be saved later. """
     assert isinstance(atlas_image, Image.Image)
     assert is_valid_int_pair_tuple(coordinate)
-    moveResponse = atlas_interactive_prompt(prompt_definition=AtlasPromptDefinition(
+    moveResponse = atlas_interactive_prompt(mapping_manager=mapping_manager, atlas_image=atlas_image, prompt_definition=AtlasPromptDefinition(
       tile_preview_image=blankPreviewImage,
       pointer_image=surface_to_pil_image(make_externally_outlined_copy(pil_image_to_surface(crop_atlas_image_to_tile_image(atlas_image, coordinate)), thickness=1, color=HIGHLIGHT_COLOR)),
       tile_preview_top_text="", tile_preview_bottom_text="",
       acceptable_keys={"no_requirements":[], "coordinate_required":[], "link_required":[], "coordinate_required_link_forbidden":[]},
       clicks_are_acceptable=True,
       key_descriptions=dict(),
-    ), atlas_image=atlas_image)
+    ))
     assert isinstance(moveResponse, AtlasPromptResponse)
     if isinstance(moveResponse, AtlasPromptSubmission):
       # edit the mapping:
@@ -669,12 +670,12 @@ def run_interactive_management_mode() -> None:
         print("manage_move will not do anything because the same coordinate was clicked twice.")
         return
       del coordinate
-      nameA = MAPPING_MANAGER.coordinates_to_names.pop(coordinateA, None)
-      nameB = MAPPING_MANAGER.coordinates_to_names.pop(coordinateB, None)
+      nameA = mapping_manager.coordinates_to_names.pop(coordinateA, None)
+      nameB = mapping_manager.coordinates_to_names.pop(coordinateB, None)
       if nameB is not None:
-        MAPPING_MANAGER.coordinates_to_names[coordinateA] = nameB
+        mapping_manager.coordinates_to_names[coordinateA] = nameB
       if nameA is not None:
-        MAPPING_MANAGER.coordinates_to_names[coordinateB] = nameA
+        mapping_manager.coordinates_to_names[coordinateB] = nameA
       # edit the atlas_image:
       tileA = crop_atlas_image_to_tile_image(atlas_image, coordinateA)
       tileB = crop_atlas_image_to_tile_image(atlas_image, coordinateB)
@@ -684,33 +685,42 @@ def run_interactive_management_mode() -> None:
     else:
       assert isinstance(moveResponse, AtlasPromptExit)
       raise NotImplementedError("what should happen when user exits from move?")
-  
+
+  # main loop of interactive mode:
+  mappingManager = MappingManager()
+  mappingManager.load()
   with Image.open(ATLAS_IMAGE_PATH) as atlasImage:
     while True:
       
-      response = atlas_interactive_prompt(prompt_definition=mainPromptDefinition, atlas_image=atlasImage)
+      response = atlas_interactive_prompt(mapping_manager=mappingManager, atlas_image=atlasImage, prompt_definition=mainPromptDefinition)
       assert isinstance(response, AtlasPromptResponse)
       
       if isinstance(response, AtlasPromptSubmission):
         if response.event.type == pygame.KEYDOWN:
           if response.event.key == ord("l"):
-            manage_link(response.coordinate)
+            manage_link(mappingManager, response.coordinate)
+            mappingManager.save()
           elif response.event.key == ord("u"):
-            manage_unlink(response.coordinate)
+            manage_unlink(mappingManager, response.coordinate)
+            mappingManager.save()
           elif response.event.key == pygame.K_DELETE:
-            manage_delete_tile_file(response.coordinate)
+            manage_delete_tile_file(mappingManager, response.coordinate)
+            # no changes to mapping, don't save now
+            mappingManager.assert_is_saved_correctly()
           elif response.event.key == pygame.K_BACKSPACE:
-            manage_clear_cell(response.coordinate)
+            manage_clear_cell(atlasImage, response.coordinate)
           elif response.event.key == ord("r"):
-            manage_rename(atlasImage, response.coordinate)
+            manage_rename(mappingManager, atlasImage, response.coordinate)
+            mappingManager.save()
           elif response.event.key == ord("s"):
             manage_show(atlasImage, response.coordinate)
           elif response.event.key == ord("m"):
-            manage_move(atlasImage, response.coordinate)
+            manage_move(mappingManager, atlasImage, response.coordinate)
+            mappingManager.save()
           elif response.event.key == ord("i"):
-            import_tile_with_coordinate(atlasImage, response.coordinate)
+            import_tile_with_coordinate(mappingManager, atlasImage, response.coordinate)
           elif response.event.key == ord("e"):
-            export_tile_with_coordinate(atlasImage, response.coordinate)
+            export_tile_with_coordinate(mappingManager, atlasImage, response.coordinate)
             
           elif response.event.key == pygame.K_RETURN:
             print("finished with interactive management mode")
@@ -738,14 +748,14 @@ def run_interactive_management_mode() -> None:
 
 
 
-def do_tile_export(*, atlas_image: Image.Image, discover: bool, organize: bool):
+def do_tile_export(*, mapping_manager: MappingManager, atlas_image: Image.Image, discover: bool):
   if not os.path.exists(ATLAS_IMAGE_PATH):
     raise FileNotFoundError("can't export when atlas image does not exist.")
     
   for y in range(OTHER_CONFIG_SETTINGS.atlas_size[1]):
     for x in range(OTHER_CONFIG_SETTINGS.atlas_size[0]):
       tileImg = crop_atlas_image_to_tile_image(atlas_image, (x,y))
-      if (x,y) not in MAPPING_MANAGER.coordinates_to_names:
+      if (x,y) not in mapping_manager.coordinates_to_names:
         if discover and not tile_image_is_blank(tileImg):
           response = prompt_user_for_tile_name(tileImg)
           assert isinstance(response, TilePromptResponse)
@@ -757,27 +767,27 @@ def do_tile_export(*, atlas_image: Image.Image, discover: bool, organize: bool):
             exit(EXIT_CODES["TILE_PROMPT_EXIT_CHOICE"])
           else:
             raise ValueError(response)
-          MAPPING_MANAGER.coordinates_to_names[(x, y)] = newTileName
+          mapping_manager.coordinates_to_names[(x, y)] = newTileName
         else:
           continue # don't attempt to export.
-      assert (x,y) in MAPPING_MANAGER.coordinates_to_names
-      export_tile_with_coordinate(atlas_image=atlas_image, coordinate=(x,y))
+      assert (x,y) in mapping_manager.coordinates_to_names
+      export_tile_with_coordinate(mapping_manager=mapping_manager, atlas_image=atlas_image, coordinate=(x,y))
       
-def do_tile_import(*, atlas_image: Image.Image, discover: bool, organize: bool):
+def do_tile_import(*, mapping_manager: MappingManager, atlas_image: Image.Image, discover: bool, organize: bool):
   if not os.path.exists(ATLAS_IMAGE_PATH):
     assert False, "why is this test here?" # TODO
     
   newlyDiscoveredNames = []
   availableFileTileNames = find_tile_names()
-  for registeredTileCoord, registeredTileName in MAPPING_MANAGER.coordinates_to_names.items():
+  for registeredTileCoord, registeredTileName in mapping_manager.coordinates_to_names.items():
     if registeredTileName not in availableFileTileNames:
       print(f"warning: cannot import tile {registeredTileName!r} to cell {registeredTileCoord} because it does not exist as a file.")
   for tileName in availableFileTileNames:
-    if tileName in MAPPING_MANAGER.coordinates_to_names.inverse:
-      import_tile_with_name(atlas_image, tileName)
+    if tileName in mapping_manager.coordinates_to_names.inverse:
+      import_tile_with_name(mapping_manager, atlas_image, tileName)
     else:
       newlyDiscoveredNames.append(tileName)
-  atlas_image.save(ATLAS_IMAGE_PATH) # this is a good time to save progress. config has not changed and doesn't need to be saved.
+  atlas_image.save(ATLAS_IMAGE_PATH) # this is a good time to save progress. mapping has not changed and doesn't need to be saved.
   
   if discover and organize:
     raise ValueError("can't do discover and organize at the same time.")
@@ -788,7 +798,7 @@ def do_tile_import(*, atlas_image: Image.Image, discover: bool, organize: bool):
     for tileName in newlyDiscoveredNames:
       placementCoordinate = None # must not carry over from previous iteration
       if discover:
-        placementCoordinate = get_a_free_coordinate()
+        placementCoordinate = get_a_free_coordinate(mapping_manager)
       elif organize:
         with Image.open(tile_name_to_path(tileName)) as tileImgForPrompt:
           promptResult = prompt_user_for_a_free_coordinate(tile_image=tileImgForPrompt, tile_name=tileName, atlas_image=atlas_image)
@@ -807,22 +817,22 @@ def do_tile_import(*, atlas_image: Image.Image, discover: bool, organize: bool):
       else:
         assert False, "unreachable"
       assert is_valid_int_pair_tuple(placementCoordinate)
-      MAPPING_MANAGER.coordinates_to_names.inverse[tileName] = placementCoordinate
-      import_tile_with_name(atlas_image, tileName)
-    atlas_image.save(ATLAS_IMAGE_PATH)
-    # TODO put transport in charge of whether and when atlas config gets saved. Atlas config and atlas image should probably be saved at the same time.
+      mapping_manager.coordinates_to_names.inverse[tileName] = placementCoordinate
+      import_tile_with_name(mapping_manager, atlas_image, tileName)
 
 def do_tile_transport(direction, discover=False, organize=False) -> None:
   assert not (discover and organize)
-    
+
+  mapping_manager = MappingManager()
   with Image.open(ATLAS_IMAGE_PATH) as atlasImg:
     if direction is TRANSPORT_DIRECTION.EXPORT:
-      do_tile_export(atlas_image=atlasImg, discover=discover, organize=organize)
+      assert not organize
+      do_tile_export(mapping_manager=mapping_manager, atlas_image=atlasImg, discover=discover)
     elif direction is TRANSPORT_DIRECTION.IMPORT:
-      do_tile_import(atlas_image=atlasImg, discover=discover, organize=organize)
+      do_tile_import(mapping_manager=mapping_manager, atlas_image=atlasImg, discover=discover, organize=organize)
     else:
       raise ValueError(direction)
-    # there is no need to save atlasImg now, it has been done.
+  mapping_manager.save()
 
 
 
@@ -862,7 +872,6 @@ manage_parser = subparser_manager.add_parser("manage", help="enter interactive m
 
 args = parser.parse_args()
 if args.subcommand == "atlas-image":
-  # assert not any((args.discover, args.organize, args.organize_all))
   if args.subaction == "create":
     create_atlas_image()
   elif args.subaction == "delete":
@@ -873,7 +882,6 @@ if args.subcommand == "atlas-image":
   else:
     raise ValueError(args.subaction)
 elif args.subcommand == "atlas-config":
-  # assert not any((args.discover, args.organize, args.organize_all))
   if args.subaction == "create":
     create_atlas_config()
   elif args.subaction == "delete":
@@ -885,8 +893,6 @@ elif args.subcommand == "atlas-config":
   else:
     raise ValueError(args.subaction)
 elif args.subcommand == "transport":
-  MAPPING_MANAGER.load()
-  MAPPING_MANAGER.assert_is_saved_correctly()
   direction = PARSE_TRANSPORT_DIRECTION(args.direction)
   assert args.discover is True or args.discover is False
   assert at_most_one((args.discover, args.organize, args.organize_all))
@@ -897,17 +903,11 @@ elif args.subcommand == "transport":
       assert not args.organize
       assert not args.organize_all
     do_tile_transport(direction, discover=args.discover, organize=args.organize)
-  if args.discover or args.organize or args.organize_all:
-    MAPPING_MANAGER.save() # TODO move into transport
-  MAPPING_MANAGER.assert_is_saved_correctly()
 elif args.subcommand == "manage":
-  MAPPING_MANAGER.load()
-  MAPPING_MANAGER.assert_is_saved_correctly()
   run_interactive_management_mode()
-  MAPPING_MANAGER.save()
-  MAPPING_MANAGER.assert_is_saved_correctly()
 elif args.subcommand is None:
-  print("a subcommand must be used. Use the --help option for information on subcommands.")
+  print("atlas.py opens in interactive management mode when no subcommands are used. Use the --help option for information on subcommands.")
+  run_interactive_management_mode()
 else:
   raise ValueError(args.subcommand)
   
