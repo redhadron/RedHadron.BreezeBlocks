@@ -9,18 +9,17 @@ import codecs # for portuguese file encoding
 import re
 import functools
 import urllib # for libretranslate error handling
-from urllib import error
-del error
 # import subprocess # for png crushing
 import asyncio # for using multiple processes for png crushing
 import sys # to use sys.exit inside async, although this does not work.
 import json
+from typing import Callable
 
 # project
 from Hytale import HYTALE_ASSETS_PATH, SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
 import ProcessPooling
 from Affixes import remove_suffix, remove_prefix, shorten_suffix, lstrip_and_count, rstrip_and_count
-from Utilities import assert_equals, int_divide_exact
+from Utilities import assert_equals # , int_divide_exact
 import Parsing
 from colors import COLORS_SHELF_PATH
 
@@ -32,11 +31,15 @@ from tibs import Tibs
 import shelve
 from libretranslatepy import LibreTranslateAPI
 LIBRETRANSLATE_API = LibreTranslateAPI("http://127.0.0.1:5000") # recommended args for libretranslate: --disable-web-ui --translation-cache all
+
+# noinspection PyUnresolvedReferences
 try:
   LIBRETRANSLATE_SUPPORTED_LANGUAGE_CODES = [item["code"] for item in LIBRETRANSLATE_API.languages()]
 except urllib.error.URLError:
   print("failed to communicate with libretranslate. Are you running a libretranslate server on the default port? https://docs.libretranslate.com/ recommended command \"libretranslate --translation-cache all --disable-web-ui\"")
   exit(BAD_EXIT_CODE)
+
+# ??
 import psutil
 # import numpy
 # from stablerandom import stablerandom
@@ -265,11 +268,7 @@ def translate_string_piecewise(text, source, target, delimiters):
 
 # ----- mod path constants -----
 
-def is_a_valid_mod(modPath):
-  assert os.path.exists(modPath)
-  return all(item in os.listdir(modPath) for item in ["Common"])
-  
-# TODO Manifest.json copying
+
 
 if os.getcwd().count("dev") > 1:
   raise NotImplementedError()
@@ -287,48 +286,86 @@ def assert_file_exists(input_path: str) -> None:
   assert_path_exists(input_path)
   assert not os.path.isdir(input_path), input_path
 
-MOD_NAME = "RedHadron.BreezeBlocks"
-assert MOD_NAME in os.getcwd()
-MOD_SOURCE_PATH = shorten_suffix(os.getcwd(), SEP+MOD_NAME+SEP+"dev", SEP+MOD_NAME) if os.getcwd().endswith(SEP+"dev") else os.getcwd()
+def is_a_valid_mod(modPath):
+  assert_directory_exists(modPath)
+  return all(item in os.listdir(modPath) for item in ["Common"])
+
+MOD_BASE_NAME = "RedHadron.BreezeBlocks"
+MOD_SOURCE_NAME = "RedHadron.BreezeBlocks"
+assert MOD_SOURCE_NAME in os.getcwd()
+MOD_SOURCE_PATH = os.path.normpath(shorten_suffix(os.getcwd(), SEP+MOD_SOURCE_NAME+SEP+"dev", SEP+MOD_SOURCE_NAME) if os.getcwd().endswith(SEP+"dev") else os.getcwd())
 assert is_a_valid_mod(MOD_SOURCE_PATH) and "dev" in os.listdir(MOD_SOURCE_PATH), "mod source path or structure may be invalid"
-MOD_DESTINATION_PATH = SEP.join([MOD_SOURCE_PATH, "..", "..", "mods", MOD_NAME])
-assert is_a_valid_mod(MOD_DESTINATION_PATH), "Not a valid mod: " + MOD_DESTINATION_PATH
-assert "dev" not in os.listdir(MOD_DESTINATION_PATH), "mod destination path or structure may be invalid: " + MOD_DESTINATION_PATH
 
 MODEL_FOLDER_SUBPATH = SEP.join(["Common", "Blocks", "Breeze"])
 MODEL_FOLDER_SOURCE_PATH = SEP.join([MOD_SOURCE_PATH, MODEL_FOLDER_SUBPATH])
-MODEL_FOLDER_DESTINATION_PATH = SEP.join([MOD_DESTINATION_PATH, MODEL_FOLDER_SUBPATH])
-assert_directory_exists(MODEL_FOLDER_SOURCE_PATH)
-assert_directory_exists(MODEL_FOLDER_DESTINATION_PATH)
-
 ASSET_FOLDER_SUBPATH = SEP.join(["Server", "Item", "Items"])
-ASSET_FOLDER_DESTINATION_PATH = MOD_DESTINATION_PATH + SEP + ASSET_FOLDER_SUBPATH
-assert_directory_exists(ASSET_FOLDER_DESTINATION_PATH)
-
 ICON_FOLDER_SUBPATH = SEP.join(["Common", "Icons", "ItemsGenerated"])
-ICON_FOLDER_DESTINATION_PATH = MOD_DESTINATION_PATH + SEP + ICON_FOLDER_SUBPATH
-assert_directory_exists(ICON_FOLDER_DESTINATION_PATH)
-
 BLOCKTEXTURE_FOLDER_SUBPATH = SEP.join(["Common", "BlockTextures"])
-BLOCKTEXTURE_FOLDER_DESTINATION_PATH = MOD_DESTINATION_PATH + SEP + BLOCKTEXTURE_FOLDER_SUBPATH
-assert_directory_exists(BLOCKTEXTURE_FOLDER_DESTINATION_PATH)
-
 TEMPLATE_FILE_SUBPATH = "dev" + SEP + "Breeze_Template.json"
 TEMPLATE_FILE_PATH = MOD_SOURCE_PATH + SEP + TEMPLATE_FILE_SUBPATH
 assert_file_exists(TEMPLATE_FILE_PATH)
 
+
 MANIFEST_FILE_SOURCE_PATH = MOD_SOURCE_PATH + SEP + "manifest.json"
-MANIFEST_FILE_DESTINATION_PATH = MOD_DESTINATION_PATH + SEP + "manifest.json"
 assert_file_exists(MANIFEST_FILE_SOURCE_PATH)
 
+def apply_validator_to_output(validator_function: Callable) -> Callable:
+  def outer(function_to_decorate: Callable) -> Callable:
+    def inner(*args, **kwargs):
+      result = function_to_decorate(*args, **kwargs)
+      validator_function(result)
+      return result
+    return inner
+  return outer
+def _assert_is_even(z):
+  assert z%2==0
+@apply_validator_to_output(_assert_is_even)
+def _successor(y):
+  return y + 1
+_successor(3)
+del _successor, _assert_is_even
+# TODO expand testing with error capturing
 
 def GET_LANGUAGE_FILE_SUBPATH(language_code):
   if not LANGUAGE_CODE_LIBRETRANSLATE_SUBSTITUTIONS[language_code] in LIBRETRANSLATE_SUPPORTED_LANGUAGE_CODES:
     print(f"warning: {language_code} is not supported.")
   return SEP.join(["Server", "Languages", language_code, "items.lang"])
 
-def GET_LANGUAGE_FILE_DESTINATION_PATH(language_code):
-  return SEP.join([MOD_DESTINATION_PATH, GET_LANGUAGE_FILE_SUBPATH(language_code)])
+# TODO make a better decorator that can assert the output of a key function is true
+class BuildSettings:
+  def __init__(self, mod_destination_name):
+    assert MOD_BASE_NAME in mod_destination_name, "destination name must include the base name, because some files may need to be deleted, and for safety reasons, only paths containing the mod base name can be deleted."
+    self.mod_destination_name = mod_destination_name
+  @property
+  def mod_destination_path(self):
+    result = os.path.normpath(SEP.join([MOD_SOURCE_PATH, "..", "..", "mods", self.mod_destination_name]))
+    assert is_a_valid_mod(result), result
+    assert "dev" not in os.listdir(result), "mod destination path or structure may be invalid because it contains the substring \"dev\": " + result
+    return result
+
+  @property
+  @apply_validator_to_output(assert_directory_exists)
+  def model_folder_destination_path(self):
+    return SEP.join([self.mod_destination_path, MODEL_FOLDER_SUBPATH])
+  @property
+  @apply_validator_to_output(assert_directory_exists)
+  def asset_folder_destination_path(self):
+    return SEP.join([self.mod_destination_path, ASSET_FOLDER_SUBPATH])
+  @property
+  @apply_validator_to_output(assert_directory_exists)
+  def icon_folder_destination_path(self):
+    return SEP.join([self.mod_destination_path, ICON_FOLDER_SUBPATH])
+  @property
+  @apply_validator_to_output(assert_directory_exists)
+  def blocktexture_folder_destination_path(self):
+    return SEP.join([self.mod_destination_path, BLOCKTEXTURE_FOLDER_SUBPATH])
+  @property
+  def manifest_file_destination_path(self):
+    return SEP.join([self.mod_destination_path, "manifest.json"])
+
+  def get_language_file_destination_path(self, language_code: str):
+    assert isinstance(language_code, str)
+    return SEP.join([self.mod_destination_path, GET_LANGUAGE_FILE_SUBPATH(language_code)])
 
 
 
@@ -340,7 +377,7 @@ def GET_LANGUAGE_FILE_DESTINATION_PATH(language_code):
 def clear_folder(folder_path, expected_extension):
   for nameToDelete in os.listdir(folder_path):
     pathToDelete = folder_path + SEP + nameToDelete
-    assert MOD_NAME in str(pathlib.Path(pathToDelete).resolve())
+    assert MOD_BASE_NAME in str(pathlib.Path(pathToDelete).resolve())
     assert pathToDelete.endswith(expected_extension)
     assert_file_exists(pathToDelete) # and is not dir
     os.remove(pathToDelete)
@@ -548,13 +585,20 @@ def rjust_tuple(input_tuple, fill_value, length):
 assert rjust_tuple((3,4,5), 0, 5) == (0,0,3,4,5)
 assert rjust_tuple((3,4,5), 0, 2) == (3,4,5)
 
-clear_folder(ASSET_FOLDER_DESTINATION_PATH, ".json")
-clear_folder(ICON_FOLDER_DESTINATION_PATH, ".png")
-clear_folder(MODEL_FOLDER_DESTINATION_PATH, ".blockymodel")
-clear_folder(BLOCKTEXTURE_FOLDER_DESTINATION_PATH, ".png")
-if os.path.exists(MANIFEST_FILE_DESTINATION_PATH):
+
+
+
+BUILD_SETTINGS = BuildSettings(mod_destination_name="RedHadron.BreezeBlocks")
+
+
+
+clear_folder(BUILD_SETTINGS.asset_folder_destination_path, ".json")
+clear_folder(BUILD_SETTINGS.icon_folder_destination_path, ".png")
+clear_folder(BUILD_SETTINGS.model_folder_destination_path, ".blockymodel")
+clear_folder(BUILD_SETTINGS.blocktexture_folder_destination_path, ".png")
+if os.path.exists(BUILD_SETTINGS.manifest_file_destination_path):
   # TODO make and use a json shelf-like CM
-  with open(MANIFEST_FILE_SOURCE_PATH, "r") as srcManifestFile, open(MANIFEST_FILE_DESTINATION_PATH) as destManifestFile:
+  with open(MANIFEST_FILE_SOURCE_PATH, "r") as srcManifestFile, open(BUILD_SETTINGS.manifest_file_destination_path) as destManifestFile:
     srcText, destText = srcManifestFile.read(), destManifestFile.read()
   srcManifest, destManifest = json.loads(srcText), json.loads(destText)
   srcVer, destVer = (tuple(int(component) for component in manifest["Version"].split(".")) for manifest in (srcManifest, destManifest))
@@ -562,9 +606,9 @@ if os.path.exists(MANIFEST_FILE_DESTINATION_PATH):
   srcVer, destVer = (rjust_tuple(ver, 0, maxComponentCount) for ver in (srcVer, destVer))
   if srcVer < destVer:
     print("you are overwriting a newer version of the mod. if the newer version has files that are unused by the older version, you should delete them manually.")
-shutil.copy(MANIFEST_FILE_SOURCE_PATH, MANIFEST_FILE_DESTINATION_PATH)
+shutil.copy(MANIFEST_FILE_SOURCE_PATH, BUILD_SETTINGS.manifest_file_destination_path)
 for langCode in BREEZE_BLOCKS_LANGUAGE_CODES:
-  pathToRemove = GET_LANGUAGE_FILE_DESTINATION_PATH(langCode)
+  pathToRemove = BUILD_SETTINGS.get_language_file_destination_path(langCode)
   if os.path.exists(pathToRemove):
     os.remove(pathToRemove)
 
@@ -575,13 +619,15 @@ for langCode in BREEZE_BLOCKS_LANGUAGE_CODES:
 async def generate_assets():
 
   codecStrings = {"en-US": "utf-8", "pt-BR": "utf-8-sig", "uk-UA": "utf-8", "ru-RU": "utf-8"}
-  languageFiles = {langCode: codecs.open(GET_LANGUAGE_FILE_DESTINATION_PATH(langCode), "w", codecStrings[langCode]) for langCode in BREEZE_BLOCKS_LANGUAGE_CODES}
+  languageFiles = {langCode: codecs.open(BUILD_SETTINGS.get_language_file_destination_path(langCode), "w", codecStrings[langCode]) for langCode in BREEZE_BLOCKS_LANGUAGE_CODES}
   colorsShelf = shelve.open(COLORS_SHELF_PATH)
 
 
   # iterate through materials:
   for dataPage in DATA_PAGES:
+    # noinspection PyTypeChecker
     for family in data_page_get_value(dataPage, "FAMILY_LIST"):
+      # noinspection PyTypeChecker
       for textureNameSuffix in data_page_get_value(dataPage, "TEXTURE_NAME_SUFFIX_LIST"):
         
         # asset info specific to this material:
@@ -600,8 +646,7 @@ async def generate_assets():
         if "Brick" in stockTexName and family not in ROCK_BRICK_FAMILY_DO_NOT_GENERATE_TEXTURE:
           
           outputFileNameStr = remove_suffix(stockTexName, ".png") + "_Breeze_Cubes2x2.png"
-          
-          outputFilePathStr = BLOCKTEXTURE_FOLDER_DESTINATION_PATH + SEP + outputFileNameStr
+          outputFilePathStr = BUILD_SETTINGS.blocktexture_folder_destination_path + SEP + outputFileNameStr
           
           with Image.open(stockTexPath) as stockTexture:
             outputTexture = stockTexture.copy()
@@ -634,7 +679,7 @@ async def generate_assets():
         
         # iterate through models:
         for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if name.endswith(".blockymodel")):
-          shutil.copy(MODEL_FOLDER_SOURCE_PATH+SEP+modelFileName, MODEL_FOLDER_DESTINATION_PATH+SEP+modelFileName)
+          shutil.copy(MODEL_FOLDER_SOURCE_PATH + SEP + modelFileName, BUILD_SETTINGS.model_folder_destination_path + SEP + modelFileName)
           modelNameWithDepth = remove_suffix(modelFileName, ".blockymodel")
           modelNameWithoutDepth = remove_suffix(modelNameWithDepth, "_Db1000")
           iconMaskFileName = modelNameWithoutDepth + ".png"
@@ -644,9 +689,9 @@ async def generate_assets():
           # asset info specific to this model and material:
           assetInfo = dict()
           assetInfo["full_name"] = data_page_get_value(dataPage, "PRIVATE_TYPE") + "_" + family + (textureNameSuffix if data_page_get_value(dataPage, "INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME") else "") + "_" + modelNameWithoutDepth
-          assetInfo["output_file_path"] = ASSET_FOLDER_DESTINATION_PATH + SEP + assetInfo["full_name"] + ".json"
+          assetInfo["output_file_path"] = BUILD_SETTINGS.asset_folder_destination_path + SEP + assetInfo["full_name"] + ".json"
           assetInfo["icon_file_name"] = assetInfo["full_name"] + ".png"
-          assetInfo["icon_file_path"] = ICON_FOLDER_DESTINATION_PATH + SEP + assetInfo["icon_file_name"]
+          assetInfo["icon_file_path"] = BUILD_SETTINGS.icon_folder_destination_path + SEP + assetInfo["icon_file_name"]
           
           
           # asset info specific to this model and texture, for inclusion in asset file:
@@ -660,7 +705,7 @@ async def generate_assets():
           
           # texture and icon work:
           with Image.open(MODEL_FOLDER_SOURCE_PATH + SEP + iconMaskFileName) as thumbnailMaskImage:
-            with Image.open(BLOCKTEXTURE_FOLDER_DESTINATION_PATH + SEP + materialInfo["final_texture_file_name"] if materialInfo["generated_texture_exists"] else HYTALE_BLOCKTEXTURES_PATH + SEP + materialInfo["stock_texture_file_name"]) as thumbnailTextureImage:
+            with Image.open(BUILD_SETTINGS.blocktexture_folder_destination_path + SEP + materialInfo["final_texture_file_name"] if materialInfo["generated_texture_exists"] else HYTALE_BLOCKTEXTURES_PATH + SEP + materialInfo["stock_texture_file_name"]) as thumbnailTextureImage:
               assert thumbnailMaskImage.size == thumbnailTextureImage.size
               
               # icon generation:
@@ -699,7 +744,7 @@ async def generate_assets():
                 ).replace("${TEXTURE_PATH_IN_MOD}", assetContents["TEXTURE_PATH_IN_MOD"]
                 ).replace("${PARTICLECOLOR_STR}", assetContents["PARTICLECOLOR_STR"]
                 )
-              
+              # noinspection PyTypeChecker
               for jsonOld, jsonNew in data_page_get_value(dataPage, "AUTOMATIC_JSON_ITEMS"):
                 outputLine = outputLine.replace("${" + jsonOld + "}", jsonNew)
                 

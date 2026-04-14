@@ -85,6 +85,10 @@ other notes:
   Rock Stone Brick has type Rock and family stone.
   Wood Softwood Planks Half has type Wood, subtype Planks, and no family!
   Wood Goldenwood Planks Half has type Wood and family Goldenwood, and no subtype!
+programming notes:
+  renaming -> easy
+  splitting one data store in two -> medium
+  saving files at the correct times -> hard
 
 atlas.py: atlas interactive prompt:
   while hovering over cell with link:
@@ -105,14 +109,21 @@ atlas.py: atlas interactive prompt:
 
 TODO:
 
-FIX BUG: icons appear black on MacOS (details in curseforge comment)
+FIX BUG: icons appear black on MacOS in combination with other mods (details in curseforge comment)
+  texture atlas overflow perhaps??? this has been discussed in the comments section of violet's furniture.
   test on linux
+generate.py:
+  make Lite and/or Zero editions
+    BuildSettings
+  
   
 atlas.py:
   saving overhaul:
-    context argument that contains atlas_image and mappings data, and can only save both at the same time.
-    split config into config settings and config mappings.
-    make atlas.py save the mapping and the atlas image any time anything changes. This fixes the bug where renaming a tile during interactive mode might be forgotten when the config is discarded but the file is already named.
+    create a context object class that contains atlas_image and mappings data, and can only load/save both at the same time. It can also produce read-only copies of either.
+    hand functions read-only copies of mapping or atlas image whenever possible.
+    store atlas size in a settings file.
+  
+  match statements
   make tooltip adjust its position to not go offscreen.
   make newline acceptable in any text.
   replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
@@ -125,11 +136,11 @@ atlas.py:
     make join_surfaces_vertically more powerful:
       spacing
       uniform placement
-    allow X button press from within scrolling list prompt.
-    add pageUp and pageDown to scrolling list prompt.
   improve performance:
     options for join_surfaces_vertically to draw directly to screen instead of a result surface.
     cache the surfaces for commonly used lines of text like "[m] move"
+    allow X button press from within scrolling list prompt.
+    add pageUp and pageDown to scrolling list prompt.
 
 crush textures too.
 refactor data pages:
@@ -157,7 +168,6 @@ language:
   
 Pathlib Path
 context manager manager
-match statements
 
 make option to rebuild destination mod.
 add a command to atlas.py to predict which tiles would be changed upon export or import, and optionally, to show the changes.
@@ -184,7 +194,8 @@ PNG optimization
   pngrewrite before pngout (requires test to see if it's any smaller when used with pngout).
 don't use ${set} for families that shouldn't have a set.
   examine block set usage in stock assets.
-  
+in tile preview images, use bold lines every 4 pixels and faint lines every pixel.
+multi-move in atlas.py interactive mode.
   
   
 
@@ -204,6 +215,7 @@ pickling as a context manager. (this already exists: import shelve)
 replace tkinter with pygame everywhere.
 add caching of tooltip surface (direct draw to screen is better, wouldn't take more compute when switching tiles)
 make ${set} more regular
+
 
 done:
 upgrade renamer.py to optionally edit the content of asset definition files (or any other files in a second directory) too.
