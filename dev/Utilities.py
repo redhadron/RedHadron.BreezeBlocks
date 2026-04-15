@@ -51,3 +51,13 @@ def xor(a, b):
   
 # _print_once_
 # def print_once(*args, **kwargs)
+
+
+def rjust_tuple(input_tuple, fill_value, length):
+  assert isinstance(input_tuple, tuple)
+  if len(input_tuple) >= length:
+    return input_tuple
+  else:
+    return (fill_value,)*(length-len(input_tuple)) + input_tuple
+assert rjust_tuple((3,4,5), 0, 5) == (0,0,3,4,5)
+assert rjust_tuple((3,4,5), 0, 2) == (3,4,5)

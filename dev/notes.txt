@@ -114,7 +114,11 @@ FIX BUG: icons appear black on MacOS in combination with other mods (details in 
   test on linux
 generate.py:
   make Lite and/or Zero editions
-    BuildSettings
+    let BuildSettings affect content of manifest.json.
+    BuildSettings controls:
+      include_ascii_art
+      include_custom_block_textures
+      include_custom_icons
   
   
 atlas.py:
@@ -307,3 +311,4 @@ atlas.py font caching.
 manifest.json copying
 Add keyboard shortcuts from above design: [m] move
 refactor main loop so that materials loop is on the outside and models loop is on the inside. This makes texture generation easier and should not interfere with making a model variants system, which might get easier too.
+BuildSettings
