@@ -21,7 +21,7 @@ import json
 from typing import Callable
 
 # project:
-from Hytale import HYTALE_ASSETS_PATH, SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
+from Hytale import SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
 import ProcessPooling
 from Affixes import remove_suffix, remove_prefix, shorten_suffix, lstrip_and_count, rstrip_and_count
 from Utilities import assert_equals, rjust_tuple  # , int_divide_exact
@@ -379,6 +379,7 @@ class DestinationSettings:
 class BuildSettings(pydantic.BaseModel):
   model_config = {"arbitrary_types_allowed": True} # for pydantic to function
   generate_blocktextures: bool
+  include_ascii_art: bool
 
   
   
@@ -568,23 +569,16 @@ DATA_PAGES = [
   
 # ---------- MAIN PROCEDURE ----------
   
-  
 # Load template file \/
 
-templateFileLines = []
+TEMPLATE_FILE_LINES = []
 with open(TEMPLATE_FILE_PATH, "r") as templateFile:
   currentLine = templateFile.readline()
-  while len(currentLine) > 0: # TODO walrus
-    templateFileLines.append(currentLine)
+  while len(currentLine) > 0:  # TODO walrus
+    TEMPLATE_FILE_LINES.append(currentLine)
     currentLine = templateFile.readline()
-if len(templateFileLines) == 0:
+if len(TEMPLATE_FILE_LINES) == 0:
   raise ValueError("empty template file?? failed.")
-  
-
-
-
-# clear destination folders and prepare destination mod \/
-
 
 
 
@@ -597,7 +591,8 @@ def clean_destination(build_settings: BuildSettings, destination_settings: Desti
   if build_settings.generate_blocktextures:
     clear_folder(destination_settings.blocktexture_folder_destination_path, ".png")
   else:
-    assert not os.path.exists(destination_settings.blocktexture_folder_destination_path)
+    if os.path.exists(destination_settings.blocktexture_folder_destination_path):
+      print("WARNING: an unused path exists for blocktextures exists. you should delete it manually before releasing the mod.")
   if os.path.exists(destination_settings.manifest_file_destination_path):
     # TODO make and use a json shelf-like CM
     with open(MANIFEST_FILE_SOURCE_PATH, "r") as srcManifestFile, open(destination_settings.manifest_file_destination_path) as destManifestFile:
@@ -614,16 +609,26 @@ def clean_destination(build_settings: BuildSettings, destination_settings: Desti
     if os.path.exists(pathToRemove):
       os.remove(pathToRemove)
 
-
-
-# build mod \/
+BLACK_PIXEL_STRING = "# "
+WHITE_PIXEL_STRING = "   "
+# def
   
 async def generate_assets(build_settings: BuildSettings, destination_settings: DestinationSettings):
 
   codecStrings = {"en-US": "utf-8", "pt-BR": "utf-8-sig", "uk-UA": "utf-8", "ru-RU": "utf-8"}
+  # noinspection PyDeprecation
   languageFiles = {langCode: codecs.open(destination_settings.get_language_file_destination_path(langCode), "w", codecStrings[langCode]) for langCode in BREEZE_BLOCKS_LANGUAGE_CODES}
   colorsShelf = shelve.open(COLORS_SHELF_PATH)
-
+  modelFileNames = [name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if name.endswith(".blockymodel")]
+  # infoByModel = {modelFileName: {"ascii_art": } for modelFileName in modelFileNames}
+  infoByModelFile = dict()
+  for modelFileName in modelFileNames:
+    currentDict = dict()
+    currentDict["model_file_source_path"] = MODEL_FOLDER_SOURCE_PATH + SEP + modelFileName
+    currentDict["model_name_with_depth"] = remove_suffix(modelFileName, ".blockymodel")
+    currentDict["model_name_without_depth"] = remove_suffix(currentDict["model_name_with_depth"], "_Db1000")
+    currentDict["icon_mask_file_name"] = currentDict["model_name_without_depth"] + ".png"
+    infoByModelFile[modelFileName] = currentDict
 
   # iterate through materials:
   for dataPage in DATA_PAGES:
@@ -672,24 +677,24 @@ async def generate_assets(build_settings: BuildSettings, destination_settings: D
         else:
           materialInfo["final_texture_file_name"] = stockTexName
           materialInfo["generated_texture_exists"] = False
-        
+
+
         
         # iterate through models:
-        for modelFileName in (name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if name.endswith(".blockymodel")):
-          shutil.copy(MODEL_FOLDER_SOURCE_PATH + SEP + modelFileName, destination_settings.model_folder_destination_path + SEP + modelFileName)
-          modelNameWithDepth = remove_suffix(modelFileName, ".blockymodel")
-          modelNameWithoutDepth = remove_suffix(modelNameWithDepth, "_Db1000")
-          iconMaskFileName = modelNameWithoutDepth + ".png"
+        for modelFileName in modelFileNames:
+          modelInfo = infoByModelFile[modelFileName]
+          shutil.copy(modelInfo["model_file_source_path"], destination_settings.model_folder_destination_path + SEP + modelFileName)
     
           
           
           # asset info specific to this model and material:
           assetInfo = dict()
-          assetInfo["full_name"] = data_page_get_value(dataPage, "PRIVATE_TYPE") + "_" + family + (textureNameSuffix if data_page_get_value(dataPage, "INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME") else "") + "_" + modelNameWithoutDepth
+          assetInfo["full_name"] = data_page_get_value(dataPage, "PRIVATE_TYPE") + "_" + family + (textureNameSuffix if data_page_get_value(dataPage, "INCLUDE_TEXTURE_NAME_SUFFIX_IN_ASSET_NAME") else "") + "_" + modelInfo["model_name_without_depth"]
           assetInfo["output_file_path"] = destination_settings.asset_folder_destination_path + SEP + assetInfo["full_name"] + ".json"
           assetInfo["icon_file_name"] = assetInfo["full_name"] + ".png"
           assetInfo["icon_file_path"] = destination_settings.icon_folder_destination_path + SEP + assetInfo["icon_file_name"]
-          
+          if build_settings.include_ascii_art:
+            raise NotImplementedError()
           
           # asset info specific to this model and texture, for inclusion in asset file:
           assetContents = {
@@ -701,7 +706,7 @@ async def generate_assets(build_settings: BuildSettings, destination_settings: D
           
           
           # texture and icon work:
-          with Image.open(MODEL_FOLDER_SOURCE_PATH + SEP + iconMaskFileName) as thumbnailMaskImage:
+          with Image.open(MODEL_FOLDER_SOURCE_PATH + SEP + modelInfo["icon_mask_file_name"]) as thumbnailMaskImage:
             with Image.open(destination_settings.blocktexture_folder_destination_path + SEP + materialInfo["final_texture_file_name"] if materialInfo["generated_texture_exists"] else HYTALE_BLOCKTEXTURES_PATH + SEP + materialInfo["stock_texture_file_name"]) as thumbnailTextureImage:
               assert thumbnailMaskImage.size == thumbnailTextureImage.size
               
@@ -718,7 +723,7 @@ async def generate_assets(build_settings: BuildSettings, destination_settings: D
           
           
           # language file stuff:
-          modelNameForDecomposition = remove_prefix(modelNameWithoutDepth, 'Breeze_')
+          modelNameForDecomposition = remove_prefix(modelInfo["model_name_without_depth"], 'Breeze_')
           decomposedModelName = Parsing.parse_string_as_structure(modelNameForDecomposition, [GRID_PATTERN,CREATE_SIZE_DESCRIPTION_PATTERN(MAX_UNIVERSAL_NUMBER_COMPONENT_DIGITS), MULTI_SHAPE_NAME_PATTERN]).assert_complete_and_get_matched_data()
           modelNameLayoutStr, modelNameSizeDescriptionStr, modelNameShapeNicknameStr = tuple(Parsing.flatten_string_structure_and_join(item) for item in decomposedModelName)
           modelNameShapeNameStr = dictionary_translate_if_able(SHAPE_NICKNAMES_TO_NAMES, modelNameShapeNicknameStr)
@@ -733,9 +738,9 @@ async def generate_assets(build_settings: BuildSettings, destination_settings: D
           if os.path.exists(assetInfo["output_file_path"]):
             os.remove(assetInfo["output_file_path"])
           with open(assetInfo["output_file_path"], "w") as outputFile:
-            for currentLine in templateFileLines:
+            for currentLine in TEMPLATE_FILE_LINES:
               outputLine = currentLine.replace("${FULL_NAME}", assetInfo["full_name"]
-                ).replace("${MODEL_BASE_NAME}", modelNameWithDepth
+                ).replace("${MODEL_BASE_NAME}", modelInfo["model_name_with_depth"]
                 ).replace("${ICON_PATH_IN_MOD}", assetContents["ICON_PATH_IN_MOD"]
                 ).replace("${SET}", assetContents["SET"]
                 ).replace("${TEXTURE_PATH_IN_MOD}", assetContents["TEXTURE_PATH_IN_MOD"]
@@ -759,12 +764,18 @@ async def generate_assets(build_settings: BuildSettings, destination_settings: D
   
   while PNG_OPTIMIZATION_PROCESS_POOLER.has_work():
     await PNG_OPTIMIZATION_PROCESS_POOLER.do_some_work()
+  return
 
+
+
+
+
+# build mod \/
 
 if __name__ == "__main__":
   print(f"loading took {time.monotonic()-START_TIME:.3f} seconds")
 
-  buildSettings = BuildSettings(generate_blocktextures=True)
+  buildSettings = BuildSettings(generate_blocktextures=True, include_ascii_art=False)
   destinationSettings = DestinationSettings(mod_destination_name="RedHadron.BreezeBlocks")
   clean_destination(buildSettings, destinationSettings)
   asyncio.run(generate_assets(buildSettings, destinationSettings))
