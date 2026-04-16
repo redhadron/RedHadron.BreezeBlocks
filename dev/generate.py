@@ -23,7 +23,7 @@ from typing import Callable
 # project:
 from Hytale import SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
 import ProcessPooling
-from Affixes import remove_suffix, remove_prefix, shorten_suffix, lstrip_and_count, rstrip_and_count
+from Affixes import remove_suffix, remove_prefix, shorten_suffix, lstrip_and_count, rstrip_and_count, bisect_after_infix
 from Utilities import assert_equals, rjust_tuple  # , int_divide_exact
 import Parsing
 from colors import COLORS_SHELF_PATH
@@ -340,13 +340,20 @@ def GET_LANGUAGE_FILE_SUBPATH(language_code):
 # TODO make a better decorator that can assert the output of a key function is true
 
 class DestinationSettings:
-  def __init__(self, mod_destination_name):
+  def __init__(self, mod_destination_name: str, destination_world_name: str|None = None):
     assert MOD_BASE_NAME in mod_destination_name, "destination name must include the base name, because some files may need to be deleted, and for safety reasons, only paths containing the mod base name can be deleted."
+
     self._mod_destination_name = mod_destination_name
+    assert destination_world_name is None or isinstance(destination_world_name, str)
+    self._destination_world_name = destination_world_name
 
   @property
   def mod_destination_path(self):
-    result = os.path.normpath(SEP.join([MOD_SOURCE_PATH, "..", "..", "mods", self._mod_destination_name]))
+    assert SEP.join(["Hytale", "UserData", "Saves"]) in MOD_SOURCE_PATH, "this program is designed to run from somewhere inside a world folder."
+    if self._destination_world_name is None:
+      result = os.path.normpath(SEP.join([MOD_SOURCE_PATH, "..", "..", "mods", self._mod_destination_name]))
+    else:
+      result = bisect_after_infix(MOD_SOURCE_PATH, SEP.join(["Hytale", "UserData", "Saves"])+SEP)[0] + self._destination_world_name + SEP + "mods" + SEP + self._mod_destination_name
     assert is_a_valid_mod(result), result
     assert "dev" not in os.listdir(result), "mod destination path or structure may be invalid because it contains the substring \"dev\": " + result
     return result
@@ -775,9 +782,17 @@ async def generate_assets(build_settings: BuildSettings, destination_settings: D
 if __name__ == "__main__":
   print(f"loading took {time.monotonic()-START_TIME:.3f} seconds")
 
-  buildSettings = BuildSettings(generate_blocktextures=True, include_ascii_art=False)
-  destinationSettings = DestinationSettings(mod_destination_name="RedHadron.BreezeBlocks")
-  clean_destination(buildSettings, destinationSettings)
-  asyncio.run(generate_assets(buildSettings, destinationSettings))
+  toBuildFullMod = (
+    BuildSettings(generate_blocktextures=True, include_ascii_art=False),
+    DestinationSettings(mod_destination_name="RedHadron.BreezeBlocks")
+  )
+  toBuildLiteMod = (
+    BuildSettings(generate_blocktextures=False, include_ascii_art=False),
+    DestinationSettings(mod_destination_name="RedHadron.BreezeBlocks-Lite", destination_world_name="Lite Mod Testing")
+  )
+
+  for settingsForBuild in [toBuildFullMod, toBuildLiteMod]:
+    clean_destination(*settingsForBuild)
+    asyncio.run(generate_assets(*settingsForBuild))
 
   print(f"loading and execution took {time.monotonic()-START_TIME:.3f} seconds")

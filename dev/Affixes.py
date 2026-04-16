@@ -28,6 +28,11 @@ def bisect_at_infix(string, infix):
   assert string.count(infix) == 1
   a, b = string.split(infix)
   return (a, b)
+
+def bisect_after_infix(string, infix):
+  assert string.count(infix) == 1
+  a, b = string.split(infix)
+  return (a+infix, b)
   
   
 def lstrip_and_count(text: str, prefix: str) -> tuple[str, int]:
