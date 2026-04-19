@@ -597,12 +597,7 @@ if len(TEMPLATE_FILE_LINES) == 0:
 def clean_destination(build_settings: BuildSettings, destination_settings: DestinationSettings):
   clear_folder(destination_settings.asset_folder_destination_path, ".json")
   clear_folder(destination_settings.model_folder_destination_path, ".blockymodel")
-  if build_settings.icon_mode in (BuildSettingsIconMode.MASK, BuildSettingsIconMode.MASKED_MATERIAL):
-    clear_folder(destination_settings.icon_folder_destination_path, ".png")
-  else:
-    assert build_settings.icon_mode == BuildSettingsIconMode.MATERIAL
-    if os.path.exists(destination_settings.icon_folder_destination_path):
-      print("warning: an unused path exists for icons. you should delete it manually before releasing the mod. {destination_settings.icon_folder_destination_path}")
+  clear_folder(destination_settings.icon_folder_destination_path, ".png")
   if build_settings.generate_blocktextures:
     clear_folder(destination_settings.blocktexture_folder_destination_path, ".png")
   else:
@@ -683,8 +678,7 @@ async def generate_assets(build_settings: BuildSettings, destination_settings: D
       # noinspection PyTypeChecker
       for _cFirst, textureNameSuffix in lflag_is_first(data_page_get_value(dataPage, "TEXTURE_NAME_SUFFIX_LIST")):
         # this loop context is a single material, like softwood or copper or calcite or red clay.
-        # isFirstTimeThroughModelLoop = _aFirst and _bFirst and _cFirst # don't use this, just use caching.
-        # raise NotImplementedError()
+        isFirstIterationOfMaterialsLoop = _aFirst and _bFirst and _cFirst # to be used to only copy a mask once, for example.
 
         # asset info specific to this material:
         materialInfo = dict()
@@ -730,7 +724,7 @@ async def generate_assets(build_settings: BuildSettings, destination_settings: D
 
 
         # iterate through models:
-        for modelFileName in MODEL_FILE_NAMES:
+        for isFirstIterationOfModelsLoop, modelFileName in lflag_is_first(MODEL_FILE_NAMES):
           modelInfo = INFO_BY_MODEL_FILE[modelFileName]
           shutil.copy(modelInfo["model_file_source_path"], destination_settings.model_folder_destination_path + SEP + modelFileName)
 
@@ -742,21 +736,18 @@ async def generate_assets(build_settings: BuildSettings, destination_settings: D
           assetInfo["output_file_path"] = destination_settings.asset_folder_destination_path + SEP + assetInfo["full_name"] + ".json"
           if build_settings.icon_mode == BuildSettingsIconMode.MASKED_MATERIAL:
             assetInfo["icon_file_name"] = assetInfo["full_name"] + ".png"
-            assetInfo["icon_file_path"] = destination_settings.icon_folder_destination_path + SEP + assetInfo["icon_file_name"]
-            assetInfo["icon_path_in_mod"] = "Icons/ItemsGenerated/" + assetInfo["icon_file_name"]
           elif build_settings.icon_mode == BuildSettingsIconMode.MASK:
             raise NotImplementedError("copy mask over and keep a simple name for it (containing no material) so that all materials of a shape can use the same file as their icon.")
           elif build_settings.icon_mode == BuildSettingsIconMode.MATERIAL:
-            assetInfo["icon_file_name"] = materialInfo["final_texture_file_name"]
-            assetInfo["icon_file_path"] = ThisValueShouldNotBeAccessedConsideringTheProvidedBuildSettings()
-            assetInfo["icon_path_in_mod"] = "BlockTextures/" + assetInfo["icon_file_name"]
+            assetInfo["icon_file_name"] = "material_icon_" + materialInfo["final_texture_file_name"]
           else:
             raise ValueError(build_settings.icon_mode)
+          assetInfo["icon_file_path"] = destination_settings.icon_folder_destination_path + SEP + assetInfo["icon_file_name"]
 
 
           # asset info specific to this model and texture, for inclusion in asset file:
           assetContents = {
-            "ICON_PATH_IN_MOD": assetInfo["icon_path_in_mod"],
+            "ICON_PATH_IN_MOD": "Icons/ItemsGenerated/" + assetInfo["icon_file_name"],
             "TEXTURE_PATH_IN_MOD": f"BlockTextures/{materialInfo['final_texture_file_name']}", # TODO get rid of this here???
             "SET": materialInfo["unpatched_texture_base_name"],
             "PARTICLECOLOR_STR": color_tuple_to_hytale_string(materialInfo["particle_color_as_tuple"]),
@@ -778,11 +769,14 @@ async def generate_assets(build_settings: BuildSettings, destination_settings: D
               thumbnailResultImage.save(assetInfo["icon_file_path"])
             PNG_OPTIMIZATION_PROCESS_POOLER.put(ProcessPooling.WorkOrder(optimize_png_in_place, [assetInfo["icon_file_path"]], dict()))
           elif build_settings.icon_mode == BuildSettingsIconMode.MASK:
+            if isFirstIterationOfMaterialsLoop:
+              raise NotImplementedError()
             raise NotImplementedError()
           elif build_settings.icon_mode == BuildSettingsIconMode.MATERIAL:
-            pass
+            if isFirstIterationOfModelsLoop:
+              shutil.copy(HYTALE_BLOCKTEXTURES_PATH + SEP + materialInfo["stock_texture_file_name"], assetInfo["icon_file_path"])
           else:
-            raise ValueError()
+            raise ValueError(build_settings.icon_mode)
 
           # language file stuff:
           modelNameForDecomposition = remove_prefix(modelInfo["model_name_without_depth"], 'Breeze_')
@@ -804,12 +798,12 @@ async def generate_assets(build_settings: BuildSettings, destination_settings: D
           with open(assetInfo["output_file_path"], "w") as outputFile:
             for currentLine in TEMPLATE_FILE_LINES:
               outputLine = currentLine.replace("${FULL_NAME}", assetInfo["full_name"]
-                ).replace("${MODEL_BASE_NAME}", modelInfo["model_name_with_depth"]
-                ).replace("${ICON_PATH_IN_MOD}", assetContents["ICON_PATH_IN_MOD"]
-                ).replace("${SET}", assetContents["SET"]
-                ).replace("${TEXTURE_PATH_IN_MOD}", assetContents["TEXTURE_PATH_IN_MOD"]
-                ).replace("${PARTICLECOLOR_STR}", assetContents["PARTICLECOLOR_STR"]
-                )
+                                               ).replace("${MODEL_BASE_NAME}", modelInfo["model_name_with_depth"]
+                                                         ).replace("${ICON_PATH_IN_MOD}", assetContents["ICON_PATH_IN_MOD"]
+                                                                   ).replace("${SET}", assetContents["SET"]
+                                                                             ).replace("${TEXTURE_PATH_IN_MOD}", assetContents["TEXTURE_PATH_IN_MOD"]
+                                                                                       ).replace("${PARTICLECOLOR_STR}", assetContents["PARTICLECOLOR_STR"]
+                                                                                                 )
               # noinspection PyTypeChecker
               for jsonOld, jsonNew in data_page_get_value(dataPage, "AUTOMATIC_JSON_ITEMS"):
                 outputLine = outputLine.replace("${" + jsonOld + "}", jsonNew)
@@ -840,7 +834,7 @@ if __name__ == "__main__":
   print(f"loading took {time.monotonic()-START_TIME:.3f} seconds")
 
   toBuildFullMod = (
-    BuildSettings(generate_blocktextures=True, include_ascii_art=True, icon_mode=BuildSettingsIconMode.MASKED_MATERIAL),
+    BuildSettings(generate_blocktextures=True, include_ascii_art=False, icon_mode=BuildSettingsIconMode.MASKED_MATERIAL),
     DestinationSettings(mod_destination_name="RedHadron.BreezeBlocks")
   )
   toBuildLiteMod = (
@@ -848,7 +842,7 @@ if __name__ == "__main__":
     DestinationSettings(mod_destination_name="RedHadron.BreezeBlocks-Lite", destination_world_name="Lite Mod Testing")
   )
 
-  for settingsForBuild in [toBuildFullMod]: # , toBuildLiteMod]:
+  for settingsForBuild in [toBuildFullMod, toBuildLiteMod]:
     print(f"building {settingsForBuild[1]._mod_destination_name}...")
     clean_destination(*settingsForBuild)
     asyncio.run(generate_assets(*settingsForBuild))
