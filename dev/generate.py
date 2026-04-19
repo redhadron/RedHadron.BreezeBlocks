@@ -22,7 +22,7 @@ from typing import Callable
 from Hytale import SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
 import ProcessPooling
 from Affixes import remove_suffix, remove_prefix, shorten_suffix, lstrip_and_count, rstrip_and_count, bisect_after_infix
-from Utilities import assert_equals, rjust_tuple, lflag_is_first  # , int_divide_exact
+from Utilities import assert_equals, rjust_tuple, lflag_is_first #  first_half_of  # , int_divide_exact
 import Parsing
 from colors import COLORS_SHELF_PATH
 
@@ -626,23 +626,26 @@ def clean_destination(build_settings: BuildSettings, destination_settings: Desti
 
 BLACK_PIXEL_STRING = "# "
 WHITE_PIXEL_STRING = "   "
-def mask_image_to_ascii_art(image: Image.Image) -> str:
+def mask_image_to_ascii_art(image: Image.Image, top_half_only: bool, resolution_divisor: int, invert: bool) -> str:
   # TODO convert to genexpr
   assert isinstance(image, Image.Image)
+  assert isinstance(resolution_divisor, int)
+  assert 0 < resolution_divisor <= 16
   if image.size != (32, 32):
     print(f"mask_image_to_ascii_art: masks are usually 32x32 images, so using this function on an image of size {image.size} is weird and may be a mistake.")
   result = []
-  for pixelY in range(image.size[1]):
-    for pixelX in range(image.size[0]):
+  for pixelY in range(0, image.size[1] // (2 if top_half_only else 1), resolution_divisor):
+    result.append("|")
+    for pixelX in range(0, image.size[0], resolution_divisor):
       color = image.getpixel((pixelX, pixelY))
       if color[:3] == (255,255,255):
-        result.append(WHITE_PIXEL_STRING)
+        result.append(BLACK_PIXEL_STRING if invert else WHITE_PIXEL_STRING)
       elif color[:3] == (0,0,0):
-        result.append(BLACK_PIXEL_STRING)
+        result.append(WHITE_PIXEL_STRING if invert else BLACK_PIXEL_STRING)
       else:
         raise ValueError(f"illegal color in mask: {color}")
-    result.append("\n")
-  assert result[-1] == "\n"
+    result.append("|\n")
+  assert result[-1] == "|\n"
   return "".join(result[:-1])
 
 
@@ -655,7 +658,7 @@ for modelFileName in MODEL_FILE_NAMES:
   currentDict["model_name_without_depth"] = remove_suffix(currentDict["model_name_with_depth"], "_Db1000")
   currentDict["icon_mask_file_name"] = currentDict["model_name_without_depth"] + ".png"
   currentDict["icon_mask_image"] = Image.open(MODEL_FOLDER_SOURCE_PATH + SEP + currentDict["icon_mask_file_name"], "r")
-  currentDict["ascii_art_str"] = mask_image_to_ascii_art(currentDict["icon_mask_image"])
+  currentDict["ascii_art_str"] = mask_image_to_ascii_art(currentDict["icon_mask_image"], top_half_only=True, resolution_divisor=1, invert=True)
   INFO_BY_MODEL_FILE[modelFileName] = currentDict
 
 
@@ -792,7 +795,7 @@ async def generate_assets(build_settings: BuildSettings, destination_settings: D
             displayNameTranslated = translate_string_piecewise(displayNameNative, source=BREEZE_BLOCKS_NATIVE_LANGUAGE_CODE, target=langCode, delimiters=("(", ")", ":", ","))
             langFile.write(f"{assetInfo['full_name']}.name = {displayNameTranslated}\n")
             if build_settings.include_ascii_art:
-              langFile.write(f"{assetInfo['full_name']}.description = {modelInfo['ascii_art_str']}\n")
+              langFile.write(f"{assetInfo['full_name']}.description = top half of shape:\\n {repr(modelInfo['ascii_art_str'])[2:]}\n")
 
 
           # main procedure:
@@ -837,15 +840,15 @@ if __name__ == "__main__":
   print(f"loading took {time.monotonic()-START_TIME:.3f} seconds")
 
   toBuildFullMod = (
-    BuildSettings(generate_blocktextures=True, include_ascii_art=False, icon_mode=BuildSettingsIconMode.MASKED_MATERIAL),
+    BuildSettings(generate_blocktextures=True, include_ascii_art=True, icon_mode=BuildSettingsIconMode.MASKED_MATERIAL),
     DestinationSettings(mod_destination_name="RedHadron.BreezeBlocks")
   )
   toBuildLiteMod = (
-    BuildSettings(generate_blocktextures=False, include_ascii_art=False, icon_mode=BuildSettingsIconMode.MATERIAL),
+    BuildSettings(generate_blocktextures=False, include_ascii_art=True, icon_mode=BuildSettingsIconMode.MATERIAL),
     DestinationSettings(mod_destination_name="RedHadron.BreezeBlocks-Lite", destination_world_name="Lite Mod Testing")
   )
 
-  for settingsForBuild in [toBuildFullMod, toBuildLiteMod]:
+  for settingsForBuild in [toBuildFullMod]: # , toBuildLiteMod]:
     print(f"building {settingsForBuild[1]._mod_destination_name}...")
     clean_destination(*settingsForBuild)
     asyncio.run(generate_assets(*settingsForBuild))

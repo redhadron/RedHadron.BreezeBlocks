@@ -66,3 +66,9 @@ assert rjust_tuple((3,4,5), 0, 2) == (3,4,5)
 def lflag_is_first(input_iterable):
   for i, item in enumerate(input_iterable):
     yield (i==0, item)
+
+
+def first_half_of(input_sliceable):
+  assert hasattr(input_sliceable, "__len__")
+  assert len(input_sliceable)%2 == 0
+  return input_sliceable[:len(input_sliceable)//2]
