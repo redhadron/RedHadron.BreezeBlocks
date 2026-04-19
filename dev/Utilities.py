@@ -1,4 +1,4 @@
-
+# import collections
 # builtin:
 import itertools
 
@@ -61,3 +61,8 @@ def rjust_tuple(input_tuple, fill_value, length):
     return (fill_value,)*(length-len(input_tuple)) + input_tuple
 assert rjust_tuple((3,4,5), 0, 5) == (0,0,3,4,5)
 assert rjust_tuple((3,4,5), 0, 2) == (3,4,5)
+
+
+def lflag_is_first(input_iterable):
+  for i, item in enumerate(input_iterable):
+    yield (i==0, item)

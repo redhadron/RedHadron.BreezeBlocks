@@ -109,6 +109,9 @@ atlas.py: atlas interactive prompt:
 
 TODO:
 
+fix up mod folder structure template for BreezeBlocks-Lite.
+
+
 FIX BUG: icons appear black on MacOS in combination with other mods (details in curseforge comment)
   texture atlas overflow perhaps??? this has been discussed in the comments section of violet's furniture.
   test on linux
@@ -117,10 +120,9 @@ generate.py:
     let BuildSettings affect content of manifest.json.
     BuildSettings controls:
       include_ascii_art
-      include_custom_block_textures
-      include_custom_icons
-  
-  
+      generate_custom_block_textures
+      icon mode enum: masked material, mask, material
+    
 atlas.py:
   saving overhaul:
     create a context object class that contains atlas_image and mappings data, and can only load/save both at the same time. It can also produce read-only copies of either.
@@ -312,3 +314,4 @@ manifest.json copying
 Add keyboard shortcuts from above design: [m] move
 refactor main loop so that materials loop is on the outside and models loop is on the inside. This makes texture generation easier and should not interfere with making a model variants system, which might get easier too.
 BuildSettings
+move model file info into global const
