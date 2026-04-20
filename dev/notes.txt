@@ -116,12 +116,12 @@ FIX BUG: icons appear black on MacOS in combination with other mods (details in 
   test on linux
 generate.py:
   make Lite and/or Zero editions
-    use a generic mask.
     make control for whether description translation key is used in the asset json.
     let BuildSettings affect content of manifest.json.
     make ascii art non-redundant in lang file.
     
 atlas.py:
+  add warning when using data from a mappingManager that has not been loaded?
   saving overhaul:
     create a context object class that contains atlas_image and mappings data, and can only load/save both at the same time. It can also produce read-only copies of either.
     hand functions read-only copies of mapping or atlas image whenever possible.
@@ -313,9 +313,9 @@ Add keyboard shortcuts from above design: [m] move
 refactor main loop so that materials loop is on the outside and models loop is on the inside. This makes texture generation easier and should not interfere with making a model variants system, which might get easier too.
 BuildSettings
 move model file info into global const
-
 BuildSettings controls:
   include_ascii_art
   generate_custom_block_textures
   icon mode enum: masked material, mask, material
   fix MATERIAL icon mode in build settings.
+use a generic mask.

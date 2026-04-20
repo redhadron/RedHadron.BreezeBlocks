@@ -302,10 +302,10 @@ class TilePromptResponse:
 class TilePromptSubmission(TilePromptResponse):
   def __init__(self, name):
     self.name = name
-def TilePromptSkip(TilePromptResponse):
+class TilePromptSkip(TilePromptResponse):
   def __init__(self):
     pass
-def TilePromptExit(TilePromptResponse):
+class TilePromptExit(TilePromptResponse):
   def __init__(self):
     pass
     
@@ -824,6 +824,7 @@ def do_tile_transport(direction, discover=False, organize=False) -> None:
   assert not (discover and organize)
 
   mapping_manager = MappingManager()
+  mapping_manager.load()
   with Image.open(ATLAS_IMAGE_PATH) as atlasImg:
     if direction is TRANSPORT_DIRECTION.EXPORT:
       assert not organize

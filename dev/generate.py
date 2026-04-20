@@ -1,14 +1,12 @@
-import enum
+
 # builtin:
 import time
-
-
 START_TIME = time.monotonic()
 import os
 import shutil
 import itertools
 import pathlib
-import codecs # for portuguese file encoding
+import codecs # for Portuguese file encoding
 import re
 import functools
 import urllib # for libretranslate error handling
@@ -17,6 +15,7 @@ import asyncio # for using multiple processes for png crushing
 import sys # to use sys.exit inside async, although this does not work.
 import json
 from typing import Callable
+import enum
 
 # project:
 from Hytale import SEP, HYTALE_BLOCKTEXTURES_PATH, HYTALE_BLOCKTEXTURE_FILE_NAMES
@@ -44,8 +43,6 @@ except urllib.error.URLError:
 
 # pip:
 import psutil
-# import numpy
-# from stablerandom import stablerandom
 import pydantic
 
 
@@ -365,7 +362,7 @@ class DestinationSettings:
   def asset_folder_destination_path(self):
     return SEP.join([self.mod_destination_path, ASSET_FOLDER_SUBPATH])
   @property
-  # @apply_validator_to_output(assert_directory_exists) # TODO
+  # @apply_validator_to_output(assert_directory_exists) # TODO put this back depending on an argument of this class
   def icon_folder_destination_path(self):
     return SEP.join([self.mod_destination_path, ICON_FOLDER_SUBPATH])
   @property
@@ -619,6 +616,7 @@ def clean_destination(build_settings: BuildSettings, destination_settings: Desti
     if os.path.exists(pathToRemove):
       os.remove(pathToRemove)
 
+
 BLACK_PIXEL_STRING = "# "
 WHITE_PIXEL_STRING = "   "
 def mask_image_to_ascii_art(image: Image.Image, top_half_only: bool, resolution_divisor: int, invert: bool) -> str:
@@ -644,6 +642,7 @@ def mask_image_to_ascii_art(image: Image.Image, top_half_only: bool, resolution_
   return "".join(result[:-1])
 
 
+
 MODEL_FILE_NAMES = [name for name in os.listdir(MODEL_FOLDER_SOURCE_PATH) if name.endswith(".blockymodel")]
 INFO_BY_MODEL_FILE = dict()
 for modelFileName in MODEL_FILE_NAMES:
@@ -656,11 +655,7 @@ for modelFileName in MODEL_FILE_NAMES:
   currentDict["ascii_art_str"] = mask_image_to_ascii_art(currentDict["icon_mask_image"], top_half_only=True, resolution_divisor=1, invert=True)
   INFO_BY_MODEL_FILE[modelFileName] = currentDict
 
-
-class ThisValueShouldNotBeAccessedConsideringTheProvidedBuildSettings:
-  """ A better placeholder than None - if you attempt to do anything with an instance of this class, the resulting type error will explain the actual cause of the problem. """
-  def __init__(self):
-    pass
+GENERIC_MASK_IMAGE = Image.open(MODEL_FOLDER_SOURCE_PATH + SEP + "generic_breeze_block_mask.png", "r")
 
 
 def generate_and_save_masked_material_icon(material_texture: Image.Image, mask_texture: Image.Image, destination_path: str, particle_color: tuple) -> None:
@@ -671,6 +666,8 @@ def generate_and_save_masked_material_icon(material_texture: Image.Image, mask_t
   else:
     thumbnailResultImage = thumbnailResultImageNoBG
   thumbnailResultImage.save(destination_path)
+
+
 
 
 async def generate_assets(build_settings: BuildSettings, destination_settings: DestinationSettings):
@@ -779,7 +776,7 @@ async def generate_assets(build_settings: BuildSettings, destination_settings: D
             if isFirstIterationOfModelsLoop:
               # shutil.copy(HYTALE_BLOCKTEXTURES_PATH + SEP + materialInfo["stock_texture_file_name"], assetInfo["icon_file_path"])
               with Image.open(thumbnailMaterialTexturePath) as thumbnailMaterialTextureImage:
-                generate_and_save_masked_material_icon(material_texture=thumbnailMaterialTextureImage, mask_texture=modelInfo["icon_mask_image"], destination_path=assetInfo["icon_file_path"], particle_color=materialInfo["particle_color_as_tuple"]) # just use whatever icon mask is first in iteration as the icon mask for all icons in the entire mod.
+                generate_and_save_masked_material_icon(material_texture=thumbnailMaterialTextureImage, mask_texture=GENERIC_MASK_IMAGE, destination_path=assetInfo["icon_file_path"], particle_color=materialInfo["particle_color_as_tuple"])
           else:
             raise ValueError(build_settings.icon_mode)
           del thumbnailMaterialTexturePath
