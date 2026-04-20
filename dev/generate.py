@@ -663,6 +663,16 @@ class ThisValueShouldNotBeAccessedConsideringTheProvidedBuildSettings:
     pass
 
 
+def generate_and_save_masked_material_icon(material_texture: Image.Image, mask_texture: Image.Image, destination_path: str, particle_color: tuple) -> None:
+  assert mask_texture.size == material_texture.size
+  thumbnailResultImageNoBG = ImageChops.multiply(mask_texture.convert("RGB"), material_texture.convert("RGB"))
+  if sum(particle_color) <= ICON_BACKGROUND_INVERSION_THRESHOLD:
+    thumbnailResultImage = ImageChops.add(thumbnailResultImageNoBG, ImageChops.invert(mask_texture).convert("RGB"))
+  else:
+    thumbnailResultImage = thumbnailResultImageNoBG
+  thumbnailResultImage.save(destination_path)
+
+
 async def generate_assets(build_settings: BuildSettings, destination_settings: DestinationSettings):
 
   codecStrings = {"en-US": "utf-8", "pt-BR": "utf-8-sig", "uk-UA": "utf-8", "ru-RU": "utf-8"}
@@ -745,6 +755,7 @@ async def generate_assets(build_settings: BuildSettings, destination_settings: D
           assetInfo["icon_file_path"] = destination_settings.icon_folder_destination_path + SEP + assetInfo["icon_file_name"]
 
 
+
           # asset info specific to this model and texture, for inclusion in asset file:
           assetContents = {
             "ICON_PATH_IN_MOD": "Icons/ItemsGenerated/" + assetInfo["icon_file_name"],
@@ -755,18 +766,10 @@ async def generate_assets(build_settings: BuildSettings, destination_settings: D
 
 
           # texture and icon work:
+          thumbnailMaterialTexturePath = destination_settings.blocktexture_folder_destination_path + SEP + materialInfo["final_texture_file_name"] if materialInfo["generated_texture_exists"] else HYTALE_BLOCKTEXTURES_PATH + SEP + materialInfo["stock_texture_file_name"]
           if build_settings.icon_mode == BuildSettingsIconMode.MASKED_MATERIAL:
-            thumbnailMaskImage = modelInfo["icon_mask_image"]
-            with Image.open(destination_settings.blocktexture_folder_destination_path + SEP + materialInfo["final_texture_file_name"] if materialInfo["generated_texture_exists"] else HYTALE_BLOCKTEXTURES_PATH + SEP + materialInfo["stock_texture_file_name"]) as thumbnailTextureImage:
-              assert thumbnailMaskImage.size == thumbnailTextureImage.size
-
-              # icon generation:
-              thumbnailResultImageNoBG = ImageChops.multiply(thumbnailMaskImage.convert("RGB"), thumbnailTextureImage.convert("RGB"))
-              if sum(materialInfo["particle_color_as_tuple"]) <= ICON_BACKGROUND_INVERSION_THRESHOLD:
-                thumbnailResultImage = ImageChops.add(thumbnailResultImageNoBG, ImageChops.invert(thumbnailMaskImage).convert("RGB"))
-              else:
-                thumbnailResultImage = thumbnailResultImageNoBG
-              thumbnailResultImage.save(assetInfo["icon_file_path"])
+            with Image.open(thumbnailMaterialTexturePath) as thumbnailMaterialTextureImage:
+              generate_and_save_masked_material_icon(material_texture=thumbnailMaterialTextureImage, mask_texture=modelInfo["icon_mask_image"], destination_path=assetInfo["icon_file_path"], particle_color=materialInfo["particle_color_as_tuple"])
             PNG_OPTIMIZATION_PROCESS_POOLER.put(ProcessPooling.WorkOrder(optimize_png_in_place, [assetInfo["icon_file_path"]], dict()))
           elif build_settings.icon_mode == BuildSettingsIconMode.MASK:
             if isFirstIterationOfMaterialsLoop:
@@ -774,9 +777,15 @@ async def generate_assets(build_settings: BuildSettings, destination_settings: D
             raise NotImplementedError()
           elif build_settings.icon_mode == BuildSettingsIconMode.MATERIAL:
             if isFirstIterationOfModelsLoop:
-              shutil.copy(HYTALE_BLOCKTEXTURES_PATH + SEP + materialInfo["stock_texture_file_name"], assetInfo["icon_file_path"])
+              # shutil.copy(HYTALE_BLOCKTEXTURES_PATH + SEP + materialInfo["stock_texture_file_name"], assetInfo["icon_file_path"])
+              with Image.open(thumbnailMaterialTexturePath) as thumbnailMaterialTextureImage:
+                generate_and_save_masked_material_icon(material_texture=thumbnailMaterialTextureImage, mask_texture=modelInfo["icon_mask_image"], destination_path=assetInfo["icon_file_path"], particle_color=materialInfo["particle_color_as_tuple"]) # just use whatever icon mask is first in iteration as the icon mask for all icons in the entire mod.
           else:
             raise ValueError(build_settings.icon_mode)
+          del thumbnailMaterialTexturePath
+
+
+
 
           # language file stuff:
           modelNameForDecomposition = remove_prefix(modelInfo["model_name_without_depth"], 'Breeze_')
@@ -792,18 +801,19 @@ async def generate_assets(build_settings: BuildSettings, destination_settings: D
               langFile.write(f"{assetInfo['full_name']}.description = top half of shape:\\n {repr(modelInfo['ascii_art_str'])[2:]}\n")
 
 
+
           # main procedure:
           if os.path.exists(assetInfo["output_file_path"]):
             os.remove(assetInfo["output_file_path"])
           with open(assetInfo["output_file_path"], "w") as outputFile:
             for currentLine in TEMPLATE_FILE_LINES:
               outputLine = currentLine.replace("${FULL_NAME}", assetInfo["full_name"]
-                                               ).replace("${MODEL_BASE_NAME}", modelInfo["model_name_with_depth"]
-                                                         ).replace("${ICON_PATH_IN_MOD}", assetContents["ICON_PATH_IN_MOD"]
-                                                                   ).replace("${SET}", assetContents["SET"]
-                                                                             ).replace("${TEXTURE_PATH_IN_MOD}", assetContents["TEXTURE_PATH_IN_MOD"]
-                                                                                       ).replace("${PARTICLECOLOR_STR}", assetContents["PARTICLECOLOR_STR"]
-                                                                                                 )
+                ).replace("${MODEL_BASE_NAME}", modelInfo["model_name_with_depth"]
+                ).replace("${ICON_PATH_IN_MOD}", assetContents["ICON_PATH_IN_MOD"]
+                ).replace("${SET}", assetContents["SET"]
+                ).replace("${TEXTURE_PATH_IN_MOD}", assetContents["TEXTURE_PATH_IN_MOD"]
+                ).replace("${PARTICLECOLOR_STR}", assetContents["PARTICLECOLOR_STR"]
+                )
               # noinspection PyTypeChecker
               for jsonOld, jsonNew in data_page_get_value(dataPage, "AUTOMATIC_JSON_ITEMS"):
                 outputLine = outputLine.replace("${" + jsonOld + "}", jsonNew)

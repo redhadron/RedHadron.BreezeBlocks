@@ -111,15 +111,15 @@ TODO:
 
 fix up mod folder structure template for BreezeBlocks-Lite.
 
-
 FIX BUG: icons appear black on MacOS in combination with other mods (details in curseforge comment)
   texture atlas overflow perhaps??? this has been discussed in the comments section of violet's furnishings.
   test on linux
 generate.py:
   make Lite and/or Zero editions
+    use a generic mask.
+    make control for whether description translation key is used in the asset json.
     let BuildSettings affect content of manifest.json.
     make ascii art non-redundant in lang file.
-    fix MATERIAL icon mode in build settings.
     
 atlas.py:
   saving overhaul:
@@ -127,7 +127,6 @@ atlas.py:
     hand functions read-only copies of mapping or atlas image whenever possible.
     store atlas size in a settings file.
   
-  match statements
   make tooltip adjust its position to not go offscreen.
   make newline acceptable in any text.
   replace discover and organize with values of a single enum, and maybe rename them to something that makes more sense.
@@ -219,6 +218,7 @@ pickling as a context manager. (this already exists: import shelve)
 replace tkinter with pygame everywhere.
 add caching of tooltip surface (direct draw to screen is better, wouldn't take more compute when switching tiles)
 make ${set} more regular
+match statements
 
 
 done:
@@ -318,3 +318,4 @@ BuildSettings controls:
   include_ascii_art
   generate_custom_block_textures
   icon mode enum: masked material, mask, material
+  fix MATERIAL icon mode in build settings.
